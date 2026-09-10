@@ -116,6 +116,51 @@ func (c *Client) PutForm(endpoint Endpoint, username, password *string, path str
 	return err
 }
 
+// DoJSON sends a JSON body with the given HTTP method.
+func (c *Client) DoJSON(method string, endpoint Endpoint, username, password *string, path string, payload any) ([]byte, int, error) {
+	var bodyReader io.Reader
+	if payload != nil {
+		data, err := json.Marshal(payload)
+		if err != nil {
+			return nil, 0, err
+		}
+		bodyReader = strings.NewReader(string(data))
+	}
+	req, err := http.NewRequest(method, endpoint.adminURL(path), bodyReader)
+	if err != nil {
+		return nil, 0, err
+	}
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if username != nil {
+		pass := ""
+		if password != nil {
+			pass = *password
+		}
+		req.SetBasicAuth(*username, pass)
+	}
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return body, resp.StatusCode, fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return body, resp.StatusCode, nil
+}
+
+// PutJSON puts a JSON payload to the admin port.
+func (c *Client) PutJSON(endpoint Endpoint, username, password *string, path string, payload any) error {
+	_, _, err := c.DoJSON(http.MethodPut, endpoint, username, password, path, payload)
+	return err
+}
+
 // GetJSON GETs a path and decodes JSON.
 func (c *Client) GetJSON(endpoint Endpoint, username, password *string, path string, dest any) (int, error) {
 	req, err := http.NewRequest(http.MethodGet, endpoint.adminURL(path), nil)

@@ -64,6 +64,8 @@ Pass explicit `--host`, credentials, and `--ssl` / `--no-ssl` in scripts unless 
 
 ```bash
 cbctl cluster create --host 127.0.0.1 -u Administrator -p password --no-ssl
+cbctl cluster join --rally-ip-address 10.0.0.1 --ip-address 10.0.0.2 -p password --no-ssl
+cbctl cluster rebalance --rally-ip-address 10.0.0.1 -p password --no-ssl
 cbctl cluster exists --host 127.0.0.1 -u Administrator -p password --no-ssl
 cbctl cluster map --host 127.0.0.1 -u Administrator -p password --no-ssl
 cbctl cluster test --host 127.0.0.1 -u Administrator -p password --no-ssl
@@ -72,6 +74,8 @@ cbctl cluster test --host 127.0.0.1 -u Administrator -p password --no-ssl
 | Command | Behavior |
 |---------|----------|
 | `cluster create` | Initialize a Server cluster. Success: `Cluster created on <hosts>`. Already initialized: `Cluster already configured` (exit 0). |
+| `cluster join` / `cluster add` | Add one node to an existing cluster (no rebalance). Success: `Node <ip> added to cluster at <rally>`. Already a member: `Node already configured` (exit 0). |
+| `cluster rebalance` | Rebalance all known nodes. Success: `Cluster rebalanced`. |
 | `cluster exists` | Prints `true` or `false` (lowercase). |
 | `cluster map` | Prints the cluster host map from the management REST API. |
 | `cluster test` | Connect and KV put/get check. Without `--bucket`, creates/deletes a temporary `__test` bucket. With `--bucket`, uses that existing bucket only. |
@@ -80,6 +84,41 @@ cbctl cluster test --host 127.0.0.1 -u Administrator -p password --no-ssl
 
 - `--external` / `--internal` — mutually exclusive; force SDK network mode (`external` vs internal/`default`)
 - `--timeout` — SDK connect timeout in seconds (default `5`; must be > 0)
+
+#### Provisioner mode (create / join / rebalance)
+
+Use these flags when bootstrapping from Terraform/`remote-exec` or a controller host. All calls use the management REST API against the given IPs, so the CLI may run on the node itself or on a remote machine that can reach port 8091 (or 18091 with `--ssl`).
+
+```bash
+# Primary node
+cbctl cluster create \
+  --name my-cluster -p "$PASSWORD" \
+  --ip-address 10.0.0.1 --external-ip-address 203.0.113.10 \
+  --services data,index,query,fts --server-group us-east-1a \
+  --data-path /data/couchbase --no-ssl
+
+# Additional node (alias: cluster add)
+cbctl cluster join \
+  -p "$PASSWORD" --rally-ip-address 10.0.0.1 \
+  --ip-address 10.0.0.2 --external-ip-address 203.0.113.11 \
+  --services data,index,query,fts --server-group us-east-1b \
+  --data-path /data/couchbase --no-ssl
+
+# After all joins
+cbctl cluster rebalance -p "$PASSWORD" --rally-ip-address 10.0.0.1 --no-ssl
+```
+
+| Flag | Commands | Notes |
+|------|----------|--------|
+| `--ip-address` | create, join | Management IP of **this** node (also accepted as `--host` when `--ip-address` is omitted on create) |
+| `--external-ip-address` | create, join | External alternate address (alias of `--alternate-address`) |
+| `--rally-ip-address` | join, rebalance | Primary/rally management IP |
+| `--name` | create | Cluster display name |
+| `--server-group` | create, join | Server group / AZ name (Enterprise) |
+| `--data-path` | create, join | Shared path for data/index/analytics/eventing |
+| `--services` / `-s` | create, join | Comma-separated services (`search` → `fts`) |
+
+Provisioner `create` initializes **only** the primary node (no automatic join/rebalance). Use `join`/`add` for each extra node, then `rebalance` once.
 
 ### Bucket / scope / collection
 

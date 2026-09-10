@@ -9,6 +9,18 @@ import (
 	"github.com/mminichino/cbctl/internal/models"
 )
 
+// ClusterInitRequest holds parameters for POST /clusterInit.
+type ClusterInitRequest struct {
+	Hostname     string
+	Username     string
+	Password     string
+	Services     []string
+	Quotas       map[string]int
+	ClusterName  string
+	DataPath     string
+	AllowedHosts string // empty defaults to Hostname; use "*" to allow any join host
+}
+
 // CalculateServerQuotas computes memory quotas for non-query services.
 func CalculateServerQuotas(node models.ClusterNodeConfig, options map[string]string) map[string]int {
 	availableMiB := int(math.Floor(float64(node.RAMGiB) * 1024 * 0.8))
@@ -66,17 +78,41 @@ func ClusterInitHostname(host string) string {
 
 // InitializeSingleNode posts /clusterInit (no auth).
 func (c *Client) InitializeSingleNode(endpoint Endpoint, username, password string, services []string, quotas map[string]int, clusterHostname string) error {
-	resolved := ClusterInitHostname(clusterHostname)
+	return c.ClusterInit(endpoint, ClusterInitRequest{
+		Hostname: clusterHostname,
+		Username: username,
+		Password: password,
+		Services: services,
+		Quotas:   quotas,
+	})
+}
+
+// ClusterInit posts /clusterInit with full provisioner options (no auth).
+func (c *Client) ClusterInit(endpoint Endpoint, req ClusterInitRequest) error {
+	resolved := ClusterInitHostname(req.Hostname)
+	allowed := strings.TrimSpace(req.AllowedHosts)
+	if allowed == "" {
+		allowed = resolved
+	}
 	fields := map[string]string{
 		"hostname":           resolved,
-		"username":           username,
-		"password":           password,
+		"username":           req.Username,
+		"password":           req.Password,
 		"port":               "SAME",
-		"services":           ToRESTServices(services),
-		"allowedHosts":       resolved,
+		"services":           ToRESTServices(req.Services),
+		"allowedHosts":       allowed,
 		"indexerStorageMode": "plasma",
 	}
-	applyQuotaFields(fields, quotas)
+	if name := strings.TrimSpace(req.ClusterName); name != "" {
+		fields["clusterName"] = name
+	}
+	if path := strings.TrimSpace(req.DataPath); path != "" {
+		fields["dataPath"] = path
+		fields["indexPath"] = path
+		fields["analyticsPath"] = path
+		fields["eventingPath"] = path
+	}
+	applyQuotaFields(fields, req.Quotas)
 	return c.PostForm(endpoint, nil, nil, "/clusterInit", fields)
 }
 
@@ -98,6 +134,27 @@ func applyQuotaFields(fields map[string]string, quotas map[string]int) {
 	}
 }
 
+// SetNodePaths posts /nodes/self/controller/settings for storage paths.
+// Auth is optional: pass empty username/password before the node is provisioned.
+func (c *Client) SetNodePaths(endpoint Endpoint, username, password, dataPath string) error {
+	path := strings.TrimSpace(dataPath)
+	if path == "" {
+		return nil
+	}
+	fields := map[string]string{
+		"path":          path,
+		"index_path":    path,
+		"cbas_path":     path,
+		"eventing_path": path,
+	}
+	var userPtr, passPtr *string
+	if strings.TrimSpace(username) != "" {
+		userPtr = Ptr(username)
+		passPtr = Ptr(password)
+	}
+	return c.PostForm(endpoint, userPtr, passPtr, "/nodes/self/controller/settings", fields)
+}
+
 // AddNode posts /controller/addNode.
 func (c *Client) AddNode(endpoint Endpoint, username, password, nodeHost string, services []string) error {
 	fields := map[string]string{
@@ -113,7 +170,16 @@ func (c *Client) AddNode(endpoint Endpoint, username, password, nodeHost string,
 func (c *Client) Rebalance(endpoint Endpoint, username, password string, nodeHosts []string) error {
 	known := make([]string, 0, len(nodeHosts))
 	for _, h := range nodeHosts {
-		known = append(known, "ns_1@"+h)
+		host := strings.TrimSpace(h)
+		if host == "" {
+			continue
+		}
+		if strings.HasPrefix(host, "ns_1@") {
+			known = append(known, host)
+			continue
+		}
+		hostOnly, _ := ParseHostPort(host, 8091)
+		known = append(known, "ns_1@"+hostOnly)
 	}
 	return c.PostForm(endpoint, Ptr(username), Ptr(password), "/controller/rebalance", map[string]string{
 		"knownNodes": strings.Join(known, ","),
