@@ -34,6 +34,7 @@ func init() {
 	rootCmd.AddCommand(newBucketCmd())
 	rootCmd.AddCommand(newScopeCmd())
 	rootCmd.AddCommand(newCollectionCmd())
+	rootCmd.AddCommand(newKeyspaceCmd())
 	rootCmd.AddCommand(newImportCmd())
 	rootCmd.AddCommand(newCapellaCmd())
 

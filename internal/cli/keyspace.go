@@ -2,8 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/server"
@@ -260,12 +258,10 @@ func newImportCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
-			keyspace := args[1]
-			parts := strings.Split(keyspace, ".")
-			if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-				return fmt.Errorf("keyspace must use bucket.scope.collection format")
+			bucket, scope, collection, err := parseKeyspace(args[1])
+			if err != nil {
+				return err
 			}
-			bucket, scope, collection := parts[0], parts[1], parts[2]
 			cfg := cf.config()
 			cfg.Bucket = bucket
 			cfg.Scope = scope
