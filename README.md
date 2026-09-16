@@ -9,14 +9,17 @@ Capella cloud operations are available under `cbctl capella` (see [Capella](#cap
 **Release binaries** (recommended):
 
 ```bash
-# Example: macOS Apple Silicon
-curl -sL "https://github.com/mminichino/cbctl/releases/latest/download/cbctl_Darwin_arm64.tar.gz" \
+# Example: macOS Apple Silicon (floating latest release)
+curl -sL "https://github.com/mminichino/cbctl/releases/download/latest/cbctl_Darwin_arm64.tar.gz" \
   | tar xz
 sudo mv cbctl /usr/local/bin/
 cbctl --version
+
+# Pin a version (replace v0.2.0)
+# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.2.0/cbctl_Darwin_arm64.tar.gz" | tar xz
 ```
 
-See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures.
+See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures. Asset URLs use `/releases/download/<tag>/...` (tag before the filename).
 
 **From source:**
 

@@ -31,3 +31,28 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Floating "latest" tag + release so /releases/download/latest/<asset> works.
+      # (GitHub's /releases/latest/download/... alias is separate and still points at the semver release.)
+      - name: Update latest tag and release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          SHA="${GITHUB_SHA}"
+          ASSETS="$(mktemp -d)"
+
+          gh release download "${TAG}" -D "${ASSETS}"
+
+          if gh release view latest >/dev/null 2>&1; then
+            gh release delete latest --yes
+          fi
+
+          git tag -f latest "${SHA}"
+          git push origin refs/tags/latest --force
+
+          gh release create latest "${ASSETS}"/* \
+            --title "latest (${TAG})" \
+            --notes "Floating release pointing at ${TAG}. Prefer versioned tags for reproducibility." \
+            --latest=false
