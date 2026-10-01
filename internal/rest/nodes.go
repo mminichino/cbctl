@@ -69,7 +69,6 @@ func ParseServerNodes(options map[string]string) []models.ClusterNodeConfig {
 		node := nodes[index]
 		if node == nil {
 			node = &models.ClusterNodeConfig{
-				RAMGiB:         config.DefaultRAMGiB,
 				Services:       append([]string(nil), DefaultServerServices...),
 				AlternatePorts: map[string]int{},
 			}
@@ -79,7 +78,7 @@ func ParseServerNodes(options map[string]string) []models.ClusterNodeConfig {
 		case "ip":
 			node.IP = value
 		case "ram":
-			if n, err := strconv.Atoi(value); err == nil {
+			if n, err := strconv.Atoi(strings.TrimSpace(value)); err == nil && n > 0 {
 				node.RAMGiB = n
 			}
 		case "services":
@@ -106,7 +105,6 @@ func ParseServerNodes(options map[string]string) []models.ClusterNodeConfig {
 	if len(nodes) == 0 {
 		return []models.ClusterNodeConfig{{
 			IP:       options[config.PropHost],
-			RAMGiB:   config.DefaultRAMGiB,
 			Services: append([]string(nil), DefaultServerServices...),
 		}}
 	}
@@ -179,7 +177,9 @@ func BuildServerOptions(nodes []models.NodeSpec, extAPI bool) map[string]string 
 	for i, n := range nodes {
 		prefix := fmt.Sprintf("couchbase.server.%d.", i)
 		options[prefix+"ip"] = n.Host
-		options[prefix+"ram"] = strconv.Itoa(n.RAMGiB)
+		if n.RAMGiB > 0 {
+			options[prefix+"ram"] = strconv.Itoa(n.RAMGiB)
+		}
 		options[prefix+"services"] = strings.Join(n.Services, ",")
 		if n.AlternateAddress != "" {
 			options[prefix+"alternateAddress"] = n.AlternateAddress

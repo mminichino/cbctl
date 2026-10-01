@@ -2,7 +2,8 @@ package rest
 
 import (
 	"fmt"
-	"math"
+	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/config"
@@ -21,31 +22,129 @@ type ClusterInitRequest struct {
 	AllowedHosts string // empty defaults to Hostname; use "*" to allow any join host
 }
 
-// CalculateServerQuotas computes memory quotas for non-query services.
+// quotaService is a cluster memory quota Couchbase requires even when the
+// service is not running. Query is omitted: it has no memory quota.
+type quotaService struct {
+	Name  string
+	Field string
+	Min   int // lowest MiB the cluster-init / pools API accepts
+}
+
+func quotaServiceList() []quotaService {
+	return []quotaService{
+		{Name: "data", Field: "memoryQuota", Min: 256},
+		{Name: "index", Field: "indexMemoryQuota", Min: 256},
+		{Name: "fts", Field: "ftsMemoryQuota", Min: 256},
+		{Name: "analytics", Field: "cbasMemoryQuota", Min: 1024},
+		{Name: "eventing", Field: "eventingMemoryQuota", Min: 256},
+	}
+}
+
+func quotaMinimum(service string) (int, bool) {
+	for _, svc := range quotaServiceList() {
+		if svc.Name == service {
+			return svc.Min, true
+		}
+	}
+	return 0, false
+}
+
+// AvailableMemoryMiB is 80% of memoryTotal bytes, in mebibytes.
+func AvailableMemoryMiB(memoryTotalBytes int64) int {
+	if memoryTotalBytes <= 0 {
+		return 0
+	}
+	return int(memoryTotalBytes * 4 / 5 / 1024 / 1024)
+}
+
+// CalculateServerQuotas computes quotas from a node RAM size in GiB.
+// Prefer CalculateServiceQuotas with the node's reported memoryTotal.
 func CalculateServerQuotas(node models.ClusterNodeConfig, options map[string]string) map[string]int {
-	availableMiB := int(math.Floor(float64(node.RAMGiB) * 1024 * 0.8))
-	quotaServiceCount := 0
-	for _, service := range node.Services {
-		if !IsQueryService(service) {
-			quotaServiceCount++
+	var bytes int64
+	if node.RAMGiB > 0 {
+		bytes = int64(node.RAMGiB) << 30
+	}
+	return CalculateServiceQuotas(bytes, node.Services, options)
+}
+
+// CalculateServiceQuotas splits 80% of memoryTotal evenly across enabled
+// quota services. Query is not included. Services that are not enabled are
+// set to the minimum the API accepts so Couchbase does not apply a larger default.
+func CalculateServiceQuotas(memoryTotalBytes int64, services []string, options map[string]string) map[string]int {
+	onNode := quotaServicesOnNode(services)
+	share := 0
+	if len(onNode) > 0 {
+		share = AvailableMemoryMiB(memoryTotalBytes) / len(onNode)
+	}
+	quotas := make(map[string]int, len(quotaServiceList()))
+	for _, svc := range quotaServiceList() {
+		base := svc.Min
+		if onNode[svc.Name] {
+			base = share
+			if base < svc.Min {
+				base = svc.Min
+			}
 		}
-	}
-	if quotaServiceCount == 0 {
-		quotaServiceCount = 1
-	}
-	defaultQuota := availableMiB / quotaServiceCount
-	if defaultQuota < 256 {
-		defaultQuota = 256
-	}
-	quotas := map[string]int{}
-	for _, service := range node.Services {
-		if IsQueryService(service) {
-			continue
+		quota := readQuotaOverride(options, config.ServerQuotaKey(svc.Name), base)
+		if quota < svc.Min {
+			quota = svc.Min
 		}
-		norm := NormalizeServerService(service)
-		quotas[norm] = readQuotaOverride(options, config.ServerQuotaKey(norm), defaultQuota)
+		quotas[svc.Name] = quota
 	}
 	return quotas
+}
+
+func quotaServicesOnNode(services []string) map[string]bool {
+	out := map[string]bool{}
+	for _, service := range services {
+		norm := NormalizeServerService(service)
+		if _, ok := quotaMinimum(norm); ok {
+			out[norm] = true
+		}
+	}
+	return out
+}
+
+// quotasForNewServices selects quotas for services this node runs that the
+// cluster does not already run. The share comes from this node's memory and
+// the quota services enabled on this node.
+func quotasForNewServices(clusterServices map[string]bool, nodeServices []string, desired map[string]int) map[string]int {
+	onNode := quotaServicesOnNode(nodeServices)
+	updates := map[string]int{}
+	for _, svc := range quotaServiceList() {
+		if !onNode[svc.Name] || clusterServices[svc.Name] {
+			continue
+		}
+		updates[svc.Name] = desired[svc.Name]
+	}
+	return updates
+}
+
+// reconcileServiceQuotas sizes services on this node and pins services that
+// are not running anywhere to their minimum. Quotas for services already
+// running on another node are left unchanged.
+func reconcileServiceQuotas(clusterServices map[string]bool, nodeServices []string, desired map[string]int) map[string]int {
+	onNode := quotaServicesOnNode(nodeServices)
+	updates := map[string]int{}
+	for _, svc := range quotaServiceList() {
+		if onNode[svc.Name] || !clusterServices[svc.Name] {
+			updates[svc.Name] = desired[svc.Name]
+		}
+	}
+	return updates
+}
+
+func changedQuotas(current, updates map[string]int) map[string]int {
+	if len(updates) == 0 {
+		return nil
+	}
+	out := map[string]int{}
+	for svc, quota := range updates {
+		if current[svc] != quota {
+			out[svc] = quota
+		}
+	}
+	return out
 }
 
 func readQuotaOverride(options map[string]string, key string, defaultQuota int) int {
@@ -117,20 +216,154 @@ func (c *Client) ClusterInit(endpoint Endpoint, req ClusterInitRequest) error {
 }
 
 func applyQuotaFields(fields map[string]string, quotas map[string]int) {
-	if v, ok := quotas["data"]; ok {
-		fields["memoryQuota"] = fmt.Sprintf("%d", v)
+	for _, svc := range quotaServiceList() {
+		v, ok := quotas[svc.Name]
+		if !ok {
+			continue
+		}
+		fields[svc.Field] = strconv.Itoa(v)
 	}
-	if v, ok := quotas["index"]; ok {
-		fields["indexMemoryQuota"] = fmt.Sprintf("%d", v)
+}
+
+// MemoryTotalBytes returns ramGiB as bytes when the caller set an explicit
+// override. Otherwise it reads memoryTotal from the node. ramGiB <= 0 means unset.
+func (c *Client) MemoryTotalBytes(endpoint Endpoint, username, password string, ramGiB int) (int64, error) {
+	if ramGiB > 0 {
+		return int64(ramGiB) << 30, nil
 	}
-	if v, ok := quotas["fts"]; ok {
-		fields["ftsMemoryQuota"] = fmt.Sprintf("%d", v)
+	return c.NodeMemoryTotal(endpoint, username, password)
+}
+
+// NodeMemoryTotal reads memoryTotal (bytes) from GET /nodes/self.
+// An uninitialized node answers without credentials; a provisioned node requires them.
+func (c *Client) NodeMemoryTotal(endpoint Endpoint, username, password string) (int64, error) {
+	payload, err := c.getNodeSelf(endpoint, username, password)
+	if err != nil {
+		return 0, err
 	}
-	if v, ok := quotas["eventing"]; ok {
-		fields["eventingMemoryQuota"] = fmt.Sprintf("%d", v)
+	n, ok := anyInt64(payload["memoryTotal"])
+	if !ok || n <= 0 {
+		return 0, fmt.Errorf("node did not report memoryTotal")
 	}
-	if v, ok := quotas["analytics"]; ok {
-		fields["cbasMemoryQuota"] = fmt.Sprintf("%d", v)
+	return n, nil
+}
+
+func (c *Client) getNodeSelf(endpoint Endpoint, username, password string) (map[string]any, error) {
+	var payload map[string]any
+	status, err := c.GetJSON(endpoint, nil, nil, "/nodes/self", &payload)
+	if err == nil {
+		return payload, nil
+	}
+	if status == http.StatusUnauthorized && strings.TrimSpace(username) != "" {
+		payload = map[string]any{}
+		if _, err2 := c.GetJSON(endpoint, Ptr(username), Ptr(password), "/nodes/self", &payload); err2 != nil {
+			return nil, err2
+		}
+		return payload, nil
+	}
+	return nil, err
+}
+
+// ReconcileServiceQuotas sets enabled-service quotas from this node's memory
+// and resets services that are not running on any node to their minimums.
+func (c *Client) ReconcileServiceQuotas(endpoint Endpoint, username, password string, nodeServices []string, options map[string]string, ramGiB int) error {
+	mem, err := c.MemoryTotalBytes(endpoint, username, password, ramGiB)
+	if err != nil {
+		return fmt.Errorf("read node memory: %w", err)
+	}
+	desired := CalculateServiceQuotas(mem, nodeServices, options)
+	payload, err := c.GetPoolsDefault(endpoint, username, password)
+	if err != nil {
+		return err
+	}
+	updates := changedQuotas(serviceQuotasFromPools(payload), reconcileServiceQuotas(servicesFromPools(payload), nodeServices, desired))
+	if len(updates) == 0 {
+		return nil
+	}
+	if err := c.SetServiceQuotas(endpoint, username, password, updates); err != nil {
+		return fmt.Errorf("set service quotas: %w", err)
+	}
+	return nil
+}
+
+// RaiseQuotasForNewServices increases quotas for services this node introduces.
+// Each new service gets an equal share of this node's available RAM, divided by
+// the quota services running on this node.
+func (c *Client) RaiseQuotasForNewServices(rally, node Endpoint, username, password string, nodeServices []string, ramGiB int) error {
+	mem, err := c.MemoryTotalBytes(node, username, password, ramGiB)
+	if err != nil {
+		return fmt.Errorf("read node memory: %w", err)
+	}
+	desired := CalculateServiceQuotas(mem, nodeServices, nil)
+	payload, err := c.GetPoolsDefault(rally, username, password)
+	if err != nil {
+		return err
+	}
+	updates := changedQuotas(serviceQuotasFromPools(payload), quotasForNewServices(servicesFromPools(payload), nodeServices, desired))
+	if len(updates) == 0 {
+		return nil
+	}
+	if err := c.SetServiceQuotas(rally, username, password, updates); err != nil {
+		return fmt.Errorf("set service quotas: %w", err)
+	}
+	return nil
+}
+
+// SetServiceQuotas posts service memory quotas to /pools/default.
+func (c *Client) SetServiceQuotas(endpoint Endpoint, username, password string, quotas map[string]int) error {
+	fields := map[string]string{}
+	applyQuotaFields(fields, quotas)
+	if len(fields) == 0 {
+		return nil
+	}
+	return c.PostForm(endpoint, Ptr(username), Ptr(password), "/pools/default", fields)
+}
+
+func serviceQuotasFromPools(payload map[string]any) map[string]int {
+	out := map[string]int{}
+	for _, svc := range quotaServiceList() {
+		n, ok := anyInt64(payload[svc.Field])
+		if !ok {
+			continue
+		}
+		out[svc.Name] = int(n)
+	}
+	return out
+}
+
+func servicesFromPools(payload map[string]any) map[string]bool {
+	out := map[string]bool{}
+	nodes, _ := payload["nodes"].([]any)
+	for _, item := range nodes {
+		record, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		services, _ := record["services"].([]any)
+		for _, service := range services {
+			name, ok := service.(string)
+			if !ok {
+				continue
+			}
+			out[NormalizeServerService(name)] = true
+		}
+	}
+	return out
+}
+
+func anyInt64(v any) (int64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return int64(n), n > 0
+	case int:
+		return int64(n), n > 0
+	case int64:
+		return n, n > 0
+	case string:
+		i, err := strconv.ParseInt(strings.TrimSpace(n), 10, 64)
+		return i, err == nil && i > 0
+	default:
+		return 0, false
 	}
 }
 

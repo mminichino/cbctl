@@ -99,6 +99,10 @@ func newClusterCreateCmd() *cobra.Command {
 				return fmt.Errorf("provisioner flags (--ip-address/--name/--server-group/--data-path) cannot be combined with --node")
 			}
 
+			if err := validateRAMFlag(cmd, ram); err != nil {
+				return err
+			}
+
 			if provisioner {
 				ip := resolveNodeHost(pf.ipAddress, cf.host)
 				if ip == "" {
@@ -214,13 +218,23 @@ func newClusterCreateCmd() *cobra.Command {
 	pf.addCreateFlags(cmd)
 	cmd.Flags().StringArrayVarP(&nodes, "node", "n", nil, "Node spec HOST[=SERVICES][@RAM][#ALTERNATE[;PORTMAP]]")
 	cmd.Flags().StringVarP(&services, "services", "s", strings.Join(rest.DefaultServerServices, ","), "Default services when a node spec omits SERVICES")
-	cmd.Flags().IntVar(&ram, "ram", config.DefaultRAMGiB, "Default RAM quota in GiB when a node spec omits @RAM")
+	cmd.Flags().IntVar(&ram, "ram", 0, "Node RAM in GiB for service quotas; overrides reported memoryTotal (containers). Omitted uses memoryTotal")
 	cmd.Flags().StringVarP(&altAddr, "alternate-address", "a", "", "External alternate address for a single-node cluster")
 	cmd.Flags().BoolVar(&extAPI, "ext-api", false, "Use alternate address for management REST API calls")
 	return cmd
 }
 
-func runClusterJoin(cf connFlags, pf provisionFlags, services string, altAddr string) error {
+func validateRAMFlag(cmd *cobra.Command, ram int) error {
+	if cmd.Flags().Changed("ram") && ram <= 0 {
+		return fmt.Errorf("--ram must be a positive number of GiB")
+	}
+	return nil
+}
+
+func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, services string, altAddr string, ram int) error {
+	if err := validateRAMFlag(cmd, ram); err != nil {
+		return err
+	}
 	ip := resolveNodeHost(pf.ipAddress, cf.host)
 	if strings.TrimSpace(ip) == "" {
 		return fmt.Errorf("--ip-address is required")
@@ -241,6 +255,7 @@ func runClusterJoin(cf connFlags, pf provisionFlags, services string, altAddr st
 		Services:          parsedServices,
 		ServerGroup:       pf.serverGroup,
 		DataPath:          pf.dataPath,
+		RAMGiB:            ram,
 		Username:          cf.username,
 		Password:          cf.password,
 		SSL:               cf.ssl,
@@ -264,18 +279,20 @@ func newClusterJoinCmd() *cobra.Command {
 		pf       provisionFlags
 		services string
 		altAddr  string
+		ram      int
 	)
 	cmd := &cobra.Command{
 		Use:   "join",
 		Short: "Join a node to an existing Couchbase Server cluster (no rebalance)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runClusterJoin(cf, pf, services, altAddr)
+			return runClusterJoin(cmd, cf, pf, services, altAddr, ram)
 		},
 	}
 	cf.addTo(cmd)
 	pf.addJoinFlags(cmd)
 	cmd.Flags().StringVarP(&services, "services", "s", strings.Join(rest.DefaultServerServices, ","), "Services for the joining node")
 	cmd.Flags().StringVarP(&altAddr, "alternate-address", "a", "", "External alternate address")
+	cmd.Flags().IntVar(&ram, "ram", 0, "Node RAM in GiB for service quotas; overrides reported memoryTotal (containers). Omitted uses memoryTotal")
 	return cmd
 }
 
@@ -285,18 +302,20 @@ func newClusterAddCmd() *cobra.Command {
 		pf       provisionFlags
 		services string
 		altAddr  string
+		ram      int
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Alias for cluster join",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runClusterJoin(cf, pf, services, altAddr)
+			return runClusterJoin(cmd, cf, pf, services, altAddr, ram)
 		},
 	}
 	cf.addTo(cmd)
 	pf.addJoinFlags(cmd)
 	cmd.Flags().StringVarP(&services, "services", "s", strings.Join(rest.DefaultServerServices, ","), "Services for the joining node")
 	cmd.Flags().StringVarP(&altAddr, "alternate-address", "a", "", "External alternate address")
+	cmd.Flags().IntVar(&ram, "ram", 0, "Node RAM in GiB for service quotas; overrides reported memoryTotal (containers). Omitted uses memoryTotal")
 	return cmd
 }
 

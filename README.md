@@ -76,7 +76,7 @@ cbctl cluster test --host 127.0.0.1 -u Administrator -p password --no-ssl
 
 | Command | Behavior |
 |---------|----------|
-| `cluster create` | Initialize a Server cluster. Success: `Cluster created on <hosts>`. Already initialized: reconciles external address and server group, then `Cluster already configured` (exit 0). |
+| `cluster create` | Initialize a Server cluster. Success: `Cluster created on <hosts>`. Already initialized: reconciles memory quotas, external address, and server group, then `Cluster already configured` (exit 0). |
 | `cluster join` / `cluster add` | Add one node to an existing cluster (no rebalance). Success: `Node <ip> added to cluster at <rally>`. Already a member: reconciles external address and server group, then `Node already configured` (exit 0). |
 | `cluster rebalance` | Rebalance all known nodes. Success: `Cluster rebalanced`. |
 | `cluster exists` | Prints `true` or `false` (lowercase). |
@@ -91,6 +91,8 @@ cbctl cluster test --host 127.0.0.1 -u Administrator -p password --no-ssl
 #### Provisioner mode (create / join / rebalance)
 
 Use these flags when bootstrapping from Terraform/`remote-exec` or a controller host. All calls use the management REST API against the given IPs, so the CLI may run on the node itself or on a remote machine that can reach port 8091 (or 18091 with `--ssl`).
+
+Service memory quotas use 80% of the node's reported `memoryTotal` when `--ram` is omitted. Set `--ram` to a GiB value to override that total — for example when Couchbase runs in a container and the process sees the host or cgroup limit instead of the RAM you want to budget. Enabled services other than Query split the available RAM evenly. Services that are not enabled stay at the API minimum (Data, Index, Search, and Eventing 256 MiB; Analytics 1024 MiB) so they do not keep Couchbase's larger default. Re-running `create` applies that layout again for services on this node, without lowering a quota for a service already running on another node. If `join` or `add` introduces a service the cluster does not already run, that service's quota is raised to an equal share of the available RAM on the node that adds it (`--ram` overrides that node's reported total the same way).
 
 ```bash
 # Primary node
@@ -120,6 +122,7 @@ cbctl cluster rebalance -p "$PASSWORD" --rally-ip-address 10.0.0.1 --no-ssl
 | `--server-group` | create, join | Server group / AZ name (Enterprise) |
 | `--data-path` | create, join | Shared path for data/index/analytics/eventing |
 | `--services` / `-s` | create, join | Comma-separated services (`search` → `fts`) |
+| `--ram` | create, join | Node RAM in GiB. Overrides reported `memoryTotal` (containers). Omitted: use `memoryTotal` |
 
 Provisioner `create` initializes **only** the primary node (no automatic join/rebalance). Use `join`/`add` for each extra node, then `rebalance` once.
 
@@ -172,7 +175,7 @@ HOST[=SERVICES][@RAM][#ALTERNATE[;PORTMAP]]
 ```
 
 - `SERVICES` — comma-separated; default `data,index,query,fts` (from `--services` / `-s` when omitted)
-- `RAM` — GiB integer; default `4` (from `--ram` when omitted)
+- `RAM` — GiB integer. `@RAM` on a spec, or `--ram` when the spec omits it, overrides the node's reported `memoryTotal`. When both are omitted, quotas use `memoryTotal`
 - `ALTERNATE` — external hostname/IP
 - `PORTMAP` — `service:port,...` (e.g. `kv:9000,n1ql:9050`)
 

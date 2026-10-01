@@ -37,8 +37,11 @@ func ParseNodeSpec(spec string, defaultServices []string, defaultRAM int) (model
 		}
 		var err error
 		ram, err = strconv.Atoi(ramText)
-		if err != nil {
-			return models.NodeSpec{}, err
+		if err != nil || ram <= 0 {
+			return models.NodeSpec{}, fmt.Errorf(
+				"invalid RAM in node spec %q; expected a positive GiB integer",
+				spec,
+			)
 		}
 	}
 

@@ -23,6 +23,9 @@ func (c *Client) CreateCluster(cfg *config.Config, options map[string]string) (b
 	endpoint := NodeEndpoint(first, useSSL, useExtAPI)
 
 	if c.IsClusterInitialized(endpoint, cfg.Username, cfg.Password) {
+		if err := c.ReconcileServiceQuotas(endpoint, cfg.Username, cfg.Password, first.Services, merged, first.RAMGiB); err != nil {
+			return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
+		}
 		return false, nil
 	}
 
@@ -34,7 +37,11 @@ func (c *Client) CreateCluster(cfg *config.Config, options map[string]string) (b
 		return false, err
 	}
 
-	quotas := CalculateServerQuotas(first, merged)
+	mem, err := c.MemoryTotalBytes(endpoint, cfg.Username, cfg.Password, first.RAMGiB)
+	if err != nil {
+		return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
+	}
+	quotas := CalculateServiceQuotas(mem, first.Services, merged)
 	if err := c.InitializeSingleNode(endpoint, cfg.Username, cfg.Password, first.Services, quotas, firstInternalHost); err != nil {
 		return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
 	}
@@ -42,6 +49,10 @@ func (c *Client) CreateCluster(cfg *config.Config, options map[string]string) (b
 	nodeHosts := []string{ClusterInitHostname(firstInternalHost)}
 	for _, node := range nodes[1:] {
 		internalHost, _ := ParseHostPort(node.IP, 8091)
+		nodeEP := ForServer(internalHost, useSSL)
+		if err := c.RaiseQuotasForNewServices(endpoint, nodeEP, cfg.Username, cfg.Password, node.Services, node.RAMGiB); err != nil {
+			return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
+		}
 		if err := c.AddNode(endpoint, cfg.Username, cfg.Password, internalHost, node.Services); err != nil {
 			return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
 		}
@@ -67,6 +78,9 @@ func (c *Client) CreateCluster(cfg *config.Config, options map[string]string) (b
 		return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
 	}
 	if err := c.ApplyAlternateAddresses(nodes, cfg.Username, cfg.Password, useSSL, useExtAPI); err != nil {
+		return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
+	}
+	if err := c.ReconcileServiceQuotas(endpoint, cfg.Username, cfg.Password, first.Services, merged, first.RAMGiB); err != nil {
 		return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
 	}
 	return true, nil

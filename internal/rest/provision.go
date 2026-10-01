@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/mminichino/cbctl/internal/config"
-	"github.com/mminichino/cbctl/internal/models"
 )
 
 // ProvisionOptions configures per-node cluster bootstrap, join, and rebalance.
@@ -36,10 +33,6 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 	if len(services) == 0 {
 		services = append([]string(nil), DefaultServerServices...)
 	}
-	ram := opts.RAMGiB
-	if ram <= 0 {
-		ram = config.DefaultRAMGiB
-	}
 
 	local := ForServer(opts.IPAddress, opts.SSL)
 	if err := c.WaitForNodeAPI(local, 60); err != nil {
@@ -47,6 +40,9 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 	}
 	internalHost, _ := ParseHostPort(opts.IPAddress, 8091)
 	if c.IsClusterInitialized(local, opts.Username, opts.Password) {
+		if err := c.ReconcileServiceQuotas(local, opts.Username, opts.Password, services, nil, opts.RAMGiB); err != nil {
+			return false, err
+		}
 		// Re-apply alternate address and server group so a failed first run can converge.
 		if err := c.reconcileProvisionedNode(local, local, opts, internalHost); err != nil {
 			return false, err
@@ -60,11 +56,11 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 		}
 	}
 
-	quotas := CalculateServerQuotas(models.ClusterNodeConfig{
-		IP:       opts.IPAddress,
-		RAMGiB:   ram,
-		Services: services,
-	}, nil)
+	mem, err := c.MemoryTotalBytes(local, opts.Username, opts.Password, opts.RAMGiB)
+	if err != nil {
+		return false, fmt.Errorf("read node memory: %w", err)
+	}
+	quotas := CalculateServiceQuotas(mem, services, nil)
 
 	if err := c.ClusterInit(local, ClusterInitRequest{
 		Hostname:     internalHost,
@@ -80,6 +76,9 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 	}
 
 	if err := c.WaitForCluster(local, opts.Username, opts.Password, 60); err != nil {
+		return false, err
+	}
+	if err := c.ReconcileServiceQuotas(local, opts.Username, opts.Password, services, nil, opts.RAMGiB); err != nil {
 		return false, err
 	}
 	if err := c.reconcileProvisionedNode(local, local, opts, internalHost); err != nil {
@@ -150,6 +149,9 @@ func (c *Client) JoinNode(opts ProvisionOptions) (bool, error) {
 		}
 	}
 
+	if err := c.RaiseQuotasForNewServices(rally, local, opts.Username, opts.Password, services, opts.RAMGiB); err != nil {
+		return false, err
+	}
 	if err := c.AddNode(rally, opts.Username, opts.Password, internalHost, services); err != nil {
 		if ok, checkErr := c.IsNodeInCluster(rally, opts.Username, opts.Password, internalHost); checkErr == nil && ok {
 			if recErr := c.reconcileProvisionedNode(local, rally, opts, internalHost); recErr != nil {
