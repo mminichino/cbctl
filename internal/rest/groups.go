@@ -2,15 +2,19 @@ package rest
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 )
 
 // ServerGroupsResponse is the GET /pools/default/serverGroups payload.
+// Couchbase puts the configuration revision in the top-level uri
+// ("/pools/default/serverGroups?rev=…"), not a rev field.
 type ServerGroupsResponse struct {
 	Groups []ServerGroup `json:"groups"`
-	Rev    string        `json:"rev"` // may arrive as number; decoded via custom handling below
+	Rev    string        `json:"rev,omitempty"`
+	URI    string        `json:"uri,omitempty"`
 }
 
 // ServerGroup is one server group entry.
@@ -22,12 +26,14 @@ type ServerGroup struct {
 
 // ServerGroupNode identifies a node inside a server group.
 type ServerGroupNode struct {
-	OTPNode string `json:"otpNode"`
+	OTPNode  string `json:"otpNode"`
+	Hostname string `json:"hostname,omitempty"`
 }
 
 type serverGroupsRaw struct {
 	Groups []ServerGroup `json:"groups"`
 	Rev    any           `json:"rev"`
+	URI    string        `json:"uri"`
 }
 
 // GetServerGroups fetches server group configuration and revision.
@@ -36,21 +42,63 @@ func (c *Client) GetServerGroups(endpoint Endpoint, username, password string) (
 	if _, err := c.GetJSON(endpoint, Ptr(username), Ptr(password), "/pools/default/serverGroups", &raw); err != nil {
 		return nil, err
 	}
-	rev := ""
-	switch v := raw.Rev.(type) {
+	rev := serverGroupRevision(raw.Rev, raw.URI)
+	return &ServerGroupsResponse{Groups: raw.Groups, Rev: rev, URI: raw.URI}, nil
+}
+
+func formatRev(v any) string {
+	switch v := v.(type) {
 	case nil:
-		rev = ""
+		return ""
 	case string:
-		rev = v
+		return strings.TrimSpace(v)
 	case float64:
-		rev = strconv.FormatInt(int64(v), 10)
+		return strconv.FormatInt(int64(v), 10)
 	default:
-		rev = fmt.Sprint(v)
+		rev := strings.TrimSpace(fmt.Sprint(v))
 		if rev == "<nil>" {
-			rev = ""
+			return ""
+		}
+		return rev
+	}
+}
+
+// serverGroupRevision reads the revision from a rev field or from the uri query.
+func serverGroupRevision(rev any, uri string) string {
+	if s := formatRev(rev); s != "" {
+		return s
+	}
+	u, err := url.Parse(strings.TrimSpace(uri))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(u.Query().Get("rev"))
+}
+
+// serverGroupsUpdatePath is the PUT path for a membership change.
+// Prefer the uri returned by GET, which already includes the current rev.
+func serverGroupsUpdatePath(uri, rev string) string {
+	if path := strings.TrimSpace(uri); path != "" {
+		u, err := url.Parse(path)
+		if err == nil && strings.TrimSpace(u.Query().Get("rev")) != "" {
+			p := u.EscapedPath()
+			if p == "" {
+				p = u.Path
+			}
+			if p == "" {
+				p = "/pools/default/serverGroups"
+			}
+			if !strings.HasPrefix(p, "/") {
+				p = "/" + p
+			}
+			return p + "?" + u.RawQuery
 		}
 	}
-	return &ServerGroupsResponse{Groups: raw.Groups, Rev: rev}, nil
+	rev = strings.TrimSpace(rev)
+	if rev == "" {
+		return ""
+	}
+	return "/pools/default/serverGroups?rev=" + url.QueryEscape(rev)
 }
 
 // CreateServerGroup creates a named server group.
@@ -133,9 +181,31 @@ func (c *Client) AssignNodeServerGroup(endpoint Endpoint, username, password, no
 		}
 
 		payload := map[string]any{"groups": rebuildGroupsMovingNode(groups.Groups, otp, fromURI, toURI)}
-		path := "/pools/default/serverGroups?rev=" + groups.Rev
+		path := serverGroupsUpdatePath(groups.URI, groups.Rev)
+		if path == "" {
+			last = fmt.Errorf("server group revision missing")
+			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			continue
+		}
 		if err := c.PutJSON(endpoint, Ptr(username), Ptr(password), path, payload); err != nil {
 			last = err
+			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			continue
+		}
+		confirmed, err := c.GetServerGroups(endpoint, username, password)
+		if err != nil {
+			last = err
+			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			continue
+		}
+		_, confirmedURI, err := findNodeInGroups(confirmed.Groups, nodeHost)
+		if err != nil {
+			last = err
+			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			continue
+		}
+		if groupNameByURI(confirmed.Groups, confirmedURI) != serverGroup {
+			last = fmt.Errorf("node %s still in group %q", nodeHost, groupNameByURI(confirmed.Groups, confirmedURI))
 			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
@@ -148,16 +218,28 @@ func (c *Client) AssignNodeServerGroup(endpoint Endpoint, username, password, no
 }
 
 func findNodeInGroups(groups []ServerGroup, nodeHost string) (otpNode, groupURI string, err error) {
-	want := strings.ToLower(nodeHost)
+	want := strings.ToLower(strings.TrimSpace(nodeHost))
 	for _, g := range groups {
 		for _, n := range g.Nodes {
-			host := otpHost(n.OTPNode)
-			if strings.EqualFold(host, want) {
+			if nodeMatchesHost(n, want) {
 				return n.OTPNode, g.URI, nil
 			}
 		}
 	}
 	return "", "", fmt.Errorf("node %s not found in server groups", nodeHost)
+}
+
+func nodeMatchesHost(n ServerGroupNode, want string) bool {
+	if want == "" {
+		return false
+	}
+	for _, candidate := range []string{n.OTPNode, n.Hostname} {
+		host := otpHost(candidate)
+		if host != "" && strings.EqualFold(host, want) {
+			return true
+		}
+	}
+	return false
 }
 
 func groupNameByURI(groups []ServerGroup, uri string) string {
@@ -171,6 +253,9 @@ func groupNameByURI(groups []ServerGroup, uri string) string {
 
 func otpHost(otp string) string {
 	otp = strings.TrimSpace(otp)
+	if otp == "" {
+		return ""
+	}
 	if _, host, ok := strings.Cut(otp, "@"); ok {
 		h, _ := ParseHostPort(host, 8091)
 		return h

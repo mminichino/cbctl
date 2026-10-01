@@ -45,7 +45,12 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 	if err := c.WaitForNodeAPI(local, 60); err != nil {
 		return false, err
 	}
+	internalHost, _ := ParseHostPort(opts.IPAddress, 8091)
 	if c.IsClusterInitialized(local, opts.Username, opts.Password) {
+		// Re-apply alternate address and server group so a failed first run can converge.
+		if err := c.reconcileProvisionedNode(local, local, opts, internalHost); err != nil {
+			return false, err
+		}
 		return false, nil
 	}
 
@@ -61,7 +66,6 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 		Services: services,
 	}, nil)
 
-	internalHost, _ := ParseHostPort(opts.IPAddress, 8091)
 	if err := c.ClusterInit(local, ClusterInitRequest{
 		Hostname:     internalHost,
 		Username:     opts.Username,
@@ -78,10 +82,7 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 	if err := c.WaitForCluster(local, opts.Username, opts.Password, 60); err != nil {
 		return false, err
 	}
-	if err := c.applyExternalAddress(local, opts); err != nil {
-		return false, err
-	}
-	if err := c.AssignNodeServerGroup(local, opts.Username, opts.Password, internalHost, opts.ServerGroup, 10); err != nil {
+	if err := c.reconcileProvisionedNode(local, local, opts, internalHost); err != nil {
 		return false, err
 	}
 	if hasService(services, "data") && hasService(services, "query") && hasService(services, "index") {
@@ -133,8 +134,9 @@ func (c *Client) JoinNode(opts ProvisionOptions) (bool, error) {
 	if ok, err := c.IsNodeInCluster(rally, opts.Username, opts.Password, internalHost); err != nil {
 		return false, err
 	} else if ok {
-		_ = c.applyExternalAddress(local, opts)
-		_ = c.AssignNodeServerGroup(rally, opts.Username, opts.Password, internalHost, opts.ServerGroup, 5)
+		if err := c.reconcileProvisionedNode(local, rally, opts, internalHost); err != nil {
+			return false, err
+		}
 		return false, nil
 	}
 
@@ -150,6 +152,9 @@ func (c *Client) JoinNode(opts ProvisionOptions) (bool, error) {
 
 	if err := c.AddNode(rally, opts.Username, opts.Password, internalHost, services); err != nil {
 		if ok, checkErr := c.IsNodeInCluster(rally, opts.Username, opts.Password, internalHost); checkErr == nil && ok {
+			if recErr := c.reconcileProvisionedNode(local, rally, opts, internalHost); recErr != nil {
+				return false, recErr
+			}
 			return false, nil
 		}
 		return false, fmt.Errorf("add node: %w", err)
@@ -158,13 +163,22 @@ func (c *Client) JoinNode(opts ProvisionOptions) (bool, error) {
 	if err := c.WaitForNodeInCluster(rally, opts.Username, opts.Password, internalHost, 60); err != nil {
 		return false, err
 	}
-	if err := c.applyExternalAddress(local, opts); err != nil {
-		return false, err
-	}
-	if err := c.AssignNodeServerGroup(rally, opts.Username, opts.Password, internalHost, opts.ServerGroup, 10); err != nil {
+	if err := c.reconcileProvisionedNode(local, rally, opts, internalHost); err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+// reconcileProvisionedNode sets the alternate address on the node and moves it
+// into the requested server group on the rally cluster. Both steps are idempotent.
+func (c *Client) reconcileProvisionedNode(local, rally Endpoint, opts ProvisionOptions, nodeHost string) error {
+	if err := c.applyExternalAddress(local, opts); err != nil {
+		return err
+	}
+	if err := c.AssignNodeServerGroup(rally, opts.Username, opts.Password, nodeHost, opts.ServerGroup, 10); err != nil {
+		return err
+	}
+	return nil
 }
 
 // RebalanceCluster rebalances all known nodes on the rally cluster.
@@ -219,10 +233,33 @@ func (c *Client) applyExternalAddress(endpoint Endpoint, opts ProvisionOptions) 
 		return nil
 	}
 	altHost, _ := ParseHostPort(ext, 8091)
+	if current, err := c.externalHostname(endpoint, opts.Username, opts.Password); err == nil && strings.EqualFold(current, altHost) {
+		return nil
+	}
 	if err := c.SetupAlternateAddress(endpoint, opts.Username, opts.Password, altHost, nil); err != nil {
 		return fmt.Errorf("set alternate address: %w", err)
 	}
 	return nil
+}
+
+func (c *Client) externalHostname(endpoint Endpoint, username, password string) (string, error) {
+	var payload map[string]any
+	if _, err := c.GetJSON(endpoint, Ptr(username), Ptr(password), "/nodes/self", &payload); err != nil {
+		return "", err
+	}
+	raw := externalHostnameRaw(payload)
+	if raw == "" {
+		return "", nil
+	}
+	host, _ := ParseHostPort(raw, 8091)
+	return host, nil
+}
+
+func externalHostnameRaw(payload map[string]any) string {
+	alt, _ := payload["alternateAddresses"].(map[string]any)
+	external, _ := alt["external"].(map[string]any)
+	host, _ := external["hostname"].(string)
+	return strings.TrimSpace(host)
 }
 
 // IsNodeInCluster reports whether nodeHost is listed in /pools/default.

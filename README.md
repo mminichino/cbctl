@@ -76,8 +76,8 @@ cbctl cluster test --host 127.0.0.1 -u Administrator -p password --no-ssl
 
 | Command | Behavior |
 |---------|----------|
-| `cluster create` | Initialize a Server cluster. Success: `Cluster created on <hosts>`. Already initialized: `Cluster already configured` (exit 0). |
-| `cluster join` / `cluster add` | Add one node to an existing cluster (no rebalance). Success: `Node <ip> added to cluster at <rally>`. Already a member: `Node already configured` (exit 0). |
+| `cluster create` | Initialize a Server cluster. Success: `Cluster created on <hosts>`. Already initialized: reconciles external address and server group, then `Cluster already configured` (exit 0). |
+| `cluster join` / `cluster add` | Add one node to an existing cluster (no rebalance). Success: `Node <ip> added to cluster at <rally>`. Already a member: reconciles external address and server group, then `Node already configured` (exit 0). |
 | `cluster rebalance` | Rebalance all known nodes. Success: `Cluster rebalanced`. |
 | `cluster exists` | Prints `true` or `false` (lowercase). |
 | `cluster map` | Prints the cluster host map from the management REST API. |

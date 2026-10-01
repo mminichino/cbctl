@@ -2,6 +2,7 @@ package rest
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -25,16 +26,20 @@ func (c *Client) IsClusterInitialized(endpoint Endpoint, username, password stri
 	return false
 }
 
-// WaitForNodeAPI waits until GET /pools succeeds without auth.
+// WaitForNodeAPI waits until the management API is accepting requests.
+// An uninitialized node returns 200 for unauthenticated GET /pools. After
+// initialization the same request returns 401, which still means ns_server is up.
 func (c *Client) WaitForNodeAPI(endpoint Endpoint, attempts int) error {
 	var last error
 	for i := 0; i < attempts; i++ {
-		if _, err := c.GetJSON(endpoint, nil, nil, "/pools", &map[string]any{}); err == nil {
+		status, err := c.GetJSON(endpoint, nil, nil, "/pools", &map[string]any{})
+		if err == nil || status == http.StatusUnauthorized {
 			return nil
-		} else {
-			last = err
 		}
-		time.Sleep(pollInterval)
+		last = err
+		if i < attempts-1 {
+			time.Sleep(pollInterval)
+		}
 	}
 	return fmt.Errorf("node API not ready on %s: %w", endpoint.Host, last)
 }

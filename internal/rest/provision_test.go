@@ -67,6 +67,7 @@ func TestFindNodeInGroups(t *testing.T) {
 			URI:  "/pools/default/serverGroups/0",
 			Nodes: []ServerGroupNode{
 				{OTPNode: "ns_1@10.0.0.1"},
+				{OTPNode: "ns_1@cb-node.internal", Hostname: "10.81.0.2:8091"},
 			},
 		},
 	}
@@ -77,8 +78,41 @@ func TestFindNodeInGroups(t *testing.T) {
 	if otp != "ns_1@10.0.0.1" || uri != "/pools/default/serverGroups/0" {
 		t.Fatalf("otp=%s uri=%s", otp, uri)
 	}
+	otp, _, err = findNodeInGroups(groups, "10.81.0.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if otp != "ns_1@cb-node.internal" {
+		t.Fatalf("otp=%s", otp)
+	}
 	if _, _, err := findNodeInGroups(groups, "10.0.0.9"); err == nil {
 		t.Fatal("expected missing node error")
+	}
+}
+
+func TestServerGroupRevisionFromURI(t *testing.T) {
+	// Couchbase omits a top-level rev field and puts it on uri.
+	const uri = "/pools/default/serverGroups?rev=93706877"
+	if got := serverGroupRevision(nil, uri); got != "93706877" {
+		t.Fatalf("rev from uri = %q", got)
+	}
+	if got := serverGroupRevision(float64(112632175), ""); got != "112632175" {
+		t.Fatalf("rev from number = %q", got)
+	}
+	if got := serverGroupsUpdatePath(uri, ""); got != uri {
+		t.Fatalf("update path = %q", got)
+	}
+	if got := serverGroupsUpdatePath("", "42"); got != "/pools/default/serverGroups?rev=42" {
+		t.Fatalf("update path from rev = %q", got)
+	}
+	if got := serverGroupsUpdatePath("/pools/default/serverGroups", ""); got != "" {
+		t.Fatalf("missing rev path = %q", got)
+	}
+}
+
+func TestOtpHostEmpty(t *testing.T) {
+	if got := otpHost(""); got != "" {
+		t.Fatalf("empty otp host = %q", got)
 	}
 }
 
