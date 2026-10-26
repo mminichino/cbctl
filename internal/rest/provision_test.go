@@ -1,6 +1,12 @@
 package rest
 
 import (
+	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -138,5 +144,74 @@ func TestParseServicesSearchAlias(t *testing.T) {
 	joined := strings.Join(got, ",")
 	if joined != "data,fts,query" {
 		t.Fatalf("got %s", joined)
+	}
+}
+
+func TestToRESTServicesEmptyIsArbiter(t *testing.T) {
+	if got := ToRESTServices(nil); got != "" {
+		t.Fatalf("nil services=%q", got)
+	}
+	if got := ToRESTServices([]string{}); got != "" {
+		t.Fatalf("empty services=%q", got)
+	}
+}
+
+func TestAddNodePostsEmptyServicesForArbiter(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/controller/addNode" {
+			http.NotFound(w, r)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		gotBody = string(body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"otpNode":"ns_1@10.0.0.3"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	host, portText, err := net.SplitHostPort(srv.Listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ep := Endpoint{Host: host, AdminPort: port}
+	if err := NewClient().AddNode(ep, "Administrator", "password", "10.0.0.3", nil); err != nil {
+		t.Fatal(err)
+	}
+	values, err := url.ParseQuery(gotBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := values["services"]; !ok {
+		t.Fatalf("services field missing from form %q (omitting defaults to kv)", gotBody)
+	}
+	if values.Get("services") != "" {
+		t.Fatalf("services=%q want empty for arbiter", values.Get("services"))
+	}
+	if values.Get("hostname") != "10.0.0.3" {
+		t.Fatalf("hostname=%q", values.Get("hostname"))
+	}
+}
+
+func TestJoinNodeArbiterRejectsServices(t *testing.T) {
+	_, err := NewClient().JoinNode(ProvisionOptions{
+		IPAddress:      "10.0.0.3",
+		RallyIPAddress: "10.0.0.1",
+		Username:       "Administrator",
+		Password:       "password",
+		Arbiter:        true,
+		Services:       []string{"data"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "arbiter") {
+		t.Fatalf("expected arbiter services error, got %v", err)
 	}
 }
