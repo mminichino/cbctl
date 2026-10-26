@@ -231,7 +231,7 @@ func validateRAMFlag(cmd *cobra.Command, ram int) error {
 	return nil
 }
 
-func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, services string, altAddr string, ram int) error {
+func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, services string, altAddr string, ram int, arbiter bool) error {
 	if err := validateRAMFlag(cmd, ram); err != nil {
 		return err
 	}
@@ -243,9 +243,17 @@ func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, service
 	if rally == "" {
 		return fmt.Errorf("--rally-ip-address is required")
 	}
-	parsedServices := rest.ParseServices(services, rest.DefaultServerServices)
-	if len(parsedServices) == 0 {
-		return fmt.Errorf("at least one service is required")
+	if arbiter && cmd.Flags().Changed("services") {
+		return fmt.Errorf("--arbiter cannot be combined with --services")
+	}
+	var parsedServices []string
+	if arbiter {
+		parsedServices = nil
+	} else {
+		parsedServices = rest.ParseServices(services, rest.DefaultServerServices)
+		if len(parsedServices) == 0 {
+			return fmt.Errorf("at least one service is required")
+		}
 	}
 	ext := resolveExternal(pf.externalIPAddress, altAddr)
 	opts := rest.ProvisionOptions{
@@ -253,6 +261,7 @@ func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, service
 		ExternalIPAddress: ext,
 		RallyIPAddress:    rally,
 		Services:          parsedServices,
+		Arbiter:           arbiter,
 		ServerGroup:       pf.serverGroup,
 		DataPath:          pf.dataPath,
 		RAMGiB:            ram,
@@ -269,6 +278,10 @@ func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, service
 		logging.Info("Node already configured")
 		return nil
 	}
+	if arbiter {
+		logging.Info("Arbiter node %s added to cluster at %s", ip, rally)
+		return nil
+	}
 	logging.Info("Node %s added to cluster at %s", ip, rally)
 	return nil
 }
@@ -280,17 +293,19 @@ func newClusterJoinCmd() *cobra.Command {
 		services string
 		altAddr  string
 		ram      int
+		arbiter  bool
 	)
 	cmd := &cobra.Command{
 		Use:   "join",
 		Short: "Join a node to an existing Couchbase Server cluster (no rebalance)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runClusterJoin(cmd, cf, pf, services, altAddr, ram)
+			return runClusterJoin(cmd, cf, pf, services, altAddr, ram, arbiter)
 		},
 	}
 	cf.addTo(cmd)
 	pf.addJoinFlags(cmd)
 	cmd.Flags().StringVarP(&services, "services", "s", strings.Join(rest.DefaultServerServices, ","), "Services for the joining node")
+	cmd.Flags().BoolVar(&arbiter, "arbiter", false, "Join as an arbiter node with no services (Couchbase Server 7.6+)")
 	cmd.Flags().StringVarP(&altAddr, "alternate-address", "a", "", "External alternate address")
 	cmd.Flags().IntVar(&ram, "ram", 0, "Node RAM in GiB for service quotas; overrides reported memoryTotal (containers). Omitted uses memoryTotal")
 	return cmd
@@ -303,17 +318,19 @@ func newClusterAddCmd() *cobra.Command {
 		services string
 		altAddr  string
 		ram      int
+		arbiter  bool
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Alias for cluster join",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runClusterJoin(cmd, cf, pf, services, altAddr, ram)
+			return runClusterJoin(cmd, cf, pf, services, altAddr, ram, arbiter)
 		},
 	}
 	cf.addTo(cmd)
 	pf.addJoinFlags(cmd)
 	cmd.Flags().StringVarP(&services, "services", "s", strings.Join(rest.DefaultServerServices, ","), "Services for the joining node")
+	cmd.Flags().BoolVar(&arbiter, "arbiter", false, "Join as an arbiter node with no services (Couchbase Server 7.6+)")
 	cmd.Flags().StringVarP(&altAddr, "alternate-address", "a", "", "External alternate address")
 	cmd.Flags().IntVar(&ram, "ram", 0, "Node RAM in GiB for service quotas; overrides reported memoryTotal (containers). Omitted uses memoryTotal")
 	return cmd

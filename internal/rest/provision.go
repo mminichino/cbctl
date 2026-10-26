@@ -14,13 +14,17 @@ type ProvisionOptions struct {
 	ExternalIPAddress string
 	RallyIPAddress    string
 	Services          []string
-	ServerGroup       string
-	DataPath          string
-	ClusterName       string
-	RAMGiB            int
-	Username          string
-	Password          string
-	SSL               bool
+	// Arbiter joins with no services (Couchbase Server 7.6+ manager-only /
+	// arbiter node). When true, Services must be empty and AddNode posts
+	// services= so the cluster does not default the node to kv.
+	Arbiter     bool
+	ServerGroup string
+	DataPath    string
+	ClusterName string
+	RAMGiB      int
+	Username    string
+	Password    string
+	SSL         bool
 }
 
 // BootstrapPrimary initializes a single-node cluster on IPAddress.
@@ -116,7 +120,11 @@ func (c *Client) JoinNode(opts ProvisionOptions) (bool, error) {
 		return false, fmt.Errorf("--rally-ip-address is required")
 	}
 	services := opts.Services
-	if len(services) == 0 {
+	if opts.Arbiter {
+		if len(services) > 0 {
+			return false, fmt.Errorf("arbiter nodes cannot run services")
+		}
+	} else if len(services) == 0 {
 		services = append([]string(nil), DefaultServerServices...)
 	}
 
@@ -149,8 +157,10 @@ func (c *Client) JoinNode(opts ProvisionOptions) (bool, error) {
 		}
 	}
 
-	if err := c.RaiseQuotasForNewServices(rally, local, opts.Username, opts.Password, services, opts.RAMGiB); err != nil {
-		return false, err
+	if !opts.Arbiter {
+		if err := c.RaiseQuotasForNewServices(rally, local, opts.Username, opts.Password, services, opts.RAMGiB); err != nil {
+			return false, err
+		}
 	}
 	if err := c.AddNode(rally, opts.Username, opts.Password, internalHost, services); err != nil {
 		if ok, checkErr := c.IsNodeInCluster(rally, opts.Username, opts.Password, internalHost); checkErr == nil && ok {

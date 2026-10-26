@@ -109,6 +109,11 @@ cbctl cluster join \
   --services data,index,query,fts --server-group us-east-1b \
   --data-path /data/couchbase --no-ssl
 
+# Arbiter / manager-only node (Couchbase Server 7.6+; no services)
+cbctl cluster join \
+  -p "$PASSWORD" --rally-ip-address 10.0.0.1 \
+  --ip-address 10.0.0.3 --arbiter --server-group us-east-1c --no-ssl
+
 # After all joins
 cbctl cluster rebalance -p "$PASSWORD" --rally-ip-address 10.0.0.1 --no-ssl
 ```
@@ -122,6 +127,7 @@ cbctl cluster rebalance -p "$PASSWORD" --rally-ip-address 10.0.0.1 --no-ssl
 | `--server-group` | create, join | Server group / AZ name (Enterprise) |
 | `--data-path` | create, join | Shared path for data/index/analytics/eventing |
 | `--services` / `-s` | create, join | Comma-separated services (`search` → `fts`) |
+| `--arbiter` | join | Join with no services (7.6+ arbiter). Cannot combine with `--services` |
 | `--ram` | create, join | Node RAM in GiB. Overrides reported `memoryTotal` (containers). Omitted: use `memoryTotal` |
 
 Provisioner `create` initializes **only** the primary node (no automatic join/rebalance). Use `join`/`add` for each extra node, then `rebalance` once.

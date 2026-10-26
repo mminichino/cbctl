@@ -389,6 +389,8 @@ func (c *Client) SetNodePaths(endpoint Endpoint, username, password, dataPath st
 }
 
 // AddNode posts /controller/addNode.
+// An empty services list posts services= (empty), which Couchbase Server 7.6+
+// treats as an arbiter / manager-only node. Omitting the field would default to kv.
 func (c *Client) AddNode(endpoint Endpoint, username, password, nodeHost string, services []string) error {
 	fields := map[string]string{
 		"hostname": nodeHost,
