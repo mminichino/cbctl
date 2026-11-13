@@ -1,0 +1,60 @@
+---
+description: General rules for Go development
+globs: ["**/*.go"]
+alwaysApply: true
+---
+
+# General Project Rules
+- When a subcommand is added or changed update `.cursor/rules/cbctl.mdc` as needed
+- When functionality is added or changed update `README.md` as appropriate
+
+# Go Project Rules
+
+## Formatting & Style
+- Always run `gofmt`/`goimports` conventions: tabs for indentation, grouped imports (stdlib, then third-party, then internal), no unused imports.
+- Follow standard Go naming: `camelCase` for unexported identifiers, `PascalCase` for exported ones. Avoid stutter (e.g. `user.UserID` → `user.ID`).
+- Keep package names short, lowercase, no underscores or mixedCaps.
+- Prefer short, descriptive variable names in small scopes (`i`, `err`, `ok`) and more descriptive names in larger scopes.
+
+## Project Structure
+- Use the standard layout where it fits: `cmd/` for entrypoints, `internal/` for private packages, `pkg/` for shared public packages, `api/` for API definitions.
+- One package per directory. Avoid circular imports by keeping dependencies flowing in one direction (e.g. `internal` packages should not import from `cmd`).
+- Keep `main.go` thin — wire dependencies and delegate logic to packages.
+
+## Error Handling
+- Always check and handle errors explicitly; never discard with `_` unless there's a clear, commented reason.
+- Wrap errors with context using `fmt.Errorf("doing X: %w", err)` so `errors.Is`/`errors.As` still work.
+- Return errors rather than panicking. Reserve `panic` for truly unrecoverable states (e.g. programmer errors at startup).
+- Define sentinel errors or custom error types for conditions callers need to branch on.
+
+## Concurrency
+- Never start a goroutine without a clear plan for how it stops (context cancellation, channel close, WaitGroup).
+- Always pass `context.Context` as the first parameter to functions that do I/O or may be cancelled.
+- Protect shared state with mutexes or channels — avoid data races. Run `go test -race` in CI.
+- Avoid unbounded goroutine creation; use worker pools or semaphores for concurrent work over collections.
+
+## Testing
+- Use table-driven tests with `t.Run` subtests for multiple cases.
+- Name test files `_test.go` alongside the code they test, in the same package (or `_test` package for black-box tests).
+- Prefer standard `testing` package; use `testify/assert`/`require` only if already a project dependency.
+- Aim for meaningful coverage of business logic and error paths, not just the happy path.
+
+## Dependencies
+- Keep `go.mod`/`go.sum` up to date; run `go mod tidy` after adding/removing imports.
+- Prefer the standard library over third-party packages when it's sufficient.
+- Pin dependency versions; avoid `latest` or unpinned pseudo-versions in production code.
+
+## Documentation
+- Every exported function, type, and package should have a doc comment starting with its name, per Go convention.
+- Package-level docs go in a `doc.go` file or at the top of the primary file in the package.
+- Keep comments explaining *why*, not *what* — the code should already say what it does.
+
+## API & Interfaces
+- Keep interfaces small; define them at the point of use (consumer side), not alongside the implementation.
+- Accept interfaces, return concrete structs.
+- Avoid exporting more than necessary — default to unexported and promote to exported only when needed externally.
+
+## Linting & Tooling
+- Code must pass `go vet` and `golangci-lint` (or the project's configured linter) before merging.
+- Avoid `init()` functions except for essential, side-effect-free setup (e.g. registering drivers).
+- Use `context.Context` cancellation and timeouts for any external calls (HTTP, DB, RPC).

@@ -5,17 +5,31 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
+	"github.com/mminichino/cbctl/internal/redact"
+)
+
+// Level is a log verbosity level.
+type Level int
+
+const (
+	LevelError Level = iota
+	LevelWarn
+	LevelInfo
+	LevelDebug
 )
 
 var (
 	infoColor  = color.New(color.FgBlue).SprintFunc()
 	warnColor  = color.New(color.FgYellow).SprintFunc()
 	errorColor = color.New(color.FgRed).SprintFunc()
+	debugColor = color.New(color.FgCyan).SprintFunc()
 
 	stdout io.Writer = os.Stdout
 	stderr io.Writer = os.Stderr
+	level            = LevelInfo
 )
 
 // SetOutputs overrides the writers used for log messages (tests).
@@ -28,31 +42,77 @@ func SetOutputs(out, err io.Writer) {
 	}
 }
 
-func logMsg(w io.Writer, level, msg string, args ...interface{}) {
-	var coloredLevel string
-	switch level {
-	case "info":
-		coloredLevel = infoColor(level)
-	case "warning":
-		coloredLevel = warnColor(level)
+// Outputs returns the writers currently used for log messages, so a caller that redirects them
+// with SetOutputs can restore them afterwards.
+func Outputs() (out, err io.Writer) { return stdout, stderr }
+
+// SetLevel sets the minimum log level.
+func SetLevel(l Level) { level = l }
+
+// ParseLevel parses error|warn|warning|info|debug.
+func ParseLevel(s string) (Level, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "error":
-		coloredLevel = errorColor(level)
+		return LevelError, nil
+	case "warn", "warning":
+		return LevelWarn, nil
+	case "info":
+		return LevelInfo, nil
+	case "debug":
+		return LevelDebug, nil
 	default:
-		coloredLevel = level
+		return 0, fmt.Errorf("invalid log level %q", s)
 	}
-	fmt.Fprintf(w, "[%s] - %s\n", coloredLevel, fmt.Sprintf(msg, args...))
+}
+
+func logMsg(w io.Writer, lvl, msg string, args ...interface{}) {
+	var coloredLevel string
+	switch lvl {
+	case "info":
+		coloredLevel = infoColor(lvl)
+	case "warning":
+		coloredLevel = warnColor(lvl)
+	case "error":
+		coloredLevel = errorColor(lvl)
+	case "debug":
+		coloredLevel = debugColor(lvl)
+	default:
+		coloredLevel = lvl
+	}
+	text := redact.String(fmt.Sprintf(msg, args...))
+	fmt.Fprintf(w, "[%s] - %s\n", coloredLevel, text)
 }
 
 // Info writes an info-level message to stdout.
-func Info(msg string, args ...interface{}) { logMsg(stdout, "info", msg, args...) }
+func Info(msg string, args ...interface{}) {
+	if level < LevelInfo {
+		return
+	}
+	logMsg(stdout, "info", msg, args...)
+}
 
 // Warning writes a warning-level message to stderr.
-func Warning(msg string, args ...interface{}) { logMsg(stderr, "warning", msg, args...) }
+func Warning(msg string, args ...interface{}) {
+	if level < LevelWarn {
+		return
+	}
+	logMsg(stderr, "warning", msg, args...)
+}
 
 // Error writes an error-level message to stderr.
-func Error(msg string, args ...interface{}) { logMsg(stderr, "error", msg, args...) }
+func Error(msg string, args ...interface{}) {
+	logMsg(stderr, "error", msg, args...)
+}
 
-// Println writes a plain line to stdout (machine-readable output).
+// Debug writes a debug-level message to stderr.
+func Debug(msg string, args ...interface{}) {
+	if level < LevelDebug {
+		return
+	}
+	logMsg(stderr, "debug", msg, args...)
+}
+
+// Println writes a plain line to stdout (machine-readable output). Never suppressed.
 func Println(msg string, args ...interface{}) {
-	fmt.Fprintf(stdout, msg+"\n", args...)
+	fmt.Fprintf(stdout, redact.String(msg)+"\n", args...)
 }

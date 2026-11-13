@@ -2,8 +2,19 @@ package cli
 
 import (
 	"github.com/mminichino/cbctl/internal/config"
+	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
 )
+
+// flagIfChanged returns the string flag value only when it was explicitly set on the command line.
+func flagIfChanged(cmd *cobra.Command, name string) string {
+	if cmd == nil || !cmd.Flags().Changed(name) {
+		return ""
+	}
+	v, _ := cmd.Flags().GetString(name)
+	return v
+}
 
 // connFlags are shared Server connection flags.
 type connFlags struct {
@@ -77,10 +88,53 @@ func (f *capellaFlags) addTo(cmd *cobra.Command) {
 }
 
 func (f *capellaFlags) config() *config.Config {
+	return f.configFrom(nil)
+}
+
+func (f *capellaFlags) configFrom(cmd *cobra.Command) *config.Config {
 	cfg := config.New()
 	cfg.Username = f.username
 	cfg.Password = f.password
 	cfg.SSL = true
+
+	apiHostInput := ""
+	if cmd != nil {
+		apiHostInput = flagIfChanged(cmd, "api-host")
+	} else if f.apiHost != "" && f.apiHost != config.DefaultCapellaAPIHost {
+		// Without a command, treat only a non-default host as explicit.
+		apiHostInput = f.apiHost
+	}
+
+	resolved, err := settings.Resolve(settings.Inputs{
+		Token:   f.token,
+		OrgID:   f.orgID,
+		APIHost: apiHostInput,
+	})
+	if err != nil {
+		logging.Warning("%v", err)
+	} else {
+		for _, w := range resolved.Warnings {
+			logging.Warning("%s", w)
+		}
+		if f.token == "" && resolved.APIKey.IsSet() {
+			f.token = resolved.APIKey.Value
+		}
+		if f.orgID == "" && resolved.OrgID.IsSet() {
+			f.orgID = resolved.OrgID.Value
+		}
+		if resolved.BaseURL.IsSet() {
+			host := settings.HostFromBaseURL(resolved.BaseURL.Value)
+			if f.apiHost == "" || f.apiHost == config.DefaultCapellaAPIHost {
+				if cmd == nil || !cmd.Flags().Changed("api-host") {
+					f.apiHost = host
+				}
+			}
+			if cmd != nil && cmd.Flags().Changed("api-host") {
+				f.apiHost = host
+			}
+		}
+	}
+
 	cfg.SetProp(config.PropCapellaToken, f.token)
 	cfg.SetProp(config.PropCapellaAPIHost, f.apiHost)
 	cfg.SetProp(config.PropCapellaOrgName, f.orgName)

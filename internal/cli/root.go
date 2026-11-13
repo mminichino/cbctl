@@ -2,9 +2,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
 )
 
@@ -20,9 +25,19 @@ func SetVersion(version, commit, date string) {
 	rootCmd.Version = fmt.Sprintf("%s (commit=%s date=%s)", version, commit, date)
 }
 
-// Execute runs the root command.
+// Execute runs the root command under a signal-aware context.
 func Execute() error {
-	return rootCmd.Execute()
+	if wd, err := os.Getwd(); err == nil {
+		path, names, err := settings.LoadDotEnv(wd)
+		if err != nil {
+			logging.Warning("ignoring .env: %v", err)
+		} else if path != "" {
+			logging.Debug("loaded .env from %s (%v)", path, names)
+		}
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func init() {
@@ -37,6 +52,7 @@ func init() {
 	rootCmd.AddCommand(newKeyspaceCmd())
 	rootCmd.AddCommand(newImportCmd())
 	rootCmd.AddCommand(newCapellaCmd())
+	rootCmd.AddCommand(newConfigureCmd())
 
 	// No args → help (match Python no_args_is_help).
 	rootCmd.Run = func(cmd *cobra.Command, args []string) {

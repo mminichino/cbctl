@@ -1,0 +1,12 @@
+cbctl
+Copyright Couchbase, Inc. and contributors.
+
+This product includes Capella command semantics, preset size tables, disk
+type tables, and Management API endpoint inventory derived from capellactl
+(https://github.com/couchbase/capellactl), licensed under the Apache License,
+Version 2.0. See the Apache License for the specific language governing
+permissions and limitations under that license.
+
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0

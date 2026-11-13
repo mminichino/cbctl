@@ -1,16 +1,16 @@
 package capella
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
-	"time"
+	"sync"
 
+	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config"
 )
 
@@ -20,6 +20,7 @@ const organizationsPath = "/v4/organizations"
 type Client struct {
 	Token            string
 	APIHost          string
+	BaseURL          string // if set, wins over https://APIHost
 	OrganizationName string
 	OrganizationID   string
 	ProjectName      string
@@ -31,6 +32,10 @@ type Client struct {
 	HTTP             *http.Client
 	lastStatus       int
 	lastBody         string
+
+	apiOnce sync.Once
+	api     *capellaapi.Client
+	apiErr  error
 }
 
 // NewClient constructs a Capella API client.
@@ -42,9 +47,7 @@ func NewClient(token, apiHost string) *Client {
 		Token:       token,
 		APIHost:     apiHost,
 		ProjectName: config.DefaultCapellaProjectName,
-		HTTP: &http.Client{
-			Timeout: 60 * time.Second,
-		},
+		HTTP:        &http.Client{},
 	}
 }
 
@@ -55,7 +58,7 @@ func NewClientFromConfig(cfg *config.Config) (*Client, error) {
 	}
 	token := cfg.Prop(config.PropCapellaToken)
 	if token == "" {
-		return nil, fmt.Errorf("please set property %s to provide the API v4 token", config.PropCapellaToken)
+		return nil, fmt.Errorf("Capella API key not set; use --token, set CAPELLA_API_KEY (or put it in .env), or run 'cbctl configure'")
 	}
 	c := NewClient(token, cfg.Prop(config.PropCapellaAPIHost))
 	c.OrganizationName = cfg.Prop(config.PropCapellaOrgName)
@@ -80,51 +83,49 @@ func (c *Client) hasDatabaseName() bool     { return c != nil && c.DatabaseName 
 func (c *Client) hasAccountEmail() bool     { return c != nil && c.AccountEmail != "" }
 func (c *Client) hasAccountID() bool        { return c != nil && c.AccountID != "" }
 
-func (c *Client) baseURL(path string) string {
-	path = "/" + strings.TrimPrefix(path, "/")
-	return fmt.Sprintf("https://%s%s", c.APIHost, path)
+func (c *Client) apiClient() (*capellaapi.Client, error) {
+	c.apiOnce.Do(func() {
+		opts := []capellaapi.Option{}
+		if c.BaseURL != "" {
+			opts = append(opts, capellaapi.WithBaseURL(c.BaseURL))
+		} else if c.APIHost != "" {
+			opts = append(opts, capellaapi.WithBaseURL(c.APIHost))
+		}
+		if c.OrganizationID != "" {
+			opts = append(opts, capellaapi.WithOrgID(c.OrganizationID))
+		}
+		if c.HTTP != nil {
+			opts = append(opts, capellaapi.WithHTTPClient(c.HTTP))
+		}
+		c.api, c.apiErr = capellaapi.New(c.Token, opts...)
+	})
+	return c.api, c.apiErr
 }
 
 func (c *Client) doJSON(method, path string, body any, dest any) error {
-	var reader io.Reader
-	if body != nil {
-		payload, err := json.Marshal(body)
-		if err != nil {
-			return err
+	api, err := c.apiClient()
+	if err != nil {
+		return err
+	}
+	if c.OrganizationID != "" && api.OrgID() == "" {
+		api.SetOrgID(c.OrganizationID)
+	}
+	opt := capellaapi.RequestOptions{Body: body}
+	resp, err := api.Do(context.Background(), method, path, opt, dest)
+	if resp != nil {
+		c.lastStatus = resp.Status
+		c.lastBody = string(resp.Body)
+	}
+	if err != nil {
+		var apiErr *capellaapi.APIError
+		if errors.As(err, &apiErr) {
+			msg := "Capella API error"
+			if apiErr.Status == http.StatusNotFound {
+				msg = "not found"
+			}
+			return apiError(apiErr.Status, apiErr.Body, msg, err)
 		}
-		reader = bytes.NewReader(payload)
-	}
-	req, err := http.NewRequest(method, c.baseURL(path), reader)
-	if err != nil {
 		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.Token)
-	req.Header.Set("Accept", "application/json")
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	c.lastStatus = resp.StatusCode
-	c.lastBody = string(raw)
-	if resp.StatusCode == http.StatusNotFound {
-		return apiError(resp.StatusCode, strings.TrimSpace(string(raw)), "not found", nil)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return apiError(resp.StatusCode, strings.TrimSpace(string(raw)), "Capella API error", nil)
-	}
-	if dest == nil || len(raw) == 0 {
-		return nil
-	}
-	if err := json.Unmarshal(raw, dest); err != nil {
-		return apiError(resp.StatusCode, strings.TrimSpace(string(raw)), "Capella JSON decode error", err)
 	}
 	return nil
 }
@@ -156,10 +157,13 @@ func (c *Client) Delete(path string) error {
 
 // IsNotFound reports whether err is an HTTP 404 CapellaAPIError.
 func IsNotFound(err error) bool {
-	var api *CapellaAPIError
 	if err == nil {
 		return false
 	}
+	if errors.Is(err, capellaapi.ErrNotFound) {
+		return true
+	}
+	var api *CapellaAPIError
 	if AsCapellaAPI(err, &api) {
 		return api.Code == http.StatusNotFound
 	}
@@ -172,18 +176,7 @@ func AsCapellaAPI(err error, target **CapellaAPIError) bool {
 	if err == nil || target == nil {
 		return false
 	}
-	for err != nil {
-		if e, ok := err.(*CapellaAPIError); ok {
-			*target = e
-			return true
-		}
-		u, ok := err.(interface{ Unwrap() error })
-		if !ok {
-			return false
-		}
-		err = u.Unwrap()
-	}
-	return false
+	return errors.As(err, target)
 }
 
 // AsCapellaNotFound extracts *CapellaNotFoundError.
@@ -191,18 +184,7 @@ func AsCapellaNotFound(err error, target **CapellaNotFoundError) bool {
 	if err == nil || target == nil {
 		return false
 	}
-	for err != nil {
-		if e, ok := err.(*CapellaNotFoundError); ok {
-			*target = e
-			return true
-		}
-		u, ok := err.(interface{ Unwrap() error })
-		if !ok {
-			return false
-		}
-		err = u.Unwrap()
-	}
-	return false
+	return errors.As(err, target)
 }
 
 type pagedResponse struct {
@@ -213,15 +195,36 @@ type pagedResponse struct {
 			PerPage    int `json:"perPage"`
 			Last       int `json:"last"`
 			TotalItems int `json:"totalItems"`
+			Next       any `json:"next"`
 		} `json:"pages"`
 	} `json:"cursor"`
 }
 
 // GetPaged GETs all pages of a Capella list endpoint and returns raw data items.
+// A 404 still returns nil, nil (legacy callers rely on this).
 func (c *Client) GetPaged(path string, perPage int) ([]json.RawMessage, error) {
 	if perPage <= 0 {
 		perPage = 50
 	}
+	api, err := c.apiClient()
+	if err != nil {
+		return nil, err
+	}
+	q := url.Values{}
+	items, err := capellaapi.Paginate[json.RawMessage](context.Background(), api, path, "data", q)
+	if err != nil {
+		if IsNotFound(err) {
+			return nil, nil
+		}
+		// Fall back to previous page/last semantics if Paginate fails on shape — keep
+		// compatible path via manual loop using doJSON for older response shapes.
+		return c.getPagedLegacy(path, perPage)
+	}
+	_ = perPage
+	return items, nil
+}
+
+func (c *Client) getPagedLegacy(path string, perPage int) ([]json.RawMessage, error) {
 	var all []json.RawMessage
 	page := 1
 	for {

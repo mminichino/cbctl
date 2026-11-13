@@ -15,12 +15,20 @@ func newCapellaCmd() *cobra.Command {
 		Use:   "capella",
 		Short: "Capella cloud operations",
 		Run:   func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
+		// Applies --log-level/--quiet to every subcommand; no leaf defines its own persistent hook.
+		PersistentPreRunE: capellaPersistentPreRun,
 	}
+	addCapellaGlobalFlags(cmd)
+	cmd.AddCommand(newCapellaProjectCmd())
 	cmd.AddCommand(newCapellaClusterCmd())
 	cmd.AddCommand(newCapellaBucketCmd())
 	cmd.AddCommand(newCapellaScopeCmd())
 	cmd.AddCommand(newCapellaCollectionCmd())
+	cmd.AddCommand(newCapellaCIDRCmd())
+	cmd.AddCommand(newCapellaCredentialCmd())
 	cmd.AddCommand(newCapellaImportCmd())
+	cmd.AddCommand(newConfigureCmd())
+	cmd.AddCommand(newCapellaJanitorCmd())
 	return cmd
 }
 
@@ -34,6 +42,7 @@ func newCapellaClusterCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaClusterExistsCmd())
 	cmd.AddCommand(newCapellaClusterDestroyCmd())
 	cmd.AddCommand(newCapellaClusterTestCmd())
+	registerCapellaClusterCommands(cmd)
 	return cmd
 }
 
@@ -161,6 +170,12 @@ func newCapellaBucketCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newCapellaBucketCreateCmd())
 	cmd.AddCommand(newCapellaBucketExistsCmd())
+	cmd.AddCommand(newCapellaBucketListCmd())
+	cmd.AddCommand(newCapellaBucketGetCmd())
+	cmd.AddCommand(newCapellaBucketAddCmd())
+	cmd.AddCommand(newCapellaBucketUpdateCmd())
+	cmd.AddCommand(newCapellaBucketDeleteCmd())
+	cmd.AddCommand(newCapellaBucketBackupCmd())
 	return cmd
 }
 
@@ -254,6 +269,9 @@ func newCapellaScopeCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newCapellaScopeCreateCmd())
 	cmd.AddCommand(newCapellaScopeExistsCmd())
+	cmd.AddCommand(newCapellaScopeListCmd())
+	cmd.AddCommand(newCapellaScopeAddCmd())
+	cmd.AddCommand(newCapellaScopeDeleteCmd())
 	return cmd
 }
 
@@ -328,6 +346,10 @@ func newCapellaCollectionCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newCapellaCollectionCreateCmd())
 	cmd.AddCommand(newCapellaCollectionExistsCmd())
+	cmd.AddCommand(newCapellaCollectionListCmd())
+	cmd.AddCommand(newCapellaCollectionAddCmd())
+	cmd.AddCommand(newCapellaCollectionUpdateCmd())
+	cmd.AddCommand(newCapellaCollectionDeleteCmd())
 	return cmd
 }
 
