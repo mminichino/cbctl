@@ -1,0 +1,3 @@
+duplicate_project_names.yaml has 1 problem:
+  project same (line 4)
+    duplicate project name 'same' (also on line 3)

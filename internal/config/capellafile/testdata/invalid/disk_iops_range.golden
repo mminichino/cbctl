@@ -1,0 +1,3 @@
+disk_iops_range.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › node.disk.iops (line 15)
+    gp3 disks take 3000–16000 IOPS (got 100) (see 'cbctl capella cluster disk-types')

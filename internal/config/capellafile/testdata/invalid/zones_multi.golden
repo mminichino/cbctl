@@ -1,0 +1,3 @@
+zones_multi.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › zones (line 11)
+    zones can only be set for availability: single

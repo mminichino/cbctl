@@ -1,0 +1,3 @@
+single_node_services.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,eventing (line 18)
+    singleNode clusters run only data, index, query and search

@@ -1,0 +1,3 @@
+schema_empty_groups.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › serviceGroups (line 12)
+    must have at least 1 entry

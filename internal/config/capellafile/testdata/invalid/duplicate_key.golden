@@ -1,0 +1,4 @@
+duplicate_key.yaml has 1 problem:
+  duplicate_key.yaml (line 6)
+    invalid YAML: mapping key "description" already defined at line 5
+    action: remove or rename the duplicate key

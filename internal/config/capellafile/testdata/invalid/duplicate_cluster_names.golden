@@ -1,0 +1,3 @@
+duplicate_cluster_names.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 (line 18)
+    duplicate cluster name 'nova-dev-01' (also on line 7)

@@ -1,0 +1,3 @@
+schema_hibernation_tz.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › hibernation.timezone (line 19)
+    must be one of: Pacific/Midway, US/Hawaii, US/Alaska, US/Pacific, US/Mountain, US/Central, US/Eastern, America/Puerto_Rico, Canada/Newfoundland, America/Argentina/Buenos_Aires, Atlantic/Cape_Verde, Europe/London, Europe/Amsterdam, Europe/Athens, Africa/Nairobi, Asia/Tehran, Indian/Mauritius, Asia/Karachi, Asia/Calcutta, Asia/Dhaka, Asia/Bangkok, Asia/Hong_Kong, Asia/Tokyo, Australia/North, Australia/Sydney, Pacific/Ponape, Antarctica/South_Pole

@@ -1,0 +1,3 @@
+dup_service_groups.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › serviceGroups (line 12)
+    two groups run data,index,query; each group needs a different set of services

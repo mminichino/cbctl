@@ -1,0 +1,5 @@
+scope_collection_duplicates.yaml has 2 problems:
+  project nova-dev › cluster nova-dev-01 › bucket b › scope s › collection c (line 24)
+    duplicate collection name 'c' (also on line 23)
+  project nova-dev › cluster nova-dev-01 › bucket b › scope s (line 25)
+    duplicate scope name 's' (also on line 21)

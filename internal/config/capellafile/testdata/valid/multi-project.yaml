@@ -1,0 +1,60 @@
+apiVersion: cbctl/v1
+organizationId: ${CAPELLA_ORG_ID}
+credentialsOutput: ./secrets-out
+projects:
+  - name: alpha
+    clusters:
+      - name: shared-name
+        deletionProtection: true
+        cloudProvider: { type: aws, region: us-east-1, cidr: 10.20.0.0/24 }
+        availability: { type: multi }
+        support: { plan: enterprise, timezone: ET }
+        serviceGroups:
+          - node:
+              compute: { cpu: 4, ram: 16 }
+              disk: { type: gp3, storage: 50, iops: 3000 }
+            numOfNodes: 3
+            services: [data, query]
+          - node:
+              compute: { cpu: 4, ram: 16 }
+              disk: { type: gp3, storage: 50, iops: 3000 }
+            numOfNodes: 2
+            services: [index]
+        buckets:
+          - name: orders
+            memoryAllocationInMb: 512
+            scopes:
+              - name: inventory
+                collections:
+                  - name: items
+        databaseCredentials:
+          - name: app
+            password: ${APP_PASSWORD}
+            access:
+              - privileges: [read, write]
+                resources:
+                  buckets:
+                    - name: orders
+                      scopes:
+                        - name: inventory
+                          collections: [items]
+  - id: 11111111-2222-3333-4444-555555555555
+    name: beta
+    description: second project
+    clusters:
+      - id: 66666666-7777-8888-9999-000000000000
+        name: shared-name
+        cloudProvider: { type: gcp, region: us-east1, cidr: 10.21.0.0/24 }
+        availability: { type: single }
+        zones: [us-east1-b]
+        support: { plan: basic, timezone: GMT }
+        serviceGroups:
+          - node:
+              compute: { cpu: 4, ram: 16 }
+              disk: { type: pd-ssd, storage: 100 }
+            numOfNodes: 3
+            services: [data, index, query]
+        backupSchedule:
+          interval: 24
+          retention: 720
+          startTime: "02:00"

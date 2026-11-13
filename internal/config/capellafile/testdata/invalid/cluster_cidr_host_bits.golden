@@ -1,0 +1,3 @@
+cluster_cidr_host_bits.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › cloudProvider.cidr (line 9)
+    10.10.0.5/24 is not a network address (did you mean 10.10.0.0/24?)

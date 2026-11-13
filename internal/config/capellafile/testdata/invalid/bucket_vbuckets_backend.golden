@@ -1,0 +1,3 @@
+bucket_vbuckets_backend.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › bucket c › vbuckets (line 20)
+    only allowed with storageBackend: magma

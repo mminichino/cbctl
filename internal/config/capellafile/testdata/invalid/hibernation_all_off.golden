@@ -1,0 +1,3 @@
+hibernation_all_off.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › hibernation (line 18)
+    the cluster cannot be off every day of the week (Capella rule)

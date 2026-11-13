@@ -1,0 +1,3 @@
+disk_storage_gcp.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › node.disk.storage (line 15)
+    storage is required for gcp disks

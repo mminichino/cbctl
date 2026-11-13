@@ -1,0 +1,4 @@
+not_mapping.yaml has 1 problem:
+  not_mapping.yaml (line 1)
+    not_mapping.yaml must be a mapping of settings (key: value)
+    action: start the file with 'apiVersion: cbctl/v1'

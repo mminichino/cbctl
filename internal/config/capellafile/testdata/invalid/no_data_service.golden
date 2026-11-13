@@ -1,0 +1,3 @@
+no_data_service.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › serviceGroups (line 12)
+    at least one service group must run the data service

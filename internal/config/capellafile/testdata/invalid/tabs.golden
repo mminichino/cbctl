@@ -1,0 +1,4 @@
+tabs.yaml has 1 problem:
+  tabs.yaml (line 7)
+    invalid YAML: found a tab character that violates indentation
+    action: indent with spaces, not tabs

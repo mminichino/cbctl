@@ -1,0 +1,3 @@
+region_shape_other_provider.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › cloudProvider.region (line 9)
+    us-east1 is not an aws region name; it looks like a gcp region (aws regions look like us-east-1, eu-west-1, ap-southeast-1)

@@ -1,0 +1,3 @@
+free_two_clusters.yaml has 1 problem:
+  project p › cluster free-2 › tier (line 9)
+    only one free-tier cluster is allowed per organization

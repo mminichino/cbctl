@@ -1,0 +1,3 @@
+cidr_invalid.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › allowed IP range not-a-cidr (line 19)
+    not-a-cidr is not a valid CIDR

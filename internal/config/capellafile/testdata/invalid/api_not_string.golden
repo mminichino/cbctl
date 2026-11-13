@@ -1,0 +1,4 @@
+api_not_string.yaml has 1 problem:
+  apiVersion (line 1)
+    unsupported apiVersion 1; supported values: cbctl/v1, capellactl/v1
+    action: set apiVersion: cbctl/v1

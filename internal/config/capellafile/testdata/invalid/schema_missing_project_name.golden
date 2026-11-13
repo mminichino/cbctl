@@ -1,0 +1,3 @@
+schema_missing_project_name.yaml has 1 problem:
+  project (line 3)
+    missing required field 'name'

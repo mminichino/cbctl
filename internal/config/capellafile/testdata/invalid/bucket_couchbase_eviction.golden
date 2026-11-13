@@ -1,0 +1,3 @@
+bucket_couchbase_eviction.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › bucket c › evictionPolicy (line 20)
+    nruEviction is only valid for ephemeral buckets (couchbase buckets use fullEviction)

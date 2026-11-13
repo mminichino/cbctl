@@ -1,0 +1,3 @@
+free_bucket_fields.yaml has 1 problem:
+  project p › cluster free-1 › bucket b › replicas (line 11)
+    not available for free-tier buckets (only memoryAllocationInMb and enableCrossClusterVersioning can be set; Capella chooses the rest)

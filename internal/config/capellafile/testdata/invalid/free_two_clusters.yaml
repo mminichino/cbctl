@@ -1,0 +1,10 @@
+apiVersion: cbctl/v1
+projects:
+  - name: p
+    clusters:
+      - name: free-1
+        tier: free
+        cloudProvider: { type: aws, region: us-east-2 }
+      - name: free-2
+        tier: free
+        cloudProvider: { type: aws, region: us-east-2 }

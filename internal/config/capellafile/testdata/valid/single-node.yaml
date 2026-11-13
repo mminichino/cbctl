@@ -1,0 +1,22 @@
+apiVersion: cbctl/v1
+project:
+  name: sandbox
+clusters:
+  - name: one
+    configurationType: singleNode
+    cloudProvider: { type: azure, region: eastus, cidr: 10.30.0.0/24 }
+    availability: { type: single }
+    support: { plan: basic }
+    serviceGroups:
+      - node:
+          compute: { cpu: 4, ram: 16 }
+          disk: { type: P6 }
+        numOfNodes: 1
+        services: [data, index, query, search]
+    hibernation:
+      timezone: US/Eastern
+      weekdays: true
+      weekend: false
+    buckets:
+      - name: playground
+        memoryAllocationInMb: 256

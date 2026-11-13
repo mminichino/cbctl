@@ -1,0 +1,3 @@
+free_region.yaml has 1 problem:
+  project p › cluster free-1 › cloudProvider.region (line 7)
+    free-tier clusters on aws are available in: us-east-2, eu-west-1, ap-southeast-1

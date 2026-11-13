@@ -1,0 +1,5 @@
+keyspace_names.yaml has 2 problems:
+  project nova-dev › cluster nova-dev-01 › bucket b › scope _hidden (line 21)
+    scope name '_hidden' is not valid: use 1–251 characters of A-Z a-z 0-9 _ - %, not starting with _ or % (_default is the only exception)
+  project nova-dev › cluster nova-dev-01 › bucket b › scope ok › collection bad name (line 24)
+    collection name 'bad name' is not valid: use 1–251 characters of A-Z a-z 0-9 _ - %, not starting with _ or %

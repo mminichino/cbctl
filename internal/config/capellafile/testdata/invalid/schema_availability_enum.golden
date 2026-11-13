@@ -1,0 +1,3 @@
+schema_availability_enum.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › availability.type (line 10)
+    must be one of: single, multi
