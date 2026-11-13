@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/redact"
 )
@@ -30,6 +32,7 @@ func TestHandleError(t *testing.T) {
 		{"transport", &capellaapi.TransportError{Msg: "down"}, ExitError, "down"},
 		{"ambiguous", &capellaapi.AmbiguousWriteError{Method: "POST", Path: "/x", Cause: errors.New("eof")}, ExitError, "re-run"},
 		{"wait timeout", &engine.WaitTimeout{Name: "c", State: "deploying"}, ExitTimeout, "continues"},
+		{"config", capellafile.NewConfigError("capella.yaml", []capellafile.Issue{{Where: "cluster c", Message: "bad", Line: 3}}), ExitConfigInvalid, "capella.yaml has 1 problem"},
 		{"wait failed", &engine.WaitFailed{Name: "c", State: "deploymentFailed"}, ExitError, "activity log"},
 	}
 	for _, tc := range cases {
@@ -49,5 +52,29 @@ func TestHandleError(t *testing.T) {
 				t.Fatalf("stderr=%q want substr %q", out, tc.substr)
 			}
 		})
+	}
+}
+
+func TestHandleErrorConfigError(t *testing.T) {
+	redact.Reset()
+	t.Cleanup(redact.Reset)
+	var buf bytes.Buffer
+	SetErrorWriter(&buf)
+	t.Cleanup(func() { SetErrorWriter(nil) })
+
+	ce := capellafile.NewConfigError("capella.yaml", []capellafile.Issue{
+		{Where: "project p › cluster c › support.plan", Message: "must be one of: basic", Line: 11, Fix: "pick one"},
+		{Where: "apiVersion", Message: "missing required field 'apiVersion'", Line: 1},
+	})
+	code := HandleError(fmt.Errorf("loading: %w", ce))
+	if code != ExitConfigInvalid {
+		t.Fatalf("code = %d, want %d", code, ExitConfigInvalid)
+	}
+	want := "[error] - capella.yaml has 2 problems:\n" +
+		"  apiVersion (line 1)\n    missing required field 'apiVersion'\n" +
+		"  project p › cluster c › support.plan (line 11)\n    must be one of: basic\n    action: pick one\n" +
+		"  → " + capellafile.FixProblems + "\n"
+	if buf.String() != want {
+		t.Errorf("stderr =\n%q\nwant\n%q", buf.String(), want)
 	}
 }

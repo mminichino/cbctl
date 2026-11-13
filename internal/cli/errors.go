@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/redact"
 )
@@ -82,6 +83,13 @@ func HandleError(err error) ExitCode {
 			return cliErr.Code
 		}
 		return ExitError
+	}
+
+	var cfgErr *capellafile.ConfigError
+	if errors.As(err, &cfgErr) {
+		printError(capellafile.RenderIssues(cfgErr.Heading(), cfgErr.Issues))
+		printAction(capellafile.FixProblems)
+		return ExitConfigInvalid
 	}
 
 	var apiErr *capellaapi.APIError
