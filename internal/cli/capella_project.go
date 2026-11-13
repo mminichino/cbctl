@@ -85,6 +85,7 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 	}
 	af := addAPIFlags(cmd)
 	cmd.Flags().StringVar(&description, "description", "", "Project description")
+	defer func() { wrapManaged(cmd, addManagedFlags(cmd), managedProjectCreate(&description)) }()
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		rt, err := newRuntime(cmd, af)
 		if err != nil {
@@ -137,6 +138,7 @@ func newCapellaProjectUpdateCmd() *cobra.Command {
 	}
 	af := addAPIFlags(cmd)
 	cmd.Flags().StringVar(&description, "description", "", "New project description")
+	defer func() { wrapManaged(cmd, addManagedFlags(cmd), managedProjectUpdate(&description)) }()
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if !cmd.Flags().Changed("description") {
 			return usageError("pass --description", "nothing to update")
@@ -193,6 +195,7 @@ func newCapellaProjectDeleteCmd() *cobra.Command {
 	af := addAPIFlags(cmd)
 	cmd.Flags().BoolVar(&cascade, "cascade", false, "Delete the project's clusters first")
 	cmd.Flags().BoolVar(&discardSnapshots, "discard-snapshots", false, "With --cascade, also discard the clusters' snapshot backups")
+	defer func() { wrapManaged(cmd, addManagedFlags(cmd), managedProjectDelete(cmd.RunE)) }()
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		rt, err := newRuntime(cmd, af)
 		if err != nil {

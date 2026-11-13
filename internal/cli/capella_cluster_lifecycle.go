@@ -246,6 +246,16 @@ func newCapellaClusterProtectCmd() *cobra.Command {
 	addProjectFlag(cmd, &project)
 	cmd.Flags().BoolVar(&on, "on", false, "Turn deletion protection on")
 	cmd.Flags().BoolVar(&off, "off", false, "Turn deletion protection off (needed before delete)")
+	managed := managedClusterProtect(&on, &project)
+	wrapManaged(cmd, addManagedFlags(cmd), func(cmd *cobra.Command, args []string) error {
+		switch {
+		case on && off:
+			return usageError("use either --on or --off", "--on and --off are mutually exclusive")
+		case !on && !off:
+			return usageError("add --on to turn protection on, or --off to turn it off", "nothing to do: neither --on nor --off was given")
+		}
+		return managed(cmd, args)
+	})
 	return cmd
 }
 

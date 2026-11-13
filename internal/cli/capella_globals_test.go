@@ -112,6 +112,7 @@ func TestCapellaGlobalFlagsRegistered(t *testing.T) {
 		{"timeout", "", "1h0m0s"},
 		{"log-level", "", "info"},
 		{"profile", "", ""},
+		{"config", "c", ""},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

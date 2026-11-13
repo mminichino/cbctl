@@ -214,7 +214,7 @@ func (cl *cluster) addBucket(name string, fields Obj) *bucket {
 		"replicas":                 1,
 		"flush":                    false,
 		"timeToLiveInSeconds":      0,
-		"evictionPolicy":           "valueOnly",
+		"evictionPolicy":           "fullEviction",
 		"priority":                 0,
 		"stats":                    Obj{"itemCount": 0, "opsPerSecond": 0, "diskUsedInMib": 0, "memoryUsedInMib": 0},
 	}

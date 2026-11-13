@@ -229,10 +229,39 @@ cbctl configure remove --profile default -y
 |---|---|
 | 0 | Success or intentional no-op |
 | 1 | API / transport / wait failure |
+| 2 | Changes found (`plan`/`drift --detailed-exitcode`, `sync --dry-run`) |
 | 3 | Invalid usage or config (missing key, bad flags, unknown/ambiguous name) |
 | 4 | Blocked (deletion protection, free-tier restriction, confirmation without TTY) |
 | 5 | Async wait timed out (operation continues in Capella) |
 | 130 | Interrupted (Ctrl-C); Capella keeps running the operation |
+
+### Declarative workflow (`capella.yaml`)
+
+Describe projects, clusters, buckets, scopes, collections, credentials, CIDRs, schedules and backups in one file and let `cbctl` reconcile Capella to it. The file is found in this order: `-c/--config FILE` → `CBCTL_CONFIG` → `configFile` of the profile (`cbctl configure --config-file`) → `./capella.yaml` → `./capella.yml` (both present is an error). The organization comes from `--org-id`, `CAPELLA_ORG_ID`, the profile, then `organizationId` in the file.
+
+```bash
+cbctl capella init --non-interactive --project demo --provider aws --region us-east-1 --preset small   # or: init (interview), sync (import what exists)
+cbctl capella validate          # offline: no API key needed; exit 3 on problems
+cbctl capella plan              # what apply would do; --detailed-exitcode exits 2 on changes, --target KIND/NAME
+cbctl capella apply             # asks first (--yes skips); a second apply changes nothing
+cbctl capella drift             # Capella versus the file: changed, missing, unmanaged; --detailed-exitcode
+cbctl capella sync              # (re)write the file from Capella, keeping comments; --dry-run, --stdout, --project, --cluster, --full
+cbctl capella destroy           # deletes what the file declares (typed confirmation; protected clusters block it)
+cbctl capella guide [TOPIC]     # built-in docs: getting-started, config, scaling, safety, ci, ...
+```
+
+| Command | Notes |
+|---|---|
+| `apply` | `--target`, `--prune` (delete what the file no longer lists), `--rotate-passwords`, `--power-on`, `--allow-service-removal`, `--allow-service-group-removal`, `--skip-capacity-check`, `--force-overwrite-secret`. Creating a bucket, scope or collection delete asks you to type its name. Created ids are pinned into the file (previous version kept as `capella.yaml.bak`). |
+| `sync` | Writes a new file, or refreshes an existing one: comments, `${VAR}` references and keys the importer cannot read are kept; renamed projects are followed by pinned `id`. `--dry-run` prints a diff and exits 2 when the file would change. |
+| `destroy` | Removes clusters and projects declared in the file; the file keeps its description but loses the ids. |
+| `init` | Interactive interview, or `--non-interactive` with flags (`--provider`, `--region`, `--preset`, `--nodes`, `--bucket`, `--credential`, ...). |
+
+Passwords never appear in the file: write `${VAR}` or `${file:PATH}` and `cbctl` reads the value at apply time; all output is redacted.
+
+**File-managed mode.** When a capella.yaml exists, `project create|update|delete`, `cluster scale` and `cluster protect` edit the file first, validate the result (reporting only the problems this change causes), show the plan, ask, save, then apply it. `--no-apply` only records the change (deploy later with `apply`); `--direct` acts on Capella only and leaves the file alone. If Capella refuses the change, the file is restored.
+
+Extra exit codes: 2 = changes found (`plan`/`drift --detailed-exitcode`, `sync --dry-run`), 3 = invalid config, 4 = blocked plan or confirmation without a terminal.
 
 ### Commands
 

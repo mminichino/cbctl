@@ -20,7 +20,7 @@ type ExitCode int
 const (
 	ExitOK            ExitCode = 0
 	ExitError         ExitCode = 1
-	ExitChanges       ExitCode = 2 // reserved: Phase 3
+	ExitChanges       ExitCode = 2 // plan or drift --detailed-exitcode found changes
 	ExitConfigInvalid ExitCode = 3
 	ExitBlocked       ExitCode = 4
 	ExitTimeout       ExitCode = 5
@@ -77,7 +77,9 @@ func HandleError(err error) ExitCode {
 
 	var cliErr *CLIError
 	if errors.As(err, &cliErr) {
-		printError(cliErr.Message)
+		if cliErr.Message != "" { // a bare code (plan --detailed-exitcode, blocked plans) has already printed its output
+			printError(cliErr.Message)
+		}
 		printAction(cliErr.Action)
 		if cliErr.Code != 0 {
 			return cliErr.Code

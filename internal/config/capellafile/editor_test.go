@@ -584,3 +584,26 @@ func TestEditorOutputLoadsAfterTypicalCommandEdits(t *testing.T) {
 		t.Errorf("clusters = %d", cfg.Counts().Clusters)
 	}
 }
+
+func TestEditorRemoveProject(t *testing.T) {
+	ed := openText(t, "apiVersion: cbctl/v1\nproject:\n  name: a\nclusters: []\n")
+	if ed.RemoveProject("missing") {
+		t.Fatal("removed a project that is not there")
+	}
+	if !ed.RemoveProject("a") {
+		t.Fatal("project a not removed")
+	}
+	text, err := ed.Text()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(text, "name: a") || !strings.Contains(text, "projects: []") {
+		t.Errorf("unexpected text:\n%s", text)
+	}
+
+	ed = openText(t, "apiVersion: cbctl/v1\nprojects:\n  - name: a\n  - name: b\n")
+	ed.RemoveProject("a")
+	if got := ed.ProjectNames(); len(got) != 1 || got[0] != "b" {
+		t.Errorf("projects = %v", got)
+	}
+}

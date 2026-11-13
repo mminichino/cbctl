@@ -125,3 +125,37 @@ func TestConfigureShowJSONRedacts(t *testing.T) {
 		t.Fatalf("json: %v body=%q", err, got)
 	}
 }
+
+func TestConfigureShowConfigFileSource(t *testing.T) {
+	redact.Reset()
+	t.Cleanup(redact.Reset)
+	home := t.TempDir()
+	t.Setenv("CBCTL_HOME", home)
+	t.Setenv("CAPELLA_API_KEY", "env-secret-zzzz")
+	t.Setenv("CBCTL_CONFIG", "")
+	keyringFactory = func() settings.Keyring { return settings.NewMemKeyring() }
+	t.Cleanup(func() { keyringFactory = func() settings.Keyring { return settings.OSKeyring{} } })
+	store := settings.ProfileStore{Path: settings.ProfilesPath(home)}
+	if err := store.Save(map[string]settings.Profile{"default": {ConfigFile: "/work/prod.yaml"}}); err != nil {
+		t.Fatal(err)
+	}
+
+	show := func(args ...string) string {
+		var out strings.Builder
+		rootCmd.SetArgs(append([]string{"configure", "show", "--profile", "default"}, args...))
+		rootCmd.SetOut(&out)
+		rootCmd.SetErr(io.Discard)
+		if err := rootCmd.Execute(); err != nil {
+			t.Fatal(err)
+		}
+		return out.String()
+	}
+	got := show()
+	if !strings.Contains(got, "/work/prod.yaml") || !strings.Contains(got, "config file") {
+		t.Errorf("show must list the profile's config file:\n%s", got)
+	}
+	t.Setenv("CBCTL_CONFIG", "/tmp/env.yaml")
+	if got := show(); !strings.Contains(got, "/tmp/env.yaml") {
+		t.Errorf("CBCTL_CONFIG must override the profile:\n%s", got)
+	}
+}

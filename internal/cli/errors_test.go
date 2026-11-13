@@ -27,6 +27,7 @@ func TestHandleError(t *testing.T) {
 	}{
 		{"nil", nil, ExitOK, ""},
 		{"canceled", context.Canceled, ExitInterrupted, ""},
+		{"changes", &CLIError{Code: ExitChanges}, ExitChanges, ""},
 		{"cli", Errorf(ExitConfigInvalid, "fix it", "bad config sk-secret-key-9999"), ExitConfigInvalid, "***"},
 		{"api", &capellaapi.APIError{Status: 404, Message: "missing", Method: "GET", Path: "/x"}, ExitError, "404"},
 		{"transport", &capellaapi.TransportError{Msg: "down"}, ExitError, "down"},
@@ -47,6 +48,9 @@ func TestHandleError(t *testing.T) {
 			out := buf.String()
 			if strings.Contains(out, "sk-secret-key-9999") {
 				t.Fatalf("secret leaked: %q", out)
+			}
+			if tc.name == "changes" && out != "" {
+				t.Fatalf("a bare exit code must print nothing, got %q", out)
 			}
 			if tc.substr != "" && !strings.Contains(out, tc.substr) {
 				t.Fatalf("stderr=%q want substr %q", out, tc.substr)

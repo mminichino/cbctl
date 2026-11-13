@@ -19,6 +19,7 @@ const (
 	SourceFlag     = "flag"
 	SourceEnv      = "env"
 	SourceProfile  = "profile"
+	SourceFile     = "config file"
 	SourceKeychain = "keychain"
 	SourceDefault  = "default"
 	SourceNone     = "not set"
@@ -32,6 +33,7 @@ const (
 	envOrgID        = "CAPELLA_ORG_ID"
 	envAPIBaseURL   = "CAPELLA_API_BASE_URL"
 	envProfile      = "CBCTL_PROFILE"
+	envConfig       = "CBCTL_CONFIG"
 	errAPIKeyNotSet = "Capella API key not set; use --token, set CAPELLA_API_KEY (or put it in .env), or run 'cbctl configure'"
 )
 
@@ -50,11 +52,14 @@ func (v Value) IsSet() bool { return v.Value != "" }
 
 // Settings holds resolved Capella connection settings.
 type Settings struct {
-	Profile  string
-	APIKey   Value
-	OrgID    Value
-	BaseURL  Value
-	Warnings []string
+	Profile string
+	APIKey  Value
+	OrgID   Value
+	BaseURL Value
+	// ConfigFile is the capella.yaml path from --config, CBCTL_CONFIG or the profile. It is empty
+	// when none names one; file discovery then falls back to ./capella.yaml.
+	ConfigFile Value
+	Warnings   []string
 }
 
 // Inputs are already-parsed command-line values plus injectable dependencies.
@@ -63,9 +68,15 @@ type Inputs struct {
 	Token   string
 	OrgID   string
 	APIHost string // set only when --api-host was explicitly changed
-	Env     func(string) string
-	Home    string
-	Keyring Keyring
+	// ConfigFile is the --config flag value.
+	ConfigFile string
+	// FileOrgID is the organizationId declared in the config file; it is the last resort for the
+	// organization (flag, environment and profile win). FileOrgSource names the file.
+	FileOrgID     string
+	FileOrgSource string
+	Env           func(string) string
+	Home          string
+	Keyring       Keyring
 }
 
 // Resolve applies precedence and sanitizes API key / base URL.
@@ -104,6 +115,10 @@ func Resolve(in Inputs) (*Settings, error) {
 	}
 
 	org := resolveOrgID(in.OrgID, env, profile, profileName, profileOK)
+	if !org.IsSet() && in.FileOrgID != "" {
+		org = Value{Value: in.FileOrgID, Source: SourceFile, Detail: in.FileOrgSource}
+	}
+	configFile := resolveConfigFile(in.ConfigFile, env, profile, profileName, profileOK)
 
 	baseRaw, baseSrc, baseDetail := resolveBaseURLRaw(in.APIHost, env, profile, profileName, profileOK)
 	baseNorm, err := NormalizeBaseURL(baseRaw)
@@ -113,12 +128,42 @@ func Resolve(in Inputs) (*Settings, error) {
 	base := Value{Value: baseNorm, Source: baseSrc, Detail: baseDetail}
 
 	return &Settings{
-		Profile:  profileName,
-		APIKey:   apiKey,
-		OrgID:    org,
-		BaseURL:  base,
-		Warnings: warnings,
+		Profile:    profileName,
+		APIKey:     apiKey,
+		OrgID:      org,
+		BaseURL:    base,
+		ConfigFile: configFile,
+		Warnings:   warnings,
 	}, nil
+}
+
+func resolveConfigFile(flag string, env func(string) string, profile Profile, profileName string, profileOK bool) Value {
+	if flag != "" {
+		return Value{Value: flag, Source: SourceFlag}
+	}
+	if v := env(envConfig); v != "" {
+		return Value{Value: v, Source: SourceEnv, Detail: envConfig}
+	}
+	if profileOK && profile.ConfigFile != "" {
+		return Value{Value: profile.ConfigFile, Source: SourceProfile, Detail: profileName}
+	}
+	return Value{Source: SourceNone}
+}
+
+// LoadProfile returns the profile named by flag, CBCTL_PROFILE or "default" (empty when it does
+// not exist), so callers can use its settings before the full resolution runs.
+func LoadProfile(flag string, env func(string) string, home string) (Profile, error) {
+	if env == nil {
+		env = os.Getenv
+	}
+	if home == "" {
+		home = HomeDir(env)
+	}
+	profiles, err := ProfileStore{Path: ProfilesPath(home)}.Load()
+	if err != nil {
+		return Profile{}, err
+	}
+	return profiles[firstNonEmpty(flag, env(envProfile), defaultProfile)], nil
 }
 
 func resolveAPIKey(token string, env func(string) string, kr Keyring, profile string, profileOK bool) (Value, []string) {

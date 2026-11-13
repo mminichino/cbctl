@@ -14,6 +14,7 @@ import (
 type Profile struct {
 	OrganizationID string `yaml:"organizationId,omitempty"`
 	APIBaseURL     string `yaml:"apiBaseUrl,omitempty"`
+	ConfigFile     string `yaml:"configFile,omitempty"`
 }
 
 type profilesFile struct {

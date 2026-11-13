@@ -29,6 +29,14 @@ func newCapellaCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaImportCmd())
 	cmd.AddCommand(newConfigureCmd())
 	cmd.AddCommand(newCapellaJanitorCmd())
+	cmd.AddCommand(newCapellaValidateCmd())
+	cmd.AddCommand(newCapellaPlanCmd())
+	cmd.AddCommand(newCapellaApplyCmd())
+	cmd.AddCommand(newCapellaEnvDestroyCmd())
+	cmd.AddCommand(newCapellaDriftCmd())
+	cmd.AddCommand(newCapellaSyncCmd())
+	cmd.AddCommand(newCapellaInitCmd())
+	cmd.AddCommand(newCapellaGuideCmd())
 	return cmd
 }
 

@@ -303,6 +303,26 @@ func (e *Editor) AddProject(obj Obj) {
 	seq.Content = append(seq.Content, ToNode(obj, "projects"))
 }
 
+// RemoveProject removes the project with the given name, converting to the projects: form first.
+// It reports whether the project was found.
+func (e *Editor) RemoveProject(name string) bool {
+	if _, ok := e.FindProject(name); !ok {
+		return false
+	}
+	e.EnsureProjects()
+	seq := e.projectsNode()
+	for i, p := range seq.Content {
+		if v, _ := mapGet(p, "name"); scalarString(v) == name {
+			seq.Content = append(seq.Content[:i], seq.Content[i+1:]...)
+			if len(seq.Content) == 0 {
+				seq.Style = yaml.FlowStyle
+			}
+			return true
+		}
+	}
+	return false
+}
+
 // ---- clusters
 
 // clustersNode returns the clusters sequence that belongs to project, creating it when create is

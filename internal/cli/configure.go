@@ -23,6 +23,7 @@ type configureFlags struct {
 	orgID       string
 	apiHost     string
 	apiKeyStdin bool
+	configFile  string
 	yes         bool
 	output      string
 }
@@ -44,6 +45,7 @@ func newConfigureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&f.orgID, "org-id", "", "Organization ID")
 	cmd.Flags().StringVar(&f.apiHost, "api-host", "", "Capella API host or URL")
 	cmd.Flags().BoolVar(&f.apiKeyStdin, "api-key-stdin", false, "Read API key from stdin")
+	cmd.Flags().StringVar(&f.configFile, "config-file", "", "Path of the capella.yaml this profile uses")
 	cmd.Flags().StringVarP(&f.output, "output", "o", "text", "Output format: text|json")
 
 	listCmd := &cobra.Command{
@@ -180,7 +182,11 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	if profiles == nil {
 		profiles = map[string]settings.Profile{}
 	}
-	profiles[profile] = settings.Profile{OrganizationID: orgID, APIBaseURL: base}
+	configFile := profiles[profile].ConfigFile
+	if cmd.Flags().Changed("config-file") {
+		configFile = f.configFile
+	}
+	profiles[profile] = settings.Profile{OrganizationID: orgID, APIBaseURL: base, ConfigFile: configFile}
 	if err := store.Save(profiles); err != nil {
 		_ = kr.Delete(profile)
 		return err
@@ -189,11 +195,15 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	if f.output == "json" {
 		enc := json.NewEncoder(cmd.OutOrStdout())
 		enc.SetIndent("", "  ")
-		return enc.Encode(map[string]string{
+		doc := map[string]string{
 			"profile":        profile,
 			"organizationId": orgID,
 			"apiBaseUrl":     base,
-		})
+		}
+		if configFile != "" {
+			doc["configFile"] = configFile
+		}
+		return enc.Encode(doc)
 	}
 	logging.Info("Saved profile %q (organization %s %s)", profile, orgName, orgID)
 	return nil
@@ -254,7 +264,7 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 }
 
 func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
-	resolved, err := settings.Resolve(settings.Inputs{Profile: f.profile})
+	resolved, err := settings.Resolve(settings.Inputs{Profile: f.profile, ConfigFile: flagIfChanged(cmd, "config")})
 	if err != nil {
 		return err
 	}
@@ -274,6 +284,7 @@ func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
 		{Field: "api key", Value: redact.MaskTail(resolved.APIKey.Value), Source: src(resolved.APIKey)},
 		{Field: "organization", Value: orNotSet(resolved.OrgID.Value), Source: src(resolved.OrgID)},
 		{Field: "api base URL", Value: resolved.BaseURL.Value, Source: src(resolved.BaseURL)},
+		{Field: "config file", Value: orNotSet(resolved.ConfigFile.Value), Source: src(resolved.ConfigFile)},
 	}
 	if f.output == "json" {
 		enc := json.NewEncoder(cmd.OutOrStdout())

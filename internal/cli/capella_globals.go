@@ -60,6 +60,7 @@ func addCapellaGlobalFlags(cmd *cobra.Command) {
 	pf.Duration("timeout", defaultTimeout, "Maximum time to wait for asynchronous operations (for example 90m, 2h)")
 	pf.String("log-level", "info", "Log level: error|warn|info|debug")
 	pf.String("profile", "", "Configuration profile name")
+	pf.StringP("config", "c", "", "Path of capella.yaml (env CBCTL_CONFIG; default ./capella.yaml)")
 }
 
 // readGlobals reads and validates the persistent flags as seen by cmd. A flag the command does
@@ -167,6 +168,19 @@ type runtime struct {
 // newRuntime builds the runtime for cmd: it applies the global flags, resolves settings, creates
 // the API client and resolves the organization (auto-discovering it when exactly one is visible).
 func newRuntime(cmd *cobra.Command, f *apiFlags) (*runtime, error) {
+	return newRuntimeWith(cmd, f, runtimeExtras{})
+}
+
+// runtimeExtras are the inputs only the declarative commands have: what the config file declares.
+type runtimeExtras struct {
+	// FileOrgID is the organizationId of capella.yaml, the last resort for the organization.
+	FileOrgID     string
+	FileOrgSource string
+}
+
+// newRuntimeWith is newRuntime with the organization declared in the config file folded into the
+// precedence (flag, environment, profile, file).
+func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runtime, error) {
 	g, err := readGlobals(cmd)
 	if err != nil {
 		return nil, err
@@ -184,10 +198,13 @@ func newRuntime(cmd *cobra.Command, f *apiFlags) (*runtime, error) {
 	}
 
 	resolved, err := settings.Resolve(settings.Inputs{
-		Profile: g.Profile,
-		Token:   f.token,
-		OrgID:   f.orgID,
-		APIHost: flagIfChanged(cmd, "api-host"),
+		Profile:       g.Profile,
+		Token:         f.token,
+		OrgID:         f.orgID,
+		APIHost:       flagIfChanged(cmd, "api-host"),
+		ConfigFile:    flagIfChanged(cmd, "config"),
+		FileOrgID:     extra.FileOrgID,
+		FileOrgSource: extra.FileOrgSource,
 	})
 	if err != nil {
 		return nil, Errorf(ExitConfigInvalid, "", "%v", err)

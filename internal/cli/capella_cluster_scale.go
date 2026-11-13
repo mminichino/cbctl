@@ -73,6 +73,7 @@ func newCapellaClusterScaleCmd() *cobra.Command {
 	cmd.Flags().IntVar(&o.min, "min", 0, "Lowest node count --step may reach (default: the group's limit)")
 	cmd.Flags().IntVar(&o.max, "max", 0, "Highest node count --step may reach (default: the group's limit)")
 	cmd.Flags().BoolVar(&o.skipCapacity, "skip-capacity-check", false, "Scale in even when capacity cannot be verified")
+	wrapManaged(cmd, addManagedFlags(cmd), managedClusterScale(&o))
 	return cmd
 }
 
