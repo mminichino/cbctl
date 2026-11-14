@@ -254,6 +254,9 @@ func statsFromObj(o Obj) *clusterStats {
 }
 
 func (r *bucketRec) Observe(ctx context.Context, rc *plan.RunContext, parent *plan.Action) ([]plan.Observed, error) {
+	if clusterContentsUnavailable(parent) {
+		return nil, nil
+	}
 	pid, cid := clusterIDs(parent)
 	if err := needIDs("bucket", pid, cid); err != nil {
 		return nil, err

@@ -48,6 +48,24 @@ func strOf(o Obj, k string) string {
 	return s
 }
 
+// clusterContentsUnavailable is true when Capella rejects reads of buckets, credentials, and
+// scopes (turned off / turning off / turning on). Observe must return empty rather than fail the plan.
+func clusterContentsUnavailable(cluster *plan.Action) bool {
+	if cluster == nil {
+		return false
+	}
+	state := ""
+	if cluster.Observed != nil {
+		state = strOf(cluster.Observed.Body, "currentState")
+	}
+	if state == "" {
+		if s, ok := cluster.Data["state"].(string); ok {
+			state = s
+		}
+	}
+	return OffStates[state] || state == "turningOn"
+}
+
 // objOf returns v as a mapping, or nil.
 func objOf(v any) Obj {
 	o, _ := plan.AsObj(v)

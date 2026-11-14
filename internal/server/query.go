@@ -88,6 +88,7 @@ func isRetryableIndexError(err error) bool {
 		"keyspace not found",
 		"indexing.error",
 		"query service is not available",
+		"service not available", // Capella/Server often omits the "query " prefix
 		"service unavailable",
 		"channel_closed",
 		"no_more_retries",

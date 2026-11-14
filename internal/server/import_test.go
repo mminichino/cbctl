@@ -93,6 +93,9 @@ func TestIsRetryableIndexError(t *testing.T) {
 	if !isRetryableIndexError(errString("rebalance in progress")) {
 		t.Fatal("expected retryable")
 	}
+	if !isRetryableIndexError(errString("service not available | CREATE PRIMARY INDEX")) {
+		t.Fatal("expected Capella/Server 'service not available' to be retryable")
+	}
 	if isRetryableIndexError(errString("index already exists")) {
 		t.Fatal("expected non-retryable")
 	}

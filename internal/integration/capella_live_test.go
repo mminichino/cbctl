@@ -103,13 +103,23 @@ func (l *liveCapella) exec(dir string, args ...string) (stdout, stderr string, e
 	return o.String(), e.String(), err
 }
 
+// janitorPrefix is the --prefix passed to janitor (must end with '-').
+func (l *liveCapella) janitorPrefix() string {
+	p := l.prefix
+	if !strings.HasSuffix(p, "-") {
+		p += "-"
+	}
+	return p
+}
+
 // cleanup registers the janitor: everything the run created lives in a project starting with the
 // run prefix, so one cascading delete removes it, and a failure names what is left behind.
 func (l *liveCapella) cleanup() {
 	l.t.Cleanup(func() {
-		if _, errOut, err := l.exec("", "janitor", "--prefix", l.prefix); err != nil {
+		prefix := l.janitorPrefix()
+		if _, errOut, err := l.exec("", "janitor", "--prefix", prefix, "--older-than-hours", "0", "--yes"); err != nil {
 			l.t.Errorf("LEFTOVERS: cleanup of projects starting with %q failed: %v\n%s\nrun: cbctl capella janitor --prefix %s --yes",
-				l.prefix, err, errOut, l.prefix)
+				prefix, err, errOut, prefix)
 		}
 	})
 }
@@ -136,11 +146,15 @@ func TestCapellaLive(t *testing.T) {
 		l.run("cluster", "list")
 	})
 
-	// §13.4: sync --stdout of the sandbox org parses back through LoadText, and plan of that
-	// output is "No changes". Runs whenever the key is present (read-only toward Capella).
+	// §13.4: sync --stdout of the project we just created parses back through LoadText, and plan
+	// of that output is clean. Scoped to --project so leftover turned-off clusters in the org
+	// cannot fail the round-trip (Observe also skips hibernated clusters).
 	t.Run("sync-plan-roundtrip", func(t *testing.T) {
 		dir := t.TempDir()
-		out := l.run("sync", "--stdout")
+		out, errOut, err := l.exec("", "sync", "--stdout", "--project", project)
+		if err != nil {
+			t.Fatalf("cbctl capella sync --stdout --project %s: %v\nstdout:\n%s\nstderr:\n%s", project, err, out, errOut)
+		}
 		cfg, err := capellafile.LoadText(out, "stdout", dir, os.Getenv)
 		if err != nil {
 			t.Fatalf("LoadText(sync --stdout): %v\n%s", err, out)
@@ -152,7 +166,10 @@ func TestCapellaLive(t *testing.T) {
 		if err := os.WriteFile(path, []byte(out), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		planOut := l.runIn(dir, "plan")
+		planOut, planErrOut, planErr := l.exec(dir, "plan")
+		if planErr != nil {
+			t.Fatalf("cbctl capella plan (dir=%s): %v\nstdout:\n%s\nstderr:\n%s", dir, planErr, planOut, planErrOut)
+		}
 		if !strings.Contains(planOut, "Plan: 0 to add") && !strings.Contains(planOut, "No changes") {
 			t.Fatalf("plan after sync is not clean:\n%s", planOut)
 		}
