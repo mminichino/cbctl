@@ -114,8 +114,8 @@ func TestHermeticGrep(t *testing.T) {
 		"deps.go": true, "run.go": true, "root.go": true, "configure.go": true,
 		"errors.go": true, "flags.go": true,
 		"cluster.go": true, "keyspace.go": true, "keyspace_cmd.go": true,
-		"warnings.go": true, "dotenv.go": true, "profiles.go": true, "settings.go": true,
-		"render.go": true, "files.go": true,
+		// settings bootstrap still uses process env / Setenv for .env compatibility (§2.2).
+		"dotenv.go": true, "profiles.go": true, "settings.go": true,
 	}
 	for _, pkg := range pkgs {
 		dir := filepath.Join(root, pkg)

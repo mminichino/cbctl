@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"github.com/mminichino/cbctl/internal/engine"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,7 +29,7 @@ func SetVersion(v string) {
 }
 
 // Now is the clock of the header comment; tests replace it.
-var Now = func() time.Time { return time.Now().UTC() }
+var Now = func() time.Time { return engine.RealClock{}.Now().UTC() }
 
 func projectNames(data Obj) []string {
 	var names []string

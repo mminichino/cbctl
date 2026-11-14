@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/redact"
 )
 
@@ -66,7 +67,7 @@ func WriteGeneratedCredential(dir, cluster, name, credID, password string, force
 		Name:      name,
 		ID:        credID,
 		Password:  password,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		CreatedAt: engine.RealClock{}.Now().UTC().Format(time.RFC3339),
 	}, "", "  ")
 	if err != nil {
 		return "", err

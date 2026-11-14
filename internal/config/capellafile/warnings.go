@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/presets"
 )
 
@@ -17,7 +18,7 @@ type Notice struct {
 // Warnings returns the valid but probably unintended settings of cfg. "validate" prints them
 // all; "plan" and "apply" only print how many there are.
 func Warnings(cfg *Config) []Notice {
-	return warningsAt(cfg, time.Now())
+	return warningsAt(cfg, engine.RealClock{}.Now())
 }
 
 func onLine(line int) string {
