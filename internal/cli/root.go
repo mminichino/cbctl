@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/mminichino/cbctl/internal/logging"
@@ -37,8 +38,10 @@ func NewRootCmd(d Deps) *cobra.Command {
 	return root
 }
 
+var enablePrefixMatchingOnce sync.Once
+
 func buildRootCmd() *cobra.Command {
-	cobra.EnablePrefixMatching = true
+	enablePrefixMatchingOnce.Do(func() { cobra.EnablePrefixMatching = true })
 	root := &cobra.Command{
 		Use:   "cbctl",
 		Short: "Provision Couchbase Server and Capella clusters, buckets, scopes, and collections",

@@ -296,11 +296,12 @@ type params map[string]string
 type handler func(c *rctx)
 
 type route struct {
-	method string
-	re     *regexp.Regexp
-	names  []string
-	h      handler
-	anyOrg bool // does not require the {org} segment to be f.OrgID
+	method  string
+	pattern string // original {param} template, for inventory parity
+	re      *regexp.Regexp
+	names   []string
+	h       handler
+	anyOrg  bool // does not require the {org} segment to be f.OrgID
 }
 
 type failure struct {
@@ -336,7 +337,18 @@ func (f *Fake) add(method, pattern string, h handler, anyOrg bool) {
 		names = append(names, segment.FindStringSubmatch(m)[1])
 		return `([^/]+)`
 	}) + "$"
-	f.routes = append(f.routes, route{method: method, re: regexp.MustCompile(expr), names: names, h: h, anyOrg: anyOrg})
+	f.routes = append(f.routes, route{method: method, pattern: pattern, re: regexp.MustCompile(expr), names: names, h: h, anyOrg: anyOrg})
+}
+
+// InventoryRoutes returns every registered method+path template (Phase 4 inventory parity).
+func (f *Fake) InventoryRoutes() []capellaapi.Endpoint {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]capellaapi.Endpoint, 0, len(f.routes))
+	for _, rt := range f.routes {
+		out = append(out, capellaapi.Endpoint{Method: rt.method, Path: rt.pattern})
+	}
+	return out
 }
 
 type statusRecorder struct {
