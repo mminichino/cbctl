@@ -464,7 +464,7 @@ func (f *Fake) InventoryRoutes() []capellaapi.Endpoint {
 
 type statusRecorder struct {
 	http.ResponseWriter
-	status  int
+	status   int
 	hijacked bool
 }
 
@@ -594,7 +594,7 @@ func (f *Fake) serveRoute(c *rctx, r *http.Request) {
 // discardingWriter swallows writes so ApplyThenDrop can mutate state without sending a response.
 type discardingWriter struct{}
 
-func (discardingWriter) Header() http.Header        { return make(http.Header) }
+func (discardingWriter) Header() http.Header         { return make(http.Header) }
 func (discardingWriter) Write(b []byte) (int, error) { return len(b), nil }
 func (discardingWriter) WriteHeader(int)             {}
 

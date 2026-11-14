@@ -130,7 +130,7 @@ func TestFake_Seeds_AndTransition(t *testing.T) {
 		t.Fatalf("after SetTransition: %q", st)
 	}
 	f.Advance(10 * time.Second)
-	cl, _, err := c.GetCluster(ctx, pid, cid)
+	cl, err := c.GetCluster(ctx, pid, cid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,10 +141,10 @@ func TestFake_Seeds_AndTransition(t *testing.T) {
 	other := f.SeedCluster(pid, "doomed", "healthy")
 	f.SettlePolls(0)
 	f.FailDestroy(other)
-	if err := c.DeleteCluster(ctx, pid, other); err != nil {
+	if err := c.DeleteCluster(ctx, pid, other, false); err != nil {
 		t.Fatal(err)
 	}
-	got, _, err := c.GetCluster(ctx, pid, other)
+	got, err := c.GetCluster(ctx, pid, other)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,5 +156,5 @@ func TestFake_Seeds_AndTransition(t *testing.T) {
 // TestFake_* aliases for existing behavioural coverage (Phase 4 §3.8 naming).
 func TestFake_Auth_BearerRequired(t *testing.T) { TestAuthAndOrganizations(t) }
 func TestFake_Projects_CRUD(t *testing.T)       { TestProjectCRUD(t) }
-func TestFake_Clusters_Lifecycle(t *testing.T)   { TestClusterLifecycle(t) }
-func TestFake_Faults_FailNext(t *testing.T)      { TestFailNextAndRequestLog(t) }
+func TestFake_Clusters_Lifecycle(t *testing.T)  { TestClusterLifecycle(t) }
+func TestFake_Faults_FailNext(t *testing.T)     { TestFailNextAndRequestLog(t) }
