@@ -689,15 +689,31 @@ func (c *rctx) page(key string, items []Obj) {
 	if last < 1 {
 		last = 1
 	}
-	pages := Obj{"page": page, "previous": max(page-1, 0), "last": last, "perPage": per, "totalItems": total}
+	pages := Obj{"page": page, "last": last, "perPage": per, "totalItems": total}
+	if page > 1 {
+		pages["previous"] = page - 1
+	}
 	if end < total {
 		pages["next"] = page + 1
+	}
+	// Capella always returns first/last/previous/next href keys (empty string when N/A).
+	href := fmt.Sprintf("%s{}?page=%%d&perPage=%d", c.f.URL, per)
+	prev, next := "", ""
+	if page > 1 {
+		prev = fmt.Sprintf(href, page-1)
+	}
+	if end < total {
+		next = fmt.Sprintf(href, page+1)
+	}
+	hrefs := Obj{
+		"first": fmt.Sprintf(href, 1), "last": fmt.Sprintf(href, last),
+		"previous": prev, "next": next,
 	}
 	out := make([]Obj, 0, end-start)
 	for _, it := range items[start:end] {
 		out = append(out, clone(it))
 	}
-	c.writeJSON(http.StatusOK, Obj{"cursor": Obj{"pages": pages, "hrefs": Obj{}}, key: out})
+	c.writeJSON(http.StatusOK, Obj{"cursor": Obj{"pages": pages, "hrefs": hrefs}, key: out})
 }
 
 // ---- small utilities -----------------------------------------------------------------------
