@@ -43,7 +43,7 @@ func TestLifecycle_CAP032_AC1(t *testing.T) {
 
 	dir := t.TempDir()
 	cfg := filepath.Join(dir, "capella.yaml")
-	body := integration.SingleNodeConfig(project, "ci-life-01", "10.40.0.0/24", lifecycleExtra)
+	body := integration.SingleNodeConfig(project, "life1-"+tg.Run, integration.UniqueCIDR(tg.Run, 'l'), lifecycleExtra)
 	if err := os.WriteFile(cfg, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
