@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -972,25 +973,23 @@ func initInterview(w *initIO, a *initAnswers, freeName func(string) []string, re
 		a.officeHours = ""
 	}
 
-	var anyIP bool
 	if err := ask("Allowed IP ranges (CIDR, comma-separated; empty: none)", strings.Join(a.cidrs, ","), nil, []string{"clusters[0].allowedCidrs"},
 		func(v string) []string {
 			a.cidrs = nil
+			a.allowAnyIP = false
 			for _, c := range parseCIDRs(v) {
 				a.cidrs = append(a.cidrs, canonicalOrRaw(c))
-				anyIP = anyIP || c == "0.0.0.0/0" || c == "::/0"
 			}
-			a.allowAnyIP = false
+			if hasAnyIP(a.cidrs) {
+				ok, err := w.yesNo("0.0.0.0/0 lets any IP address connect. Allow it?", false)
+				if err != nil {
+					return []string{err.Error()}
+				}
+				a.allowAnyIP = ok
+			}
 			return nil
 		}, nil); err != nil {
 		return err
-	}
-	if anyIP {
-		ok, err := w.yesNo("0.0.0.0/0 lets any IP address connect. Allow it?", false)
-		if err != nil {
-			return err
-		}
-		a.allowAnyIP = ok
 	}
 
 	bucketPath := []string{"clusters[0].buckets"}
@@ -1026,11 +1025,26 @@ func initInterview(w *initIO, a *initAnswers, freeName func(string) []string, re
 	return ask("Password environment variable", a.passwordEnvName(), nil, credPath, str(&a.passwordEnv), envNameCheck)
 }
 
+func hasAnyIP(cidrs []string) bool {
+	for _, c := range cidrs {
+		if c == "0.0.0.0/0" || c == "::/0" {
+			return true
+		}
+	}
+	return false
+}
+
 // initImport is the "existing Capella project" path: choose the project (and clusters) and write
 // the file with the sync importer.
 func initImport(cmd *cobra.Command, af *apiFlags, f *initFlags, path string, w *initIO) error {
 	rt, err := newRuntimeWith(cmd, af, runtimeExtras{})
 	if err != nil {
+		var ce *CLIError
+		if errors.As(err, &ce) && strings.Contains(ce.Message, "API key not set") {
+			return Errorf(ExitConfigInvalid,
+				"Set CAPELLA_API_KEY (or run 'cbctl configure'), or choose 'new' to describe a new environment without a key.",
+				"importing an existing Capella project needs an API key")
+		}
 		return err
 	}
 	projects, err := rt.Client.ListProjects(rt.Ctx)
