@@ -194,7 +194,7 @@ func New(t testing.TB, opts ...Option) *Fake {
 		f.APIKey = DefaultAPIKey
 	}
 	f.orgs = []Obj{{"id": f.OrgID, "name": "cbctl-fake-org", "description": "fake organization",
-		"preferences": Obj{"sessionDuration": 7200}, "audit": audit(1)}}
+		"preferences": Obj{"sessionDuration": 7200}, "audit": f.audit(1)}}
 	f.routeAll()
 	f.Server = httptest.NewServer(http.HandlerFunc(f.dispatch))
 	f.URL = f.Server.URL
@@ -298,7 +298,7 @@ func (f *Fake) AddOrganization(name string) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id := uuid.NewString()
-	f.orgs = append(f.orgs, Obj{"id": id, "name": name, "audit": audit(1)})
+	f.orgs = append(f.orgs, Obj{"id": id, "name": name, "audit": f.audit(1)})
 	return id
 }
 
