@@ -7,16 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/docgen/apisnap"
 )
 
-// cmdAPIResponses refreshes docs/backlog/api/management-api-v4.0-responses.json from Inventory.
-// Full OpenAPI $ref resolution (Python update-api-responses.py) is left as a follow-up;
-// this keeps the snapshot present and inventory-aligned for --check/make flows.
+// cmdAPIResponses regenerates docs/backlog/api/management-api-v4.0-responses.json from
+// the Capella OpenAPI spec (Go port of capellactl scripts/update-api-responses.py).
+// Also copies the result to internal/capellafake/testdata/ (parity single source).
 func cmdAPIResponses(args []string, stdout, stderr io.Writer) int {
 	var spec string
+	keepRetrieved := false
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
@@ -25,57 +25,85 @@ func cmdAPIResponses(args []string, stdout, stderr io.Writer) int {
 			spec = args[i]
 		case strings.HasPrefix(a, "--spec="):
 			spec = strings.TrimPrefix(a, "--spec=")
+		case a == "--keep-retrieved":
+			keepRetrieved = true
 		case a == "-h" || a == "--help":
-			fmt.Fprint(stdout, "usage: cbdev api responses [--spec FILE_OR_URL]\n")
+			fmt.Fprint(stdout, `usage: cbdev api responses [--spec FILE_OR_URL] [--keep-retrieved]
+
+Regenerate docs/backlog/api/management-api-v4.0-responses.json from the Capella
+Management API OpenAPI document (default: published URL). Copies the same bytes
+to internal/capellafake/testdata/management-api-v4.0-responses.json.
+`)
 			return 0
 		default:
 			fmt.Fprintf(stderr, "cbdev api responses: unknown argument %q\n", a)
 			return 2
 		}
 	}
-	_ = spec // OpenAPI refresh not yet ported; inventory-based stub
 	root, err := findRepoRoot()
 	if err != nil {
 		fmt.Fprintf(stderr, "cbdev api responses: %v\n", err)
 		return 1
 	}
 	out := filepath.Join(root, "docs", "backlog", "api", "management-api-v4.0-responses.json")
-	// Prefer keeping an existing rich snapshot; rewrite only when missing.
-	if _, err := os.Stat(out); err == nil {
-		fmt.Fprintf(stdout, "kept existing %s (%d inventory operations)\n", out, len(capellaapi.Inventory))
-		return 0
+	fakeOut := filepath.Join(root, "internal", "capellafake", "testdata", "management-api-v4.0-responses.json")
+
+	opts := apisnap.Options{SpecSource: spec}
+	if keepRetrieved {
+		if cur, err := os.ReadFile(out); err == nil {
+			var prev apisnap.Document
+			if jsonUnmarshalRetrieved(cur, &prev) && prev.Retrieved != "" {
+				opts.Retrieved = prev.Retrieved
+			}
+		}
 	}
-	type op struct {
-		Method     string         `json:"method"`
-		Path       string         `json:"path"`
-		Documented bool           `json:"documented"`
-		Summary    string         `json:"summary,omitempty"`
-		Responses  map[string]any `json:"responses,omitempty"`
-	}
-	doc := map[string]any{
-		"source":     "internal/capellaapi.Inventory (stub; full OpenAPI resolve not ported)",
-		"apiVersion": "v4.0",
-		"retrieved":  time.Now().UTC().Format("2006-01-02"),
-		"operations": []op{},
-	}
-	ops := make([]op, 0, len(capellaapi.Inventory))
-	for _, e := range capellaapi.Inventory {
-		ops = append(ops, op{Method: e.Method, Path: e.Path, Documented: false})
-	}
-	doc["operations"] = ops
-	raw, err := json.MarshalIndent(doc, "", " ")
+	doc, err := apisnap.Build(opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "cbdev api responses: %v\n", err)
 		return 1
 	}
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+	if err := apisnap.WriteFile(out, doc); err != nil {
+		fmt.Fprintf(stderr, "cbdev api responses: write %s: %v\n", out, err)
+		return 1
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
 		fmt.Fprintf(stderr, "cbdev api responses: %v\n", err)
 		return 1
 	}
-	if err := os.WriteFile(out, append(raw, '\n'), 0o644); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fakeOut), 0o755); err != nil {
 		fmt.Fprintf(stderr, "cbdev api responses: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "written: %s (%d operations; OpenAPI resolve leftover)\n", out, len(ops))
+	if err := os.WriteFile(fakeOut, raw, 0o644); err != nil {
+		fmt.Fprintf(stderr, "cbdev api responses: copy fake testdata: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "written: %s (%d operations)\n", relFromRoot(root, out), len(doc.Operations))
+	fmt.Fprintf(stdout, "copied:  %s\n", relFromRoot(root, fakeOut))
+	if missing := apisnap.Missing(doc); len(missing) > 0 {
+		fmt.Fprintf(stderr, "not in the spec:\n  %s\n", strings.Join(missing, "\n  "))
+		return 1
+	}
 	return 0
+}
+
+func jsonUnmarshalRetrieved(raw []byte, doc *apisnap.Document) bool {
+	type head struct {
+		Retrieved string `json:"retrieved"`
+	}
+	var h head
+	if err := json.Unmarshal(raw, &h); err != nil {
+		return false
+	}
+	doc.Retrieved = h.Retrieved
+	return true
+}
+
+func relFromRoot(root, path string) string {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return path
+	}
+	return rel
 }
