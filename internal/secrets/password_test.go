@@ -36,6 +36,7 @@ func TestMeetsRules(t *testing.T) {
 		{"forbidden &", "Abcdef1!&", false},
 		{"forbidden |", "Abcdef1!|", false},
 		{"forbidden pound", "Abcdef1!£", false},
+		{"forbidden equals", "Abcdef1!=", false},
 		{"length counts runes", "Aa1!é", false},
 	}
 	for _, tc := range tests {
@@ -57,6 +58,9 @@ func TestGeneratePasswordPolicy(t *testing.T) {
 		}
 		if strings.ContainsAny(pw, Forbidden) {
 			t.Fatalf("generated password %q contains a forbidden character", pw)
+		}
+		if strings.Contains(pw, "=") {
+			t.Fatalf("generated password %q contains Capella-rejected '='", pw)
 		}
 	}
 }

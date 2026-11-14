@@ -27,7 +27,7 @@ func TestClusterLifecycle_CAP014_AC7(t *testing.T) {
 	extra := `
     deletionProtection: false
 `
-	body := integration.SingleNodeConfig(project, cluster, "10.41.0.0/24", extra)
+	body := integration.SingleNodeConfig(project, cluster, integration.UniqueCIDR(tg.Run, 'c'), extra)
 	if err := os.WriteFile(cfg, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}

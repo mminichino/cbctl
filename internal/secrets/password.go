@@ -2,7 +2,8 @@
 //
 // The rules come from Capella's Management API (CreateDatabaseCredentialRequest.password): at
 // least 8 characters with an upper-case letter, a lower-case letter, a number and a special
-// character, and none of `< > ; . * & | £`. It is a port of capellactl's output/password_gen.py.
+// character, and none of `< > ; . * & | £ =`. It is a port of capellactl's output/password_gen.py
+// with `=` also forbidden (Capella rejects it at create time).
 package secrets
 
 import (
@@ -15,12 +16,13 @@ import (
 
 const (
 	// Forbidden lists the characters Capella rejects in a password.
-	Forbidden = "<>;.*&|£"
+	// Capella also rejects '='; keep it out of Special and reject it in MeetsRules.
+	Forbidden = "<>;.*&|£="
 	// Special is the alphabet of special characters used by generated passwords. It contains no
 	// Forbidden character.
-	Special = "!@#$%^()-_=+[]{}:,?"
+	Special = "!@#$%^()-_+[]{}:,?"
 	// Rules is the human-readable password policy, for error messages.
-	Rules = "min 8, upper, lower, digit, special, none of < > ; . * & | £"
+	Rules = "min 8, upper, lower, digit, special, none of < > ; . * & | £ ="
 
 	upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	lower = "abcdefghijklmnopqrstuvwxyz"

@@ -55,7 +55,7 @@ type passwordFlags struct {
 }
 
 const passwordRulesHelp = "Password rules: at least 8 characters with an upper-case letter, a lower-case letter, a digit and a " +
-	"special character, and none of < > ; . * & | £. Without --password-env or --password-file cbctl generates a " +
+	"special character, and none of < > ; . * & | £ =. Without --password-env or --password-file cbctl generates a " +
 	"32-character password and prints it once."
 
 func (a *accessFlags) add(cmd *cobra.Command) {

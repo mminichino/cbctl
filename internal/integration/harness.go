@@ -270,7 +270,7 @@ func tryApplyShared(tg *Target) (*Shared, error) {
 		Cluster: "ci-sh-" + tg.Run,
 		Bucket:  "it-data",
 	}
-	body := MultiNodeConfig(s.Project, s.Cluster, s.Bucket, os.Getenv("CAPELLA_SANDBOX_CLIENT_CIDR"))
+	body := MultiNodeConfig(s.Project, s.Cluster, s.Bucket, UniqueCIDR(tg.Run, 's'), os.Getenv("CAPELLA_SANDBOX_CLIENT_CIDR"))
 	if err := os.WriteFile(s.Cfg, []byte(body), 0o600); err != nil {
 		return nil, err
 	}
@@ -300,6 +300,22 @@ func (s *Shared) ImportInto(tb testing.TB, tg *Target, cfg string, cluster bool)
 	}
 }
 
+// UniqueCIDR returns a run-unique RFC1918 /24 for Capella VPC CIDRs.
+// purpose salts shared vs lifecycle clusters in the same run so they do not collide.
+func UniqueCIDR(run string, purpose byte) string {
+	var sum uint32 = 2166136261
+	for i := 0; i < len(run); i++ {
+		sum ^= uint32(run[i])
+		sum *= 16777619
+	}
+	sum ^= uint32(purpose)
+	sum *= 16777619
+	// 10.16.0.0–10.239.255.0/24 keeps clear of very common low 10.x leftovers.
+	a := 16 + int(sum%224)
+	b := int((sum / 224) % 256)
+	return fmt.Sprintf("10.%d.%d.0/24", a, b)
+}
+
 // SingleNodeConfig is the cheapest single-node AWS layout (AC1).
 func SingleNodeConfig(project, cluster, cidr, extra string) string {
 	return fmt.Sprintf(`apiVersion: cbctl/v1
@@ -324,7 +340,7 @@ clusters:
 }
 
 // MultiNodeConfig is the shared 3-node AWS layout used by per-feature tests (AC2).
-func MultiNodeConfig(project, cluster, bucket, clientCIDR string) string {
+func MultiNodeConfig(project, cluster, bucket, vpcCIDR, clientCIDR string) string {
 	cidrs := ""
 	if clientCIDR != "" {
 		cidrs = fmt.Sprintf("    allowedCidrs:\n      - cidr: %s\n        comment: this CI runner (CAP-032)\n", clientCIDR)
@@ -338,7 +354,7 @@ clusters:
   - name: %s
     description: cbctl nightly, shared by the per-feature tests
     configurationType: multiNode
-    cloudProvider: { type: aws, region: us-east-1, cidr: 10.20.0.0/24 }
+    cloudProvider: { type: aws, region: us-east-1, cidr: %s }
     availability: { type: multi }
     support: { plan: developer pro, timezone: PT }
     serviceGroups:
@@ -350,5 +366,5 @@ clusters:
 %s    buckets:
       - name: %s
         memoryAllocationInMb: 256
-`, project, cluster, cidrs, bucket)
+`, project, cluster, vpcCIDR, cidrs, bucket)
 }
