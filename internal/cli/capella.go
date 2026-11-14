@@ -37,6 +37,7 @@ func newCapellaCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaSyncCmd())
 	cmd.AddCommand(newCapellaInitCmd())
 	cmd.AddCommand(newCapellaGuideCmd())
+	installManagedModes(cmd)
 	return cmd
 }
 

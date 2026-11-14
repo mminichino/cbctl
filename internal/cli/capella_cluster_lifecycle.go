@@ -317,6 +317,7 @@ func (rt *runtime) runClusterDelete(name, project string, discard bool) error {
 		return err
 	}
 	if !ok {
+		rt.markCancelled()
 		res.Status = "cancelled"
 		rt.report(res, "cancelled; nothing was deleted")
 		return nil

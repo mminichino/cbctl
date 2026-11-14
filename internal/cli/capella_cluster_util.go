@@ -571,6 +571,7 @@ func confirmTyped(rt *runtime, question, want string) (bool, error) {
 
 // cancelled is the common reply when the user declines a prompt.
 func (rt *runtime) cancelled(v any) {
+	rt.markCancelled()
 	logging.Info("cancelled; nothing was changed")
 	if rt.JSON {
 		rt.Out.Object(v)

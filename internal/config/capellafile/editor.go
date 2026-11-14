@@ -381,6 +381,21 @@ func (e *Editor) FindCluster(name, project string) (proj, cluster *yaml.Node, er
 	return hits[0].proj, hits[0].cluster, nil
 }
 
+// ClusterNodes returns the cluster mappings of project, in either file form.
+func (e *Editor) ClusterNodes(project *yaml.Node) []*yaml.Node {
+	seq := e.clustersNode(project, false)
+	if seq == nil {
+		return nil
+	}
+	var out []*yaml.Node
+	for _, c := range seq.Content {
+		if c.Kind == yaml.MappingNode {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
 // AddCluster appends a cluster to project.
 func (e *Editor) AddCluster(project *yaml.Node, cluster Obj) {
 	seq := e.clustersNode(project, true)
@@ -594,4 +609,66 @@ func (e *Editor) resourceNode(kind, project, name string) *yaml.Node {
 		return nil
 	}
 	return cluster
+}
+
+// ---- generic list edits
+
+// Child returns the value of key in a mapping node, or nil.
+func (e *Editor) Child(node *yaml.Node, key string) *yaml.Node {
+	v, _ := mapGet(node, key)
+	return v
+}
+
+// FindBy returns the item of the list node[listKey] whose scalar field equals value, or nil.
+func (e *Editor) FindBy(node *yaml.Node, listKey, field, value string) *yaml.Node {
+	seq := e.Child(node, listKey)
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		return nil
+	}
+	for _, item := range seq.Content {
+		if v, _ := mapGet(item, field); item.Kind == yaml.MappingNode && scalarString(v) == value {
+			return item
+		}
+	}
+	return nil
+}
+
+// Append adds obj to the list node[listKey], creating the list where the key order puts it.
+func (e *Editor) Append(node *yaml.Node, listKey string, obj any) {
+	seq := e.Child(node, listKey)
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		PutKey(node, listKey, []any{}, inferOrder(node))
+		seq = e.Child(node, listKey)
+	}
+	seq.Style = 0
+	seq.Content = append(seq.Content, ToNode(obj, listKey))
+}
+
+// RemoveBy removes the item of the list node[listKey] whose scalar field equals value and
+// reports whether there was one. A list that becomes empty is removed.
+func (e *Editor) RemoveBy(node *yaml.Node, listKey, field, value string) bool {
+	seq := e.Child(node, listKey)
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		return false
+	}
+	for i, item := range seq.Content {
+		if v, _ := mapGet(item, field); item.Kind == yaml.MappingNode && scalarString(v) == value {
+			seq.Content = append(seq.Content[:i], seq.Content[i+1:]...)
+			if len(seq.Content) == 0 {
+				e.Delete(node, listKey)
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// Decode returns node as plain JSON-compatible data (integral numbers as int64).
+func (e *Editor) Decode(node *yaml.Node) (Obj, error) {
+	var raw map[string]any
+	if err := node.Decode(&raw); err != nil {
+		return nil, err
+	}
+	out, _ := NormalizeNumbers(raw).(map[string]any)
+	return out, nil
 }

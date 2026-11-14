@@ -384,6 +384,9 @@ func managedProjectDelete(direct func(*cobra.Command, []string) error) func(*cob
 		if err := direct(cmd, args); err != nil {
 			return err
 		}
+		if cmd.Annotations[cancelledAnnotation] != "" {
+			return nil
+		}
 		return removeProjectFromFile(cmd, ed, name, false)
 	}
 }
