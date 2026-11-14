@@ -435,7 +435,7 @@ Access comparison in canonical form: `CanonPrivileges` (`read`/`write` aliases),
 
 ```go
 // password.go — the SINGLE implementation (Phase 2's generator calls this).
-const Rules = "min 8, upper, lower, digit, special, none of < > ; . * & | £"
+const Rules = "min 8, upper, lower, digit, special, none of < > ; . * & | £ ="
 func MeetsRules(pw string) bool                     // len>=8 && has upper,lower,digit,non-alphanumeric && none of "<>;.*&|£"
 func GeneratePassword(length int) string            // crypto/rand; one char from each class (upper, lower, digit, special "!@#$%^()-_+[]{}:,?"), rest from all; Fisher–Yates shuffle with crypto/rand; length<8 → 8; Capella forbids `=` so it is not generated
 
