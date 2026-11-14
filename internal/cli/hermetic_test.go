@@ -114,6 +114,7 @@ func TestHermeticGrep(t *testing.T) {
 		"capella_globals.go": true, "capella_output.go": true, "capella_init.go": true,
 		"capella_managed.go": true, "capella_sync.go": true, "capella_env.go": true,
 		"capella_cluster_util.go": true, "capella_credential.go": true,
+		"capella_janitor.go": true,
 		"errors.go": true, "flags.go": true,
 		"cluster.go": true, "keyspace.go": true, "keyspace_cmd.go": true,
 		"warnings.go": true, "dotenv.go": true, "profiles.go": true, "settings.go": true,
