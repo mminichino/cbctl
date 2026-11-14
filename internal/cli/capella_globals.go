@@ -285,7 +285,7 @@ func discoverOrg(ctx context.Context, c *capellaapi.Client) (string, error) {
 
 // cliVersion returns the bare version for the User-Agent ("" when unset).
 func cliVersion() string {
-	if fields := strings.Fields(rootCmd.Version); len(fields) > 0 {
+	if fields := strings.Fields(versionString); len(fields) > 0 {
 		return fields[0]
 	}
 	return ""
