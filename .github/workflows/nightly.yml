@@ -34,7 +34,7 @@ jobs:
       CBCTL_IT_CLUSTERS: "1"
       CBCTL_IT_LOG: integration.log
       CBCTL_IT_REPORT: integration-report.json
-      CBCTL_IT_SECRETS_DIR: ${{ runner.temp }}/cbctl-it-secrets
+      # CBCTL_IT_SECRETS_DIR is set in a step: runner.* is not valid in job-level env.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,7 +46,10 @@ jobs:
           cache: true
 
       - name: Allow this runner on the shared cluster
-        run: echo "CAPELLA_SANDBOX_CLIENT_CIDR=$(curl -fsS https://api.ipify.org)/32" >> "$GITHUB_ENV"
+        run: |
+          echo "CAPELLA_SANDBOX_CLIENT_CIDR=$(curl -fsS https://api.ipify.org)/32" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/cbctl-it-secrets"
+          echo "CBCTL_IT_SECRETS_DIR=$RUNNER_TEMP/cbctl-it-secrets" >> "$GITHUB_ENV"
 
       - name: Integration suite (teardown runs whatever happens)
         run: |
