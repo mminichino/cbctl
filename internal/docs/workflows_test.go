@@ -76,6 +76,15 @@ func TestWorkflowsLint(t *testing.T) {
 	if !strings.Contains(nightlyRaw, "CAPELLA_SANDBOX_") {
 		t.Fatal("nightly.yml should reference CAPELLA_SANDBOX_* secrets")
 	}
+	// runner.* is only valid in step/job contexts that expand expressions for steps;
+	// using it in job-level env makes workflow_dispatch fail with HTTP 422 parse error.
+	if strings.Contains(nightlyRaw, "CBCTL_IT_SECRETS_DIR: ${{ runner.") {
+		t.Fatal("nightly.yml must not set CBCTL_IT_SECRETS_DIR from runner.* in job-level env")
+	}
+	if !strings.Contains(nightlyRaw, "CBCTL_IT_SECRETS_DIR=$RUNNER_TEMP/") &&
+		!strings.Contains(nightlyRaw, "CBCTL_IT_SECRETS_DIR=${RUNNER_TEMP}/") {
+		t.Fatal("nightly.yml should set CBCTL_IT_SECRETS_DIR from $RUNNER_TEMP in a step")
+	}
 }
 
 func TestNOTICEMentionsCapellactl(t *testing.T) {
