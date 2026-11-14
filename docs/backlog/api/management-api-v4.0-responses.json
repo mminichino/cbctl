@@ -10,47 +10,30 @@
    "summary": "List Organizations",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data"
-     ],
      "properties": {
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
-        "required": [
-         "id",
-         "name",
-         "description",
-         "audit",
-         "preferences"
-        ],
         "properties": {
-         "id": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "name": {
-          "type": "string"
-         },
-         "subdomain": {
-          "type": "string"
-         },
-         "description": {
-          "type": "string"
-         },
-         "preferences": {
-          "type": "object",
-          "properties": {
-           "sessionDuration": {
-            "type": "integer",
-            "format": "uint32"
-           }
-          }
-         },
          "audit": {
-          "type": "object",
+          "properties": {
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "createdBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "version": {
+            "type": "integer"
+           }
+          },
           "required": [
            "createdBy",
            "createdAt",
@@ -58,30 +41,47 @@
            "modifiedAt",
            "version"
           ],
+          "type": "object"
+         },
+         "description": {
+          "type": "string"
+         },
+         "id": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "name": {
+          "type": "string"
+         },
+         "preferences": {
           "properties": {
-           "createdBy": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "modifiedBy": {
-            "type": "string"
-           },
-           "modifiedAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "version": {
+           "sessionDuration": {
+            "format": "uint32",
             "type": "integer"
            }
-          }
+          },
+          "type": "object"
+         },
+         "subdomain": {
+          "type": "string"
          }
-        }
-       }
+        },
+        "required": [
+         "id",
+         "name",
+         "description",
+         "audit",
+         "preferences"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -92,39 +92,27 @@
    "summary": "Get Organization",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "id",
-      "name",
-      "description",
-      "audit",
-      "preferences"
-     ],
      "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "name": {
-       "type": "string"
-      },
-      "subdomain": {
-       "type": "string"
-      },
-      "description": {
-       "type": "string"
-      },
-      "preferences": {
-       "type": "object",
-       "properties": {
-        "sessionDuration": {
-         "type": "integer",
-         "format": "uint32"
-        }
-       }
-      },
       "audit": {
-       "type": "object",
+       "properties": {
+        "createdAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "createdBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "version": {
+         "type": "integer"
+        }
+       },
        "required": [
         "createdBy",
         "createdAt",
@@ -132,27 +120,39 @@
         "modifiedAt",
         "version"
        ],
+       "type": "object"
+      },
+      "description": {
+       "type": "string"
+      },
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
+      },
+      "preferences": {
        "properties": {
-        "createdBy": {
-         "type": "string"
-        },
-        "createdAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "modifiedBy": {
-         "type": "string"
-        },
-        "modifiedAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "version": {
+        "sessionDuration": {
+         "format": "uint32",
          "type": "integer"
         }
-       }
+       },
+       "type": "object"
+      },
+      "subdomain": {
+       "type": "string"
       }
-     }
+     },
+     "required": [
+      "id",
+      "name",
+      "description",
+      "audit",
+      "preferences"
+     ],
+     "type": "object"
     }
    }
   },
@@ -163,35 +163,95 @@
    "summary": "List Project",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data",
-      "cursor"
-     ],
      "properties": {
+      "cursor": {
+       "properties": {
+        "hrefs": {
+         "properties": {
+          "first": {
+           "format": "uri",
+           "type": "string"
+          },
+          "last": {
+           "format": "uri",
+           "type": "string"
+          },
+          "next": {
+           "format": "uri",
+           "type": "string"
+          },
+          "previous": {
+           "format": "uri",
+           "type": "string"
+          }
+         },
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "type": "object"
+        },
+        "pages": {
+         "properties": {
+          "last": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
+        }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
+      },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
-        "required": [
-         "id",
-         "description",
-         "name",
-         "audit"
-        ],
         "properties": {
-         "id": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "description": {
-          "type": "string"
-         },
-         "name": {
-          "type": "string"
-         },
          "audit": {
-          "type": "object",
+          "properties": {
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "createdBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "version": {
+            "type": "integer"
+           }
+          },
           "required": [
            "createdBy",
            "createdAt",
@@ -199,95 +259,35 @@
            "modifiedAt",
            "version"
           ],
-          "properties": {
-           "createdBy": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "modifiedBy": {
-            "type": "string"
-           },
-           "modifiedAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "version": {
-            "type": "integer"
-           }
-          }
-         }
-        }
-       }
-      },
-      "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
-       "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
-         "properties": {
-          "page": {
-           "type": "integer"
-          },
-          "next": {
-           "type": "integer"
-          },
-          "previous": {
-           "type": "integer"
-          },
-          "last": {
-           "type": "integer"
-          },
-          "perPage": {
-           "type": "integer"
-          },
-          "totalItems": {
-           "type": "integer"
-          }
+          "type": "object"
+         },
+         "description": {
+          "type": "string"
+         },
+         "id": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "name": {
+          "type": "string"
          }
         },
-        "hrefs": {
-         "type": "object",
-         "required": [
-          "first",
-          "last",
-          "previous",
-          "next"
-         ],
-         "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
-          "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
-          },
-          "next": {
-           "type": "string",
-           "format": "uri"
-          }
-         }
-        }
-       }
+        "required": [
+         "id",
+         "description",
+         "name",
+         "audit"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "type": "object"
     }
    }
   },
@@ -298,16 +298,16 @@
    "summary": "Create Project",
    "responses": {
     "201": {
-     "type": "object",
+     "properties": {
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
      "required": [
       "id"
      ],
-     "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -318,26 +318,27 @@
    "summary": "Get Project",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "id",
-      "description",
-      "name",
-      "audit"
-     ],
      "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "description": {
-       "type": "string"
-      },
-      "name": {
-       "type": "string"
-      },
       "audit": {
-       "type": "object",
+       "properties": {
+        "createdAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "createdBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "version": {
+         "type": "integer"
+        }
+       },
        "required": [
         "createdBy",
         "createdAt",
@@ -345,27 +346,26 @@
         "modifiedAt",
         "version"
        ],
-       "properties": {
-        "createdBy": {
-         "type": "string"
-        },
-        "createdAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "modifiedBy": {
-         "type": "string"
-        },
-        "modifiedAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "version": {
-         "type": "integer"
-        }
-       }
+       "type": "object"
+      },
+      "description": {
+       "type": "string"
+      },
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
       }
-     }
+     },
+     "required": [
+      "id",
+      "description",
+      "name",
+      "audit"
+     ],
+     "type": "object"
     }
    }
   },
@@ -394,277 +394,168 @@
    "summary": "List Clusters",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data",
-      "cursor"
-     ],
      "properties": {
+      "cursor": {
+       "properties": {
+        "hrefs": {
+         "properties": {
+          "first": {
+           "format": "uri",
+           "type": "string"
+          },
+          "last": {
+           "format": "uri",
+           "type": "string"
+          },
+          "next": {
+           "format": "uri",
+           "type": "string"
+          },
+          "previous": {
+           "format": "uri",
+           "type": "string"
+          }
+         },
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "type": "object"
+        },
+        "pages": {
+         "properties": {
+          "last": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
+        }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
+      },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
-        "required": [
-         "id",
-         "name",
-         "description",
-         "configurationType",
-         "connectionString",
-         "cloudProvider",
-         "couchbaseServer",
-         "serviceGroups",
-         "availability",
-         "support",
-         "currentState",
-         "audit",
-         "deletionProtection"
-        ],
         "properties": {
-         "id": {
-          "type": "string",
-          "format": "uuid"
-         },
          "appServiceId": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "name": {
+          "format": "uuid",
           "type": "string"
          },
-         "description": {
-          "type": "string"
-         },
-         "configurationType": {
-          "type": "string",
-          "enum": [
-           "singleNode",
-           "multiNode"
-          ]
-         },
-         "connectionString": {
-          "type": "string"
-         },
-         "cloudProvider": {
-          "type": "object",
+         "audit": {
+          "properties": {
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "createdBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "version": {
+            "type": "integer"
+           }
+          },
           "required": [
-           "type",
-           "region"
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
           ],
+          "type": "object"
+         },
+         "availability": {
           "properties": {
            "type": {
-            "type": "string",
             "enum": [
-             "aws",
-             "gcp",
-             "azure"
-            ]
+             "single",
+             "multi"
+            ],
+            "type": "string"
+           }
+          },
+          "required": [
+           "type"
+          ],
+          "type": "object"
+         },
+         "cloudProvider": {
+          "properties": {
+           "cidr": {
+            "type": "string"
            },
            "region": {
             "type": "string"
            },
-           "cidr": {
+           "type": {
+            "enum": [
+             "aws",
+             "gcp",
+             "azure"
+            ],
             "type": "string"
            }
-          }
+          },
+          "required": [
+           "type",
+           "region"
+          ],
+          "type": "object"
+         },
+         "cmekId": {
+          "type": "string"
+         },
+         "configurationType": {
+          "enum": [
+           "singleNode",
+           "multiNode"
+          ],
+          "type": "string"
+         },
+         "connectionString": {
+          "type": "string"
          },
          "couchbaseServer": {
-          "type": "object",
           "properties": {
            "version": {
             "type": "string"
            }
-          }
-         },
-         "serviceGroups": {
-          "type": "array",
-          "items": {
-           "type": "object",
-           "properties": {
-            "node": {
-             "type": "object",
-             "required": [
-              "compute",
-              "disk"
-             ],
-             "properties": {
-              "compute": {
-               "type": "object",
-               "required": [
-                "cpu",
-                "ram"
-               ],
-               "properties": {
-                "cpu": {
-                 "type": "integer"
-                },
-                "ram": {
-                 "type": "integer"
-                }
-               }
-              },
-              "disk": {
-               "oneOf": [
-                {
-                 "type": "object",
-                 "required": [
-                  "type",
-                  "storage",
-                  "iops"
-                 ],
-                 "properties": {
-                  "type": {
-                   "type": "string",
-                   "enum": [
-                    "gp3",
-                    "io2"
-                   ]
-                  },
-                  "storage": {
-                   "type": "integer"
-                  },
-                  "iops": {
-                   "type": "integer"
-                  }
-                 }
-                },
-                {
-                 "type": "object",
-                 "required": [
-                  "type"
-                 ],
-                 "properties": {
-                  "type": {
-                   "type": "string",
-                   "enum": [
-                    "P6",
-                    "P10",
-                    "P15",
-                    "P20",
-                    "P30",
-                    "P40",
-                    "P50",
-                    "P60",
-                    "Ultra"
-                   ]
-                  },
-                  "storage": {
-                   "type": "integer",
-                   "enum": [
-                    64,
-                    128,
-                    256,
-                    512,
-                    1024,
-                    2048,
-                    3072,
-                    4096,
-                    5120,
-                    6144,
-                    7168,
-                    8192,
-                    9216,
-                    10240,
-                    11264,
-                    12288,
-                    13312,
-                    14336,
-                    15360
-                   ]
-                  },
-                  "iops": {
-                   "type": "integer"
-                  },
-                  "autoExpansion": {
-                   "type": "boolean"
-                  }
-                 }
-                },
-                {
-                 "type": "object",
-                 "required": [
-                  "type",
-                  "storage"
-                 ],
-                 "properties": {
-                  "type": {
-                   "type": "string",
-                   "enum": [
-                    "pd-ssd"
-                   ]
-                  },
-                  "storage": {
-                   "type": "integer"
-                  }
-                 }
-                }
-               ]
-              }
-             }
-            },
-            "numOfNodes": {
-             "type": "integer"
-            },
-            "services": {
-             "type": "array",
-             "items": {
-              "type": "string",
-              "enum": [
-               "data",
-               "query",
-               "index",
-               "search",
-               "analytics",
-               "eventing"
-              ]
-             }
-            }
-           }
-          }
-         },
-         "availability": {
-          "type": "object",
-          "required": [
-           "type"
-          ],
-          "properties": {
-           "type": {
-            "type": "string",
-            "enum": [
-             "single",
-             "multi"
-            ]
-           }
-          }
-         },
-         "support": {
-          "type": "object",
-          "required": [
-           "plan",
-           "timezone"
-          ],
-          "properties": {
-           "plan": {
-            "type": "string",
-            "enum": [
-             "basic",
-             "developer pro",
-             "enterprise",
-             "free"
-            ]
-           },
-           "timezone": {
-            "type": "string",
-            "enum": [
-             "ET",
-             "GMT",
-             "IST",
-             "PT"
-            ]
-           }
-          }
+          },
+          "type": "object"
          },
          "currentState": {
-          "type": "string",
           "enum": [
            "draft",
            "deploying",
@@ -687,122 +578,230 @@
            "offline",
            "turningOffFailed",
            "turningOnFailed"
-          ]
-         },
-         "audit": {
-          "type": "object",
-          "required": [
-           "createdBy",
-           "createdAt",
-           "modifiedBy",
-           "modifiedAt",
-           "version"
           ],
-          "properties": {
-           "createdBy": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "modifiedBy": {
-            "type": "string"
-           },
-           "modifiedAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "version": {
-            "type": "integer"
-           }
-          }
+          "type": "string"
          },
-         "cmekId": {
+         "deletionProtection": {
+          "type": "boolean"
+         },
+         "description": {
           "type": "string"
          },
          "enablePrivateDNSResolution": {
           "type": "boolean"
          },
-         "deletionProtection": {
-          "type": "boolean"
+         "id": {
+          "format": "uuid",
+          "type": "string"
          },
-         "expressScaling": {
-          "type": "string",
-          "enum": [
-           "enabled",
-           "disabled"
-          ]
-         }
-        }
-       }
-      },
-      "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
-       "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
-         "properties": {
-          "page": {
-           "type": "integer"
+         "name": {
+          "type": "string"
+         },
+         "serviceGroups": {
+          "items": {
+           "properties": {
+            "node": {
+             "properties": {
+              "compute": {
+               "properties": {
+                "cpu": {
+                 "type": "integer"
+                },
+                "ram": {
+                 "type": "integer"
+                }
+               },
+               "required": [
+                "cpu",
+                "ram"
+               ],
+               "type": "object"
+              },
+              "disk": {
+               "oneOf": [
+                {
+                 "properties": {
+                  "iops": {
+                   "type": "integer"
+                  },
+                  "storage": {
+                   "type": "integer"
+                  },
+                  "type": {
+                   "enum": [
+                    "gp3",
+                    "io2"
+                   ],
+                   "type": "string"
+                  }
+                 },
+                 "required": [
+                  "type",
+                  "storage",
+                  "iops"
+                 ],
+                 "type": "object"
+                },
+                {
+                 "properties": {
+                  "autoExpansion": {
+                   "type": "boolean"
+                  },
+                  "iops": {
+                   "type": "integer"
+                  },
+                  "storage": {
+                   "enum": [
+                    64,
+                    128,
+                    256,
+                    512,
+                    1024,
+                    2048,
+                    3072,
+                    4096,
+                    5120,
+                    6144,
+                    7168,
+                    8192,
+                    9216,
+                    10240,
+                    11264,
+                    12288,
+                    13312,
+                    14336,
+                    15360
+                   ],
+                   "type": "integer"
+                  },
+                  "type": {
+                   "enum": [
+                    "P6",
+                    "P10",
+                    "P15",
+                    "P20",
+                    "P30",
+                    "P40",
+                    "P50",
+                    "P60",
+                    "Ultra"
+                   ],
+                   "type": "string"
+                  }
+                 },
+                 "required": [
+                  "type"
+                 ],
+                 "type": "object"
+                },
+                {
+                 "properties": {
+                  "storage": {
+                   "type": "integer"
+                  },
+                  "type": {
+                   "enum": [
+                    "pd-ssd"
+                   ],
+                   "type": "string"
+                  }
+                 },
+                 "required": [
+                  "type",
+                  "storage"
+                 ],
+                 "type": "object"
+                }
+               ]
+              }
+             },
+             "required": [
+              "compute",
+              "disk"
+             ],
+             "type": "object"
+            },
+            "numOfNodes": {
+             "type": "integer"
+            },
+            "services": {
+             "items": {
+              "enum": [
+               "data",
+               "query",
+               "index",
+               "search",
+               "analytics",
+               "eventing"
+              ],
+              "type": "string"
+             },
+             "type": "array"
+            }
+           },
+           "type": "object"
           },
-          "next": {
-           "type": "integer"
+          "type": "array"
+         },
+         "support": {
+          "properties": {
+           "plan": {
+            "enum": [
+             "basic",
+             "developer pro",
+             "enterprise",
+             "free"
+            ],
+            "type": "string"
+           },
+           "timezone": {
+            "enum": [
+             "ET",
+             "GMT",
+             "IST",
+             "PT"
+            ],
+            "type": "string"
+           }
           },
-          "previous": {
-           "type": "integer"
+          "required": [
+           "plan",
+           "timezone"
+          ],
+          "type": "object"
+         },
+         "zones": {
+          "items": {
+           "type": "string"
           },
-          "last": {
-           "type": "integer"
-          },
-          "perPage": {
-           "type": "integer"
-          },
-          "totalItems": {
-           "type": "integer"
-          }
+          "type": "array"
          }
         },
-        "hrefs": {
-         "type": "object",
-         "required": [
-          "first",
-          "last",
-          "previous",
-          "next"
-         ],
-         "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
-          "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
-          },
-          "next": {
-           "type": "string",
-           "format": "uri"
-          }
-         }
-        }
-       }
+        "required": [
+         "id",
+         "name",
+         "description",
+         "configurationType",
+         "connectionString",
+         "cloudProvider",
+         "couchbaseServer",
+         "serviceGroups",
+         "availability",
+         "support",
+         "currentState",
+         "audit",
+         "deletionProtection"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "type": "object"
     }
    }
   },
@@ -813,16 +812,16 @@
    "summary": "Create Cluster",
    "responses": {
     "202": {
-     "type": "object",
+     "properties": {
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
      "required": [
       "id"
      ],
-     "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -833,268 +832,100 @@
    "summary": "Get Cluster",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "id",
-      "name",
-      "description",
-      "configurationType",
-      "connectionString",
-      "cloudProvider",
-      "couchbaseServer",
-      "serviceGroups",
-      "availability",
-      "support",
-      "currentState",
-      "audit",
-      "deletionProtection"
-     ],
      "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
       "appServiceId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "name": {
+       "format": "uuid",
        "type": "string"
       },
-      "description": {
-       "type": "string"
-      },
-      "configurationType": {
-       "type": "string",
-       "enum": [
-        "singleNode",
-        "multiNode"
-       ]
-      },
-      "connectionString": {
-       "type": "string"
-      },
-      "cloudProvider": {
-       "type": "object",
+      "audit": {
+       "properties": {
+        "createdAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "createdBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "version": {
+         "type": "integer"
+        }
+       },
        "required": [
-        "type",
-        "region"
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
        ],
+       "type": "object"
+      },
+      "availability": {
        "properties": {
         "type": {
-         "type": "string",
          "enum": [
-          "aws",
-          "gcp",
-          "azure"
-         ]
+          "single",
+          "multi"
+         ],
+         "type": "string"
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "type": "object"
+      },
+      "cloudProvider": {
+       "properties": {
+        "cidr": {
+         "type": "string"
         },
         "region": {
          "type": "string"
         },
-        "cidr": {
+        "type": {
+         "enum": [
+          "aws",
+          "gcp",
+          "azure"
+         ],
          "type": "string"
         }
-       }
+       },
+       "required": [
+        "type",
+        "region"
+       ],
+       "type": "object"
+      },
+      "cmekId": {
+       "type": "string"
+      },
+      "configurationType": {
+       "enum": [
+        "singleNode",
+        "multiNode"
+       ],
+       "type": "string"
+      },
+      "connectionString": {
+       "type": "string"
       },
       "couchbaseServer": {
-       "type": "object",
        "properties": {
         "version": {
          "type": "string"
         }
-       }
-      },
-      "serviceGroups": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "properties": {
-         "node": {
-          "type": "object",
-          "required": [
-           "compute",
-           "disk"
-          ],
-          "properties": {
-           "compute": {
-            "type": "object",
-            "required": [
-             "cpu",
-             "ram"
-            ],
-            "properties": {
-             "cpu": {
-              "type": "integer"
-             },
-             "ram": {
-              "type": "integer"
-             }
-            }
-           },
-           "disk": {
-            "oneOf": [
-             {
-              "type": "object",
-              "required": [
-               "type",
-               "storage",
-               "iops"
-              ],
-              "properties": {
-               "type": {
-                "type": "string",
-                "enum": [
-                 "gp3",
-                 "io2"
-                ]
-               },
-               "storage": {
-                "type": "integer"
-               },
-               "iops": {
-                "type": "integer"
-               }
-              }
-             },
-             {
-              "type": "object",
-              "required": [
-               "type"
-              ],
-              "properties": {
-               "type": {
-                "type": "string",
-                "enum": [
-                 "P6",
-                 "P10",
-                 "P15",
-                 "P20",
-                 "P30",
-                 "P40",
-                 "P50",
-                 "P60",
-                 "Ultra"
-                ]
-               },
-               "storage": {
-                "type": "integer",
-                "enum": [
-                 64,
-                 128,
-                 256,
-                 512,
-                 1024,
-                 2048,
-                 3072,
-                 4096,
-                 5120,
-                 6144,
-                 7168,
-                 8192,
-                 9216,
-                 10240,
-                 11264,
-                 12288,
-                 13312,
-                 14336,
-                 15360
-                ]
-               },
-               "iops": {
-                "type": "integer"
-               },
-               "autoExpansion": {
-                "type": "boolean"
-               }
-              }
-             },
-             {
-              "type": "object",
-              "required": [
-               "type",
-               "storage"
-              ],
-              "properties": {
-               "type": {
-                "type": "string",
-                "enum": [
-                 "pd-ssd"
-                ]
-               },
-               "storage": {
-                "type": "integer"
-               }
-              }
-             }
-            ]
-           }
-          }
-         },
-         "numOfNodes": {
-          "type": "integer"
-         },
-         "services": {
-          "type": "array",
-          "items": {
-           "type": "string",
-           "enum": [
-            "data",
-            "query",
-            "index",
-            "search",
-            "analytics",
-            "eventing"
-           ]
-          }
-         }
-        }
-       }
-      },
-      "availability": {
-       "type": "object",
-       "required": [
-        "type"
-       ],
-       "properties": {
-        "type": {
-         "type": "string",
-         "enum": [
-          "single",
-          "multi"
-         ]
-        }
-       }
-      },
-      "support": {
-       "type": "object",
-       "required": [
-        "plan",
-        "timezone"
-       ],
-       "properties": {
-        "plan": {
-         "type": "string",
-         "enum": [
-          "basic",
-          "developer pro",
-          "enterprise",
-          "free"
-         ]
-        },
-        "timezone": {
-         "type": "string",
-         "enum": [
-          "ET",
-          "GMT",
-          "IST",
-          "PT"
-         ]
-        }
-       }
+       },
+       "type": "object"
       },
       "currentState": {
-       "type": "string",
        "enum": [
         "draft",
         "deploying",
@@ -1117,54 +948,221 @@
         "offline",
         "turningOffFailed",
         "turningOnFailed"
-       ]
-      },
-      "audit": {
-       "type": "object",
-       "required": [
-        "createdBy",
-        "createdAt",
-        "modifiedBy",
-        "modifiedAt",
-        "version"
        ],
-       "properties": {
-        "createdBy": {
-         "type": "string"
-        },
-        "createdAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "modifiedBy": {
-         "type": "string"
-        },
-        "modifiedAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "version": {
-         "type": "integer"
-        }
-       }
+       "type": "string"
       },
-      "cmekId": {
+      "deletionProtection": {
+       "type": "boolean"
+      },
+      "description": {
        "type": "string"
       },
       "enablePrivateDNSResolution": {
        "type": "boolean"
       },
-      "deletionProtection": {
-       "type": "boolean"
+      "id": {
+       "format": "uuid",
+       "type": "string"
       },
-      "expressScaling": {
-       "type": "string",
-       "enum": [
-        "enabled",
-        "disabled"
-       ]
+      "name": {
+       "type": "string"
+      },
+      "serviceGroups": {
+       "items": {
+        "properties": {
+         "node": {
+          "properties": {
+           "compute": {
+            "properties": {
+             "cpu": {
+              "type": "integer"
+             },
+             "ram": {
+              "type": "integer"
+             }
+            },
+            "required": [
+             "cpu",
+             "ram"
+            ],
+            "type": "object"
+           },
+           "disk": {
+            "oneOf": [
+             {
+              "properties": {
+               "iops": {
+                "type": "integer"
+               },
+               "storage": {
+                "type": "integer"
+               },
+               "type": {
+                "enum": [
+                 "gp3",
+                 "io2"
+                ],
+                "type": "string"
+               }
+              },
+              "required": [
+               "type",
+               "storage",
+               "iops"
+              ],
+              "type": "object"
+             },
+             {
+              "properties": {
+               "autoExpansion": {
+                "type": "boolean"
+               },
+               "iops": {
+                "type": "integer"
+               },
+               "storage": {
+                "enum": [
+                 64,
+                 128,
+                 256,
+                 512,
+                 1024,
+                 2048,
+                 3072,
+                 4096,
+                 5120,
+                 6144,
+                 7168,
+                 8192,
+                 9216,
+                 10240,
+                 11264,
+                 12288,
+                 13312,
+                 14336,
+                 15360
+                ],
+                "type": "integer"
+               },
+               "type": {
+                "enum": [
+                 "P6",
+                 "P10",
+                 "P15",
+                 "P20",
+                 "P30",
+                 "P40",
+                 "P50",
+                 "P60",
+                 "Ultra"
+                ],
+                "type": "string"
+               }
+              },
+              "required": [
+               "type"
+              ],
+              "type": "object"
+             },
+             {
+              "properties": {
+               "storage": {
+                "type": "integer"
+               },
+               "type": {
+                "enum": [
+                 "pd-ssd"
+                ],
+                "type": "string"
+               }
+              },
+              "required": [
+               "type",
+               "storage"
+              ],
+              "type": "object"
+             }
+            ]
+           }
+          },
+          "required": [
+           "compute",
+           "disk"
+          ],
+          "type": "object"
+         },
+         "numOfNodes": {
+          "type": "integer"
+         },
+         "services": {
+          "items": {
+           "enum": [
+            "data",
+            "query",
+            "index",
+            "search",
+            "analytics",
+            "eventing"
+           ],
+           "type": "string"
+          },
+          "type": "array"
+         }
+        },
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "support": {
+       "properties": {
+        "plan": {
+         "enum": [
+          "basic",
+          "developer pro",
+          "enterprise",
+          "free"
+         ],
+         "type": "string"
+        },
+        "timezone": {
+         "enum": [
+          "ET",
+          "GMT",
+          "IST",
+          "PT"
+         ],
+         "type": "string"
+        }
+       },
+       "required": [
+        "plan",
+        "timezone"
+       ],
+       "type": "object"
+      },
+      "zones": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "id",
+      "name",
+      "description",
+      "configurationType",
+      "connectionString",
+      "cloudProvider",
+      "couchbaseServer",
+      "serviceGroups",
+      "availability",
+      "support",
+      "currentState",
+      "audit",
+      "deletionProtection"
+     ],
+     "type": "object"
     }
    }
   },
@@ -1220,23 +1218,23 @@
    "summary": "Get Cluster Capacity Statistics",
    "responses": {
     "200": {
-     "type": "object",
+     "properties": {
+      "freeMemoryInMb": {
+       "type": "integer"
+      },
+      "maxReplicas": {
+       "type": "integer"
+      },
+      "totalMemoryInMb": {
+       "type": "integer"
+      }
+     },
      "required": [
       "freeMemoryInMb",
       "totalMemoryInMb",
       "maxReplicas"
      ],
-     "properties": {
-      "freeMemoryInMb": {
-       "type": "integer"
-      },
-      "totalMemoryInMb": {
-       "type": "integer"
-      },
-      "maxReplicas": {
-       "type": "integer"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -1247,16 +1245,16 @@
    "summary": "Create Free Tier Cluster",
    "responses": {
     "202": {
-     "type": "object",
+     "properties": {
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
      "required": [
       "id"
      ],
-     "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -1267,264 +1265,100 @@
    "summary": "Get Free Tier Cluster",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "id",
-      "name",
-      "description",
-      "configurationType",
-      "connectionString",
-      "cloudProvider",
-      "couchbaseServer",
-      "serviceGroups",
-      "availability",
-      "support",
-      "currentState",
-      "audit"
-     ],
      "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
       "appServiceId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "name": {
+       "format": "uuid",
        "type": "string"
       },
-      "description": {
-       "type": "string"
-      },
-      "configurationType": {
-       "type": "string",
-       "enum": [
-        "singleNode",
-        "multiNode"
-       ]
-      },
-      "connectionString": {
-       "type": "string"
-      },
-      "cloudProvider": {
-       "type": "object",
+      "audit": {
+       "properties": {
+        "createdAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "createdBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "version": {
+         "type": "integer"
+        }
+       },
        "required": [
-        "type",
-        "region"
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
        ],
+       "type": "object"
+      },
+      "availability": {
        "properties": {
         "type": {
-         "type": "string",
          "enum": [
-          "aws",
-          "gcp",
-          "azure"
-         ]
+          "single",
+          "multi"
+         ],
+         "type": "string"
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "type": "object"
+      },
+      "cloudProvider": {
+       "properties": {
+        "cidr": {
+         "type": "string"
         },
         "region": {
          "type": "string"
         },
-        "cidr": {
+        "type": {
+         "enum": [
+          "aws",
+          "gcp",
+          "azure"
+         ],
          "type": "string"
         }
-       }
+       },
+       "required": [
+        "type",
+        "region"
+       ],
+       "type": "object"
+      },
+      "cmekId": {
+       "type": "string"
+      },
+      "configurationType": {
+       "enum": [
+        "singleNode",
+        "multiNode"
+       ],
+       "type": "string"
+      },
+      "connectionString": {
+       "type": "string"
       },
       "couchbaseServer": {
-       "type": "object",
        "properties": {
         "version": {
          "type": "string"
         }
-       }
-      },
-      "serviceGroups": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "properties": {
-         "node": {
-          "type": "object",
-          "required": [
-           "compute",
-           "disk"
-          ],
-          "properties": {
-           "compute": {
-            "type": "object",
-            "required": [
-             "cpu",
-             "ram"
-            ],
-            "properties": {
-             "cpu": {
-              "type": "integer"
-             },
-             "ram": {
-              "type": "integer"
-             }
-            }
-           },
-           "disk": {
-            "oneOf": [
-             {
-              "type": "object",
-              "required": [
-               "type",
-               "storage",
-               "iops"
-              ],
-              "properties": {
-               "type": {
-                "type": "string",
-                "enum": [
-                 "gp3",
-                 "io2"
-                ]
-               },
-               "storage": {
-                "type": "integer"
-               },
-               "iops": {
-                "type": "integer"
-               }
-              }
-             },
-             {
-              "type": "object",
-              "required": [
-               "type"
-              ],
-              "properties": {
-               "type": {
-                "type": "string",
-                "enum": [
-                 "P6",
-                 "P10",
-                 "P15",
-                 "P20",
-                 "P30",
-                 "P40",
-                 "P50",
-                 "P60",
-                 "Ultra"
-                ]
-               },
-               "storage": {
-                "type": "integer",
-                "enum": [
-                 64,
-                 128,
-                 256,
-                 512,
-                 1024,
-                 2048,
-                 3072,
-                 4096,
-                 5120,
-                 6144,
-                 7168,
-                 8192,
-                 9216,
-                 10240,
-                 11264,
-                 12288,
-                 13312,
-                 14336,
-                 15360
-                ]
-               },
-               "iops": {
-                "type": "integer"
-               },
-               "autoExpansion": {
-                "type": "boolean"
-               }
-              }
-             },
-             {
-              "type": "object",
-              "required": [
-               "type",
-               "storage"
-              ],
-              "properties": {
-               "type": {
-                "type": "string",
-                "enum": [
-                 "pd-ssd"
-                ]
-               },
-               "storage": {
-                "type": "integer"
-               }
-              }
-             }
-            ]
-           }
-          }
-         },
-         "numOfNodes": {
-          "type": "integer"
-         },
-         "services": {
-          "type": "array",
-          "items": {
-           "type": "string",
-           "enum": [
-            "data",
-            "query",
-            "index",
-            "search",
-            "analytics",
-            "eventing"
-           ]
-          }
-         }
-        }
-       }
-      },
-      "availability": {
-       "type": "object",
-       "required": [
-        "type"
-       ],
-       "properties": {
-        "type": {
-         "type": "string",
-         "enum": [
-          "single",
-          "multi"
-         ]
-        }
-       }
-      },
-      "support": {
-       "type": "object",
-       "required": [
-        "plan",
-        "timezone"
-       ],
-       "properties": {
-        "plan": {
-         "type": "string",
-         "enum": [
-          "free"
-         ]
-        },
-        "timezone": {
-         "type": "string",
-         "enum": [
-          "ET",
-          "GMT",
-          "IST",
-          "PT"
-         ]
-        }
-       }
+       },
+       "type": "object"
       },
       "currentState": {
-       "type": "string",
        "enum": [
         "draft",
         "deploying",
@@ -1547,44 +1381,208 @@
         "offline",
         "turningOffFailed",
         "turningOnFailed"
-       ]
-      },
-      "audit": {
-       "type": "object",
-       "required": [
-        "createdBy",
-        "createdAt",
-        "modifiedBy",
-        "modifiedAt",
-        "version"
        ],
-       "properties": {
-        "createdBy": {
-         "type": "string"
-        },
-        "createdAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "modifiedBy": {
-         "type": "string"
-        },
-        "modifiedAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "version": {
-         "type": "integer"
-        }
-       }
+       "type": "string"
       },
-      "cmekId": {
+      "description": {
        "type": "string"
       },
       "enablePrivateDNSResolution": {
        "type": "boolean"
+      },
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
+      },
+      "serviceGroups": {
+       "items": {
+        "properties": {
+         "node": {
+          "properties": {
+           "compute": {
+            "properties": {
+             "cpu": {
+              "type": "integer"
+             },
+             "ram": {
+              "type": "integer"
+             }
+            },
+            "required": [
+             "cpu",
+             "ram"
+            ],
+            "type": "object"
+           },
+           "disk": {
+            "oneOf": [
+             {
+              "properties": {
+               "iops": {
+                "type": "integer"
+               },
+               "storage": {
+                "type": "integer"
+               },
+               "type": {
+                "enum": [
+                 "gp3",
+                 "io2"
+                ],
+                "type": "string"
+               }
+              },
+              "required": [
+               "type",
+               "storage",
+               "iops"
+              ],
+              "type": "object"
+             },
+             {
+              "properties": {
+               "autoExpansion": {
+                "type": "boolean"
+               },
+               "iops": {
+                "type": "integer"
+               },
+               "storage": {
+                "enum": [
+                 64,
+                 128,
+                 256,
+                 512,
+                 1024,
+                 2048,
+                 3072,
+                 4096,
+                 5120,
+                 6144,
+                 7168,
+                 8192,
+                 9216,
+                 10240,
+                 11264,
+                 12288,
+                 13312,
+                 14336,
+                 15360
+                ],
+                "type": "integer"
+               },
+               "type": {
+                "enum": [
+                 "P6",
+                 "P10",
+                 "P15",
+                 "P20",
+                 "P30",
+                 "P40",
+                 "P50",
+                 "P60",
+                 "Ultra"
+                ],
+                "type": "string"
+               }
+              },
+              "required": [
+               "type"
+              ],
+              "type": "object"
+             },
+             {
+              "properties": {
+               "storage": {
+                "type": "integer"
+               },
+               "type": {
+                "enum": [
+                 "pd-ssd"
+                ],
+                "type": "string"
+               }
+              },
+              "required": [
+               "type",
+               "storage"
+              ],
+              "type": "object"
+             }
+            ]
+           }
+          },
+          "required": [
+           "compute",
+           "disk"
+          ],
+          "type": "object"
+         },
+         "numOfNodes": {
+          "type": "integer"
+         },
+         "services": {
+          "items": {
+           "enum": [
+            "data",
+            "query",
+            "index",
+            "search",
+            "analytics",
+            "eventing"
+           ],
+           "type": "string"
+          },
+          "type": "array"
+         }
+        },
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "support": {
+       "properties": {
+        "plan": {
+         "enum": [
+          "free"
+         ],
+         "type": "string"
+        },
+        "timezone": {
+         "enum": [
+          "ET",
+          "GMT",
+          "IST",
+          "PT"
+         ],
+         "type": "string"
+        }
+       },
+       "required": [
+        "plan",
+        "timezone"
+       ],
+       "type": "object"
       }
-     }
+     },
+     "required": [
+      "id",
+      "name",
+      "description",
+      "configurationType",
+      "connectionString",
+      "cloudProvider",
+      "couchbaseServer",
+      "serviceGroups",
+      "availability",
+      "support",
+      "currentState",
+      "audit"
+     ],
+     "type": "object"
     }
    }
   },
@@ -1631,22 +1629,69 @@
    "summary": "Get Cluster On/Off schedule",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "timezone",
-      "days",
-      "activationStatus"
-     ],
      "properties": {
       "activationStatus": {
-       "type": "string",
        "enum": [
         "active",
         "paused"
-       ]
+       ],
+       "type": "string"
+      },
+      "days": {
+       "items": {
+        "properties": {
+         "day": {
+          "enum": [
+           "monday",
+           "tuesday",
+           "wednesday",
+           "thursday",
+           "friday",
+           "saturday",
+           "sunday"
+          ],
+          "type": "string"
+         },
+         "from": {
+          "properties": {
+           "hour": {
+            "type": "integer"
+           },
+           "minute": {
+            "type": "integer"
+           }
+          },
+          "type": "object"
+         },
+         "state": {
+          "enum": [
+           "on",
+           "off",
+           "custom"
+          ],
+          "type": "string"
+         },
+         "to": {
+          "properties": {
+           "hour": {
+            "type": "integer"
+           },
+           "minute": {
+            "type": "integer"
+           }
+          },
+          "type": "object"
+         }
+        },
+        "required": [
+         "state",
+         "day"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       },
       "timezone": {
-       "type": "string",
        "enum": [
         "Pacific/Midway",
         "US/Hawaii",
@@ -1675,63 +1720,16 @@
         "Australia/Sydney",
         "Pacific/Ponape",
         "Antarctica/South_Pole"
-       ]
-      },
-      "days": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "required": [
-         "state",
-         "day"
-        ],
-        "properties": {
-         "state": {
-          "type": "string",
-          "enum": [
-           "on",
-           "off",
-           "custom"
-          ]
-         },
-         "day": {
-          "type": "string",
-          "enum": [
-           "monday",
-           "tuesday",
-           "wednesday",
-           "thursday",
-           "friday",
-           "saturday",
-           "sunday"
-          ]
-         },
-         "from": {
-          "type": "object",
-          "properties": {
-           "hour": {
-            "type": "integer"
-           },
-           "minute": {
-            "type": "integer"
-           }
-          }
-         },
-         "to": {
-          "type": "object",
-          "properties": {
-           "hour": {
-            "type": "integer"
-           },
-           "minute": {
-            "type": "integer"
-           }
-          }
-         }
-        }
-       }
+       ],
+       "type": "string"
       }
-     }
+     },
+     "required": [
+      "timezone",
+      "days",
+      "activationStatus"
+     ],
+     "type": "object"
     }
    }
   },
@@ -1787,26 +1785,103 @@
    "summary": "List Allowed CIDRs",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data",
-      "cursor"
-     ],
      "properties": {
+      "cursor": {
+       "properties": {
+        "hrefs": {
+         "properties": {
+          "first": {
+           "format": "uri",
+           "type": "string"
+          },
+          "last": {
+           "format": "uri",
+           "type": "string"
+          },
+          "next": {
+           "format": "uri",
+           "type": "string"
+          },
+          "previous": {
+           "format": "uri",
+           "type": "string"
+          }
+         },
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "type": "object"
+        },
+        "pages": {
+         "properties": {
+          "last": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
+        }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
+      },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
-        "required": [
-         "id",
-         "cidr",
-         "status",
-         "type",
-         "audit"
-        ],
         "properties": {
-         "id": {
-          "type": "string"
+         "audit": {
+          "properties": {
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "createdBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "version": {
+            "type": "integer"
+           }
+          },
+          "required": [
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
+          ],
+          "type": "object"
          },
          "cidr": {
           "type": "string"
@@ -1815,121 +1890,44 @@
           "type": "string"
          },
          "expiresAt": {
-          "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "type": "string"
+         },
+         "id": {
+          "type": "string"
          },
          "status": {
-          "type": "string",
           "enum": [
            "active",
            "expired"
-          ]
+          ],
+          "type": "string"
          },
          "type": {
-          "type": "string",
           "enum": [
            "temporary",
            "permanent"
-          ]
-         },
-         "audit": {
-          "type": "object",
-          "required": [
-           "createdBy",
-           "createdAt",
-           "modifiedBy",
-           "modifiedAt",
-           "version"
           ],
-          "properties": {
-           "createdBy": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "modifiedBy": {
-            "type": "string"
-           },
-           "modifiedAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "version": {
-            "type": "integer"
-           }
-          }
-         }
-        }
-       }
-      },
-      "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
-       "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
-         "properties": {
-          "page": {
-           "type": "integer"
-          },
-          "next": {
-           "type": "integer"
-          },
-          "previous": {
-           "type": "integer"
-          },
-          "last": {
-           "type": "integer"
-          },
-          "perPage": {
-           "type": "integer"
-          },
-          "totalItems": {
-           "type": "integer"
-          }
+          "type": "string"
          }
         },
-        "hrefs": {
-         "type": "object",
-         "required": [
-          "first",
-          "last",
-          "previous",
-          "next"
-         ],
-         "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
-          "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
-          },
-          "next": {
-           "type": "string",
-           "format": "uri"
-          }
-         }
-        }
-       }
+        "required": [
+         "id",
+         "cidr",
+         "status",
+         "type",
+         "audit"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "type": "object"
     }
    }
   },
@@ -1940,15 +1938,15 @@
    "summary": "Create Allowed CIDR",
    "responses": {
     "201": {
-     "type": "object",
-     "required": [
-      "id"
-     ],
      "properties": {
       "id": {
        "type": "string"
       }
-     }
+     },
+     "required": [
+      "id"
+     ],
+     "type": "object"
     }
    }
   },
@@ -1959,17 +1957,35 @@
    "summary": "get allowed CIDR",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "id",
-      "cidr",
-      "status",
-      "type",
-      "audit"
-     ],
      "properties": {
-      "id": {
-       "type": "string"
+      "audit": {
+       "properties": {
+        "createdAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "createdBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "version": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "type": "object"
       },
       "cidr": {
        "type": "string"
@@ -1978,53 +1994,35 @@
        "type": "string"
       },
       "expiresAt": {
-       "type": "string",
-       "format": "date-time"
+       "format": "date-time",
+       "type": "string"
+      },
+      "id": {
+       "type": "string"
       },
       "status": {
-       "type": "string",
        "enum": [
         "active",
         "expired"
-       ]
+       ],
+       "type": "string"
       },
       "type": {
-       "type": "string",
        "enum": [
         "temporary",
         "permanent"
-       ]
-      },
-      "audit": {
-       "type": "object",
-       "required": [
-        "createdBy",
-        "createdAt",
-        "modifiedBy",
-        "modifiedAt",
-        "version"
        ],
-       "properties": {
-        "createdBy": {
-         "type": "string"
-        },
-        "createdAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "modifiedBy": {
-         "type": "string"
-        },
-        "modifiedAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "version": {
-         "type": "integer"
-        }
-       }
+       "type": "string"
       }
-     }
+     },
+     "required": [
+      "id",
+      "cidr",
+      "status",
+      "type",
+      "audit"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2044,15 +2042,107 @@
    "summary": "List Buckets",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data"
-     ],
      "properties": {
+      "clusterStats": {
+       "properties": {
+        "freeMemoryInMb": {
+         "type": "integer"
+        },
+        "maxReplicas": {
+         "type": "integer"
+        },
+        "totalMemoryInMb": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "freeMemoryInMb",
+        "totalMemoryInMb",
+        "maxReplicas"
+       ],
+       "type": "object"
+      },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
+        "properties": {
+         "bucketConflictResolution": {
+          "type": "string"
+         },
+         "durabilityLevel": {
+          "type": "string"
+         },
+         "enableCrossClusterVersioning": {
+          "type": "boolean"
+         },
+         "evictionPolicy": {
+          "enum": [
+           "fullEviction",
+           "noEviction",
+           "nruEviction"
+          ],
+          "type": "string"
+         },
+         "flush": {
+          "type": "boolean"
+         },
+         "flushEnabled": {
+          "type": "boolean"
+         },
+         "id": {
+          "type": "string"
+         },
+         "memoryAllocationInMb": {
+          "type": "integer"
+         },
+         "name": {
+          "type": "string"
+         },
+         "priority": {
+          "type": "integer"
+         },
+         "replicas": {
+          "type": "integer"
+         },
+         "stats": {
+          "properties": {
+           "diskUsedInMib": {
+            "type": "integer"
+           },
+           "itemCount": {
+            "type": "integer"
+           },
+           "memoryUsedInMib": {
+            "type": "integer"
+           },
+           "opsPerSecond": {
+            "type": "integer"
+           }
+          },
+          "required": [
+           "itemCount",
+           "opsPerSecond",
+           "diskUsedInMib",
+           "memoryUsedInMib"
+          ],
+          "type": "object"
+         },
+         "storageBackend": {
+          "type": "string"
+         },
+         "timeToLiveInSeconds": {
+          "type": "integer"
+         },
+         "type": {
+          "type": "string"
+         },
+         "vbuckets": {
+          "enum": [
+           128,
+           1024
+          ],
+          "type": "integer"
+         }
+        },
         "required": [
          "id",
          "name",
@@ -2067,107 +2157,15 @@
          "stats",
          "enableCrossClusterVersioning"
         ],
-        "properties": {
-         "id": {
-          "type": "string"
-         },
-         "name": {
-          "type": "string"
-         },
-         "type": {
-          "type": "string"
-         },
-         "storageBackend": {
-          "type": "string"
-         },
-         "vbuckets": {
-          "type": "integer",
-          "enum": [
-           128,
-           1024
-          ]
-         },
-         "memoryAllocationInMb": {
-          "type": "integer"
-         },
-         "bucketConflictResolution": {
-          "type": "string"
-         },
-         "durabilityLevel": {
-          "type": "string"
-         },
-         "replicas": {
-          "type": "integer"
-         },
-         "flush": {
-          "type": "boolean"
-         },
-         "flushEnabled": {
-          "type": "boolean"
-         },
-         "timeToLiveInSeconds": {
-          "type": "integer"
-         },
-         "enableCrossClusterVersioning": {
-          "type": "boolean"
-         },
-         "evictionPolicy": {
-          "type": "string",
-          "enum": [
-           "fullEviction",
-           "noEviction",
-           "nruEviction"
-          ]
-         },
-         "stats": {
-          "type": "object",
-          "required": [
-           "itemCount",
-           "opsPerSecond",
-           "diskUsedInMib",
-           "memoryUsedInMib"
-          ],
-          "properties": {
-           "itemCount": {
-            "type": "integer"
-           },
-           "opsPerSecond": {
-            "type": "integer"
-           },
-           "diskUsedInMib": {
-            "type": "integer"
-           },
-           "memoryUsedInMib": {
-            "type": "integer"
-           }
-          }
-         },
-         "priority": {
-          "type": "integer"
-         }
-        }
-       }
-      },
-      "clusterStats": {
-       "type": "object",
-       "required": [
-        "freeMemoryInMb",
-        "totalMemoryInMb",
-        "maxReplicas"
-       ],
-       "properties": {
-        "freeMemoryInMb": {
-         "type": "integer"
-        },
-        "totalMemoryInMb": {
-         "type": "integer"
-        },
-        "maxReplicas": {
-         "type": "integer"
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2178,15 +2176,15 @@
    "summary": "Create Bucket",
    "responses": {
     "201": {
-     "type": "object",
-     "required": [
-      "id"
-     ],
      "properties": {
       "id": {
        "type": "string"
       }
-     }
+     },
+     "required": [
+      "id"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2197,7 +2195,85 @@
    "summary": "Get Bucket",
    "responses": {
     "200": {
-     "type": "object",
+     "properties": {
+      "bucketConflictResolution": {
+       "type": "string"
+      },
+      "durabilityLevel": {
+       "type": "string"
+      },
+      "enableCrossClusterVersioning": {
+       "type": "boolean"
+      },
+      "evictionPolicy": {
+       "enum": [
+        "fullEviction",
+        "noEviction",
+        "nruEviction"
+       ],
+       "type": "string"
+      },
+      "flush": {
+       "type": "boolean"
+      },
+      "flushEnabled": {
+       "type": "boolean"
+      },
+      "id": {
+       "type": "string"
+      },
+      "memoryAllocationInMb": {
+       "type": "integer"
+      },
+      "name": {
+       "type": "string"
+      },
+      "priority": {
+       "type": "integer"
+      },
+      "replicas": {
+       "type": "integer"
+      },
+      "stats": {
+       "properties": {
+        "diskUsedInMib": {
+         "type": "integer"
+        },
+        "itemCount": {
+         "type": "integer"
+        },
+        "memoryUsedInMib": {
+         "type": "integer"
+        },
+        "opsPerSecond": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "itemCount",
+        "opsPerSecond",
+        "diskUsedInMib",
+        "memoryUsedInMib"
+       ],
+       "type": "object"
+      },
+      "storageBackend": {
+       "type": "string"
+      },
+      "timeToLiveInSeconds": {
+       "type": "integer"
+      },
+      "type": {
+       "type": "string"
+      },
+      "vbuckets": {
+       "enum": [
+        128,
+        1024
+       ],
+       "type": "integer"
+      }
+     },
      "required": [
       "id",
       "name",
@@ -2212,85 +2288,7 @@
       "stats",
       "enableCrossClusterVersioning"
      ],
-     "properties": {
-      "id": {
-       "type": "string"
-      },
-      "name": {
-       "type": "string"
-      },
-      "type": {
-       "type": "string"
-      },
-      "storageBackend": {
-       "type": "string"
-      },
-      "vbuckets": {
-       "type": "integer",
-       "enum": [
-        128,
-        1024
-       ]
-      },
-      "memoryAllocationInMb": {
-       "type": "integer"
-      },
-      "bucketConflictResolution": {
-       "type": "string"
-      },
-      "durabilityLevel": {
-       "type": "string"
-      },
-      "replicas": {
-       "type": "integer"
-      },
-      "flush": {
-       "type": "boolean"
-      },
-      "flushEnabled": {
-       "type": "boolean"
-      },
-      "timeToLiveInSeconds": {
-       "type": "integer"
-      },
-      "enableCrossClusterVersioning": {
-       "type": "boolean"
-      },
-      "evictionPolicy": {
-       "type": "string",
-       "enum": [
-        "fullEviction",
-        "noEviction",
-        "nruEviction"
-       ]
-      },
-      "stats": {
-       "type": "object",
-       "required": [
-        "itemCount",
-        "opsPerSecond",
-        "diskUsedInMib",
-        "memoryUsedInMib"
-       ],
-       "properties": {
-        "itemCount": {
-         "type": "integer"
-        },
-        "opsPerSecond": {
-         "type": "integer"
-        },
-        "diskUsedInMib": {
-         "type": "integer"
-        },
-        "memoryUsedInMib": {
-         "type": "integer"
-        }
-       }
-      },
-      "priority": {
-       "type": "integer"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -2319,15 +2317,107 @@
    "summary": "List Free Tier Buckets",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data"
-     ],
      "properties": {
+      "clusterStats": {
+       "properties": {
+        "freeMemoryInMb": {
+         "type": "integer"
+        },
+        "maxReplicas": {
+         "type": "integer"
+        },
+        "totalMemoryInMb": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "freeMemoryInMb",
+        "totalMemoryInMb",
+        "maxReplicas"
+       ],
+       "type": "object"
+      },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
+        "properties": {
+         "bucketConflictResolution": {
+          "type": "string"
+         },
+         "durabilityLevel": {
+          "type": "string"
+         },
+         "enableCrossClusterVersioning": {
+          "type": "boolean"
+         },
+         "evictionPolicy": {
+          "enum": [
+           "fullEviction",
+           "noEviction",
+           "nruEviction"
+          ],
+          "type": "string"
+         },
+         "flush": {
+          "type": "boolean"
+         },
+         "flushEnabled": {
+          "type": "boolean"
+         },
+         "id": {
+          "type": "string"
+         },
+         "memoryAllocationInMb": {
+          "type": "integer"
+         },
+         "name": {
+          "type": "string"
+         },
+         "priority": {
+          "type": "integer"
+         },
+         "replicas": {
+          "type": "integer"
+         },
+         "stats": {
+          "properties": {
+           "diskUsedInMib": {
+            "type": "integer"
+           },
+           "itemCount": {
+            "type": "integer"
+           },
+           "memoryUsedInMib": {
+            "type": "integer"
+           },
+           "opsPerSecond": {
+            "type": "integer"
+           }
+          },
+          "required": [
+           "itemCount",
+           "opsPerSecond",
+           "diskUsedInMib",
+           "memoryUsedInMib"
+          ],
+          "type": "object"
+         },
+         "storageBackend": {
+          "type": "string"
+         },
+         "timeToLiveInSeconds": {
+          "type": "integer"
+         },
+         "type": {
+          "type": "string"
+         },
+         "vbuckets": {
+          "enum": [
+           128,
+           1024
+          ],
+          "type": "integer"
+         }
+        },
         "required": [
          "id",
          "name",
@@ -2342,107 +2432,15 @@
          "stats",
          "enableCrossClusterVersioning"
         ],
-        "properties": {
-         "id": {
-          "type": "string"
-         },
-         "name": {
-          "type": "string"
-         },
-         "type": {
-          "type": "string"
-         },
-         "storageBackend": {
-          "type": "string"
-         },
-         "vbuckets": {
-          "type": "integer",
-          "enum": [
-           128,
-           1024
-          ]
-         },
-         "memoryAllocationInMb": {
-          "type": "integer"
-         },
-         "bucketConflictResolution": {
-          "type": "string"
-         },
-         "durabilityLevel": {
-          "type": "string"
-         },
-         "replicas": {
-          "type": "integer"
-         },
-         "flush": {
-          "type": "boolean"
-         },
-         "flushEnabled": {
-          "type": "boolean"
-         },
-         "timeToLiveInSeconds": {
-          "type": "integer"
-         },
-         "enableCrossClusterVersioning": {
-          "type": "boolean"
-         },
-         "evictionPolicy": {
-          "type": "string",
-          "enum": [
-           "fullEviction",
-           "noEviction",
-           "nruEviction"
-          ]
-         },
-         "stats": {
-          "type": "object",
-          "required": [
-           "itemCount",
-           "opsPerSecond",
-           "diskUsedInMib",
-           "memoryUsedInMib"
-          ],
-          "properties": {
-           "itemCount": {
-            "type": "integer"
-           },
-           "opsPerSecond": {
-            "type": "integer"
-           },
-           "diskUsedInMib": {
-            "type": "integer"
-           },
-           "memoryUsedInMib": {
-            "type": "integer"
-           }
-          }
-         },
-         "priority": {
-          "type": "integer"
-         }
-        }
-       }
-      },
-      "clusterStats": {
-       "type": "object",
-       "required": [
-        "freeMemoryInMb",
-        "totalMemoryInMb",
-        "maxReplicas"
-       ],
-       "properties": {
-        "freeMemoryInMb": {
-         "type": "integer"
-        },
-        "totalMemoryInMb": {
-         "type": "integer"
-        },
-        "maxReplicas": {
-         "type": "integer"
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2453,15 +2451,15 @@
    "summary": "Create Free Tier Bucket",
    "responses": {
     "201": {
-     "type": "object",
-     "required": [
-      "id"
-     ],
      "properties": {
       "id": {
        "type": "string"
       }
-     }
+     },
+     "required": [
+      "id"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2472,7 +2470,85 @@
    "summary": "Get Free Tier Bucket",
    "responses": {
     "200": {
-     "type": "object",
+     "properties": {
+      "bucketConflictResolution": {
+       "type": "string"
+      },
+      "durabilityLevel": {
+       "type": "string"
+      },
+      "enableCrossClusterVersioning": {
+       "type": "boolean"
+      },
+      "evictionPolicy": {
+       "enum": [
+        "fullEviction",
+        "noEviction",
+        "nruEviction"
+       ],
+       "type": "string"
+      },
+      "flush": {
+       "type": "boolean"
+      },
+      "flushEnabled": {
+       "type": "boolean"
+      },
+      "id": {
+       "type": "string"
+      },
+      "memoryAllocationInMb": {
+       "type": "integer"
+      },
+      "name": {
+       "type": "string"
+      },
+      "priority": {
+       "type": "integer"
+      },
+      "replicas": {
+       "type": "integer"
+      },
+      "stats": {
+       "properties": {
+        "diskUsedInMib": {
+         "type": "integer"
+        },
+        "itemCount": {
+         "type": "integer"
+        },
+        "memoryUsedInMib": {
+         "type": "integer"
+        },
+        "opsPerSecond": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "itemCount",
+        "opsPerSecond",
+        "diskUsedInMib",
+        "memoryUsedInMib"
+       ],
+       "type": "object"
+      },
+      "storageBackend": {
+       "type": "string"
+      },
+      "timeToLiveInSeconds": {
+       "type": "integer"
+      },
+      "type": {
+       "type": "string"
+      },
+      "vbuckets": {
+       "enum": [
+        128,
+        1024
+       ],
+       "type": "integer"
+      }
+     },
      "required": [
       "id",
       "name",
@@ -2487,85 +2563,7 @@
       "stats",
       "enableCrossClusterVersioning"
      ],
-     "properties": {
-      "id": {
-       "type": "string"
-      },
-      "name": {
-       "type": "string"
-      },
-      "type": {
-       "type": "string"
-      },
-      "storageBackend": {
-       "type": "string"
-      },
-      "vbuckets": {
-       "type": "integer",
-       "enum": [
-        128,
-        1024
-       ]
-      },
-      "memoryAllocationInMb": {
-       "type": "integer"
-      },
-      "bucketConflictResolution": {
-       "type": "string"
-      },
-      "durabilityLevel": {
-       "type": "string"
-      },
-      "replicas": {
-       "type": "integer"
-      },
-      "flush": {
-       "type": "boolean"
-      },
-      "flushEnabled": {
-       "type": "boolean"
-      },
-      "timeToLiveInSeconds": {
-       "type": "integer"
-      },
-      "enableCrossClusterVersioning": {
-       "type": "boolean"
-      },
-      "evictionPolicy": {
-       "type": "string",
-       "enum": [
-        "fullEviction",
-        "noEviction",
-        "nruEviction"
-       ]
-      },
-      "stats": {
-       "type": "object",
-       "required": [
-        "itemCount",
-        "opsPerSecond",
-        "diskUsedInMib",
-        "memoryUsedInMib"
-       ],
-       "properties": {
-        "itemCount": {
-         "type": "integer"
-        },
-        "opsPerSecond": {
-         "type": "integer"
-        },
-        "diskUsedInMib": {
-         "type": "integer"
-        },
-        "memoryUsedInMib": {
-         "type": "integer"
-        }
-       }
-      },
-      "priority": {
-       "type": "integer"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -2594,40 +2592,40 @@
    "summary": "List Scopes",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "scopes"
-     ],
      "properties": {
       "scopes": {
-       "type": "array",
        "items": {
-        "type": "object",
+        "properties": {
+         "collections": {
+          "items": {
+           "properties": {
+            "maxTTL": {
+             "type": "integer"
+            },
+            "name": {
+             "type": "string"
+            }
+           },
+           "type": "object"
+          },
+          "type": "array"
+         },
+         "name": {
+          "type": "string"
+         }
+        },
         "required": [
          "collections"
         ],
-        "properties": {
-         "name": {
-          "type": "string"
-         },
-         "collections": {
-          "type": "array",
-          "items": {
-           "type": "object",
-           "properties": {
-            "name": {
-             "type": "string"
-            },
-            "maxTTL": {
-             "type": "integer"
-            }
-           }
-          }
-         }
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "scopes"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2647,26 +2645,26 @@
    "summary": "Get Scope",
    "responses": {
     "200": {
-     "type": "object",
      "properties": {
-      "name": {
-       "type": "string"
-      },
       "collections": {
-       "type": "array",
        "items": {
-        "type": "object",
         "properties": {
-         "name": {
-          "type": "string"
-         },
          "maxTTL": {
           "type": "integer"
+         },
+         "name": {
+          "type": "string"
          }
-        }
-       }
+        },
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "name": {
+       "type": "string"
       }
-     }
+     },
+     "type": "object"
     }
    }
   },
@@ -2686,26 +2684,26 @@
    "summary": "List Collections",
    "responses": {
     "200": {
-     "type": "object",
+     "properties": {
+      "data": {
+       "items": {
+        "properties": {
+         "maxTTL": {
+          "type": "integer"
+         },
+         "name": {
+          "type": "string"
+         }
+        },
+        "type": "object"
+       },
+       "type": "array"
+      }
+     },
      "required": [
       "data"
      ],
-     "properties": {
-      "data": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "properties": {
-         "name": {
-          "type": "string"
-         },
-         "maxTTL": {
-          "type": "integer"
-         }
-        }
-       }
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -2725,15 +2723,15 @@
    "summary": "Get Collection",
    "responses": {
     "200": {
-     "type": "object",
      "properties": {
-      "name": {
-       "type": "string"
-      },
       "maxTTL": {
        "type": "integer"
+      },
+      "name": {
+       "type": "string"
       }
-     }
+     },
+     "type": "object"
     }
    }
   },
@@ -2762,97 +2760,151 @@
    "summary": "List Database Credentials",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "cursor",
-      "data"
-     ],
      "properties": {
       "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
        "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
+        "hrefs": {
          "properties": {
-          "page": {
-           "type": "integer"
-          },
-          "next": {
-           "type": "integer"
-          },
-          "previous": {
-           "type": "integer"
+          "first": {
+           "format": "uri",
+           "type": "string"
           },
           "last": {
-           "type": "integer"
+           "format": "uri",
+           "type": "string"
           },
-          "perPage": {
-           "type": "integer"
+          "next": {
+           "format": "uri",
+           "type": "string"
           },
-          "totalItems": {
-           "type": "integer"
+          "previous": {
+           "format": "uri",
+           "type": "string"
           }
-         }
-        },
-        "hrefs": {
-         "type": "object",
+         },
          "required": [
           "first",
           "last",
           "previous",
           "next"
          ],
+         "type": "object"
+        },
+        "pages": {
          "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
           "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
+           "type": "integer"
           },
           "next": {
-           "type": "string",
-           "format": "uri"
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
           }
-         }
+         },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
         }
-       }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
       },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
-        "required": [
-         "id",
-         "name",
-         "access",
-         "audit"
-        ],
         "properties": {
-         "id": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "name": {
-          "type": "string"
+         "access": {
+          "items": {
+           "properties": {
+            "privileges": {
+             "items": {
+              "type": "string"
+             },
+             "type": "array"
+            },
+            "resources": {
+             "properties": {
+              "buckets": {
+               "items": {
+                "properties": {
+                 "name": {
+                  "type": "string"
+                 },
+                 "scopes": {
+                  "items": {
+                   "properties": {
+                    "collections": {
+                     "items": {
+                      "type": "string"
+                     },
+                     "type": "array"
+                    },
+                    "name": {
+                     "type": "string"
+                    }
+                   },
+                   "required": [
+                    "name"
+                   ],
+                   "type": "object"
+                  },
+                  "type": "array"
+                 }
+                },
+                "required": [
+                 "name"
+                ],
+                "type": "object"
+               },
+               "type": "array"
+              }
+             },
+             "type": "object"
+            }
+           },
+           "required": [
+            "privileges"
+           ],
+           "type": "object"
+          },
+          "type": "array"
          },
          "audit": {
-          "type": "object",
+          "properties": {
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "createdBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "version": {
+            "type": "integer"
+           }
+          },
           "required": [
            "createdBy",
            "createdAt",
@@ -2860,92 +2912,38 @@
            "modifiedAt",
            "version"
           ],
-          "properties": {
-           "createdBy": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "modifiedBy": {
-            "type": "string"
-           },
-           "modifiedAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "version": {
-            "type": "integer"
-           }
-          }
+          "type": "object"
          },
-         "access": {
-          "type": "array",
-          "items": {
-           "type": "object",
-           "required": [
-            "privileges"
-           ],
-           "properties": {
-            "privileges": {
-             "type": "array",
-             "items": {
-              "type": "string"
-             }
-            },
-            "resources": {
-             "type": "object",
-             "properties": {
-              "buckets": {
-               "type": "array",
-               "items": {
-                "type": "object",
-                "required": [
-                 "name"
-                ],
-                "properties": {
-                 "name": {
-                  "type": "string"
-                 },
-                 "scopes": {
-                  "type": "array",
-                  "items": {
-                   "type": "object",
-                   "required": [
-                    "name"
-                   ],
-                   "properties": {
-                    "name": {
-                     "type": "string"
-                    },
-                    "collections": {
-                     "type": "array",
-                     "items": {
-                      "type": "string"
-                     }
-                    }
-                   }
-                  }
-                 }
-                }
-               }
-              }
-             }
-            }
-           }
-          }
+         "id": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "name": {
+          "type": "string"
          },
          "userRoles": {
-          "type": "array",
           "items": {
            "type": "string"
-          }
+          },
+          "type": "array"
          }
-        }
-       }
+        },
+        "required": [
+         "id",
+         "name",
+         "access",
+         "audit"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "cursor",
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2956,20 +2954,20 @@
    "summary": "Create Database Credentials",
    "responses": {
     "201": {
-     "type": "object",
-     "required": [
-      "id",
-      "password"
-     ],
      "properties": {
       "id": {
-       "type": "string",
-       "format": "uuid"
+       "format": "uuid",
+       "type": "string"
       },
       "password": {
        "type": "string"
       }
-     }
+     },
+     "required": [
+      "id",
+      "password"
+     ],
+     "type": "object"
     }
    }
   },
@@ -2980,23 +2978,83 @@
    "summary": "Get Database Credentials",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "id",
-      "name",
-      "access",
-      "audit"
-     ],
      "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "name": {
-       "type": "string"
+      "access": {
+       "items": {
+        "properties": {
+         "privileges": {
+          "items": {
+           "type": "string"
+          },
+          "type": "array"
+         },
+         "resources": {
+          "properties": {
+           "buckets": {
+            "items": {
+             "properties": {
+              "name": {
+               "type": "string"
+              },
+              "scopes": {
+               "items": {
+                "properties": {
+                 "collections": {
+                  "items": {
+                   "type": "string"
+                  },
+                  "type": "array"
+                 },
+                 "name": {
+                  "type": "string"
+                 }
+                },
+                "required": [
+                 "name"
+                ],
+                "type": "object"
+               },
+               "type": "array"
+              }
+             },
+             "required": [
+              "name"
+             ],
+             "type": "object"
+            },
+            "type": "array"
+           }
+          },
+          "type": "object"
+         }
+        },
+        "required": [
+         "privileges"
+        ],
+        "type": "object"
+       },
+       "type": "array"
       },
       "audit": {
-       "type": "object",
+       "properties": {
+        "createdAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "createdBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "version": {
+         "type": "integer"
+        }
+       },
        "required": [
         "createdBy",
         "createdAt",
@@ -3004,89 +3062,29 @@
         "modifiedAt",
         "version"
        ],
-       "properties": {
-        "createdBy": {
-         "type": "string"
-        },
-        "createdAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "modifiedBy": {
-         "type": "string"
-        },
-        "modifiedAt": {
-         "type": "string",
-         "format": "date-time"
-        },
-        "version": {
-         "type": "integer"
-        }
-       }
+       "type": "object"
       },
-      "access": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "required": [
-         "privileges"
-        ],
-        "properties": {
-         "privileges": {
-          "type": "array",
-          "items": {
-           "type": "string"
-          }
-         },
-         "resources": {
-          "type": "object",
-          "properties": {
-           "buckets": {
-            "type": "array",
-            "items": {
-             "type": "object",
-             "required": [
-              "name"
-             ],
-             "properties": {
-              "name": {
-               "type": "string"
-              },
-              "scopes": {
-               "type": "array",
-               "items": {
-                "type": "object",
-                "required": [
-                 "name"
-                ],
-                "properties": {
-                 "name": {
-                  "type": "string"
-                 },
-                 "collections": {
-                  "type": "array",
-                  "items": {
-                   "type": "string"
-                  }
-                 }
-                }
-               }
-              }
-             }
-            }
-           }
-          }
-         }
-        }
-       }
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
       },
       "userRoles": {
-       "type": "array",
        "items": {
         "type": "string"
-       }
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "id",
+      "name",
+      "access",
+      "audit"
+     ],
+     "type": "object"
     }
    }
   },
@@ -3115,8 +3113,13 @@
    "summary": "Get Backup Schedule",
    "responses": {
     "200": {
-     "type": "object",
      "properties": {
+      "copyToRegions": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
       "interval": {
        "type": "integer"
       },
@@ -3124,16 +3127,11 @@
        "type": "integer"
       },
       "startTime": {
-       "type": "string",
-       "format": "date-time"
-      },
-      "copyToRegions": {
-       "type": "array",
-       "items": {
-        "type": "string"
-       }
+       "format": "date-time",
+       "type": "string"
       }
-     }
+     },
+     "type": "object"
     },
     "204": null
    }
@@ -3163,21 +3161,21 @@
    "summary": "Get Backup Schedule Options",
    "responses": {
     "200": {
-     "type": "object",
      "properties": {
       "intervals": {
-       "type": "array",
        "items": {
         "type": "integer"
-       }
-      },
-      "minimumRetention": {
-       "type": "integer"
+       },
+       "type": "array"
       },
       "maximumRetention": {
        "type": "integer"
+      },
+      "minimumRetention": {
+       "type": "integer"
       }
-     }
+     },
+     "type": "object"
     }
    }
   },
@@ -3188,13 +3186,13 @@
    "summary": "List Available Geographic Regions for Cross-region Operations",
    "responses": {
     "200": {
-     "type": "array",
+     "items": {
+      "type": "string"
+     },
      "required": [
       "items"
      ],
-     "items": {
-      "type": "string"
-     }
+     "type": "array"
     }
    }
   },
@@ -3205,71 +3203,105 @@
    "summary": "List Cloud Snapshot Backups",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data",
-      "cursor"
-     ],
      "properties": {
-      "data": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "properties": {
-         "clusterId": {
-          "type": "string"
-         },
-         "createdAt": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "expiration": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "id": {
-          "type": "string"
-         },
-         "progress": {
-          "type": "object",
-          "properties": {
-           "status": {
-            "type": "string"
-           },
-           "time": {
-            "type": "string",
-            "format": "date-time"
-           }
+      "cursor": {
+       "properties": {
+        "hrefs": {
+         "properties": {
+          "first": {
+           "format": "uri",
+           "type": "string"
+          },
+          "last": {
+           "format": "uri",
+           "type": "string"
+          },
+          "next": {
+           "format": "uri",
+           "type": "string"
+          },
+          "previous": {
+           "format": "uri",
+           "type": "string"
           }
          },
-         "projectId": {
-          "type": "string"
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "type": "object"
+        },
+        "pages": {
+         "properties": {
+          "last": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
          },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
+        }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
+      },
+      "data": {
+       "items": {
+        "properties": {
          "appService": {
           "type": "string"
          },
+         "clusterId": {
+          "type": "string"
+         },
          "cmek": {
-          "type": "array",
           "items": {
-           "type": "object",
-           "required": [
-            "id"
-           ],
            "properties": {
             "id": {
-             "type": "string",
-             "format": "uuid"
+             "format": "uuid",
+             "type": "string"
             },
             "providerId": {
              "type": "string"
             }
-           }
-          }
+           },
+           "required": [
+            "id"
+           ],
+           "type": "object"
+          },
+          "type": "array"
+         },
+         "createdAt": {
+          "format": "date-time",
+          "type": "string"
          },
          "crossRegionCopies": {
-          "type": "array",
           "items": {
-           "type": "object",
            "properties": {
             "regionCode": {
              "type": "string"
@@ -3278,26 +3310,50 @@
              "type": "string"
             },
             "time": {
-             "type": "string",
-             "format": "date-time"
+             "format": "date-time",
+             "type": "string"
             }
+           },
+           "type": "object"
+          },
+          "type": "array"
+         },
+         "databaseSize": {
+          "format": "uint64",
+          "type": "integer"
+         },
+         "expiration": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "id": {
+          "type": "string"
+         },
+         "progress": {
+          "properties": {
+           "status": {
+            "type": "string"
+           },
+           "time": {
+            "format": "date-time",
+            "type": "string"
            }
-          }
+          },
+          "type": "object"
+         },
+         "projectId": {
+          "type": "string"
          },
          "retention": {
           "type": "integer"
          },
          "server": {
-          "type": "object",
           "properties": {
            "version": {
             "type": "string"
            }
-          }
-         },
-         "databaseSize": {
-          "type": "integer",
-          "format": "uint64"
+          },
+          "type": "object"
          },
          "tenantId": {
           "type": "string"
@@ -3305,75 +3361,17 @@
          "type": {
           "type": "string"
          }
-        }
-       }
-      },
-      "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
-       "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
-         "properties": {
-          "page": {
-           "type": "integer"
-          },
-          "next": {
-           "type": "integer"
-          },
-          "previous": {
-           "type": "integer"
-          },
-          "last": {
-           "type": "integer"
-          },
-          "perPage": {
-           "type": "integer"
-          },
-          "totalItems": {
-           "type": "integer"
-          }
-         }
         },
-        "hrefs": {
-         "type": "object",
-         "required": [
-          "first",
-          "last",
-          "previous",
-          "next"
-         ],
-         "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
-          "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
-          },
-          "next": {
-           "type": "string",
-           "format": "uri"
-          }
-         }
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "type": "object"
     }
    }
   },
@@ -3384,296 +3382,296 @@
    "summary": "List Cloud Snapshot Backups at the Project Level",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data",
-      "cursor"
-     ],
      "properties": {
-      "data": {
-       "type": "array",
-       "items": {
-        "type": "object",
-        "properties": {
-         "clusterId": {
-          "type": "string"
-         },
-         "clusterName": {
-          "type": "string"
-         },
-         "creationDateTime": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "createdBy": {
-          "type": "string"
-         },
-         "currentStatus": {
-          "type": "string"
-         },
-         "cloudProvider": {
-          "type": "string"
-         },
-         "region": {
-          "type": "string"
-         },
-         "mostRecentSnapshot": {
-          "type": "object",
-          "properties": {
-           "clusterId": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "expiration": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "id": {
-            "type": "string"
-           },
-           "progress": {
-            "type": "object",
-            "properties": {
-             "status": {
-              "type": "string"
-             },
-             "time": {
-              "type": "string",
-              "format": "date-time"
-             }
-            }
-           },
-           "projectId": {
-            "type": "string"
-           },
-           "appService": {
-            "type": "string"
-           },
-           "cmek": {
-            "type": "array",
-            "items": {
-             "type": "object",
-             "required": [
-              "id"
-             ],
-             "properties": {
-              "id": {
-               "type": "string",
-               "format": "uuid"
-              },
-              "providerId": {
-               "type": "string"
-              }
-             }
-            }
-           },
-           "crossRegionCopies": {
-            "type": "array",
-            "items": {
-             "type": "object",
-             "properties": {
-              "regionCode": {
-               "type": "string"
-              },
-              "status": {
-               "type": "string"
-              },
-              "time": {
-               "type": "string",
-               "format": "date-time"
-              }
-             }
-            }
-           },
-           "retention": {
-            "type": "integer"
-           },
-           "server": {
-            "type": "object",
-            "properties": {
-             "version": {
-              "type": "string"
-             }
-            }
-           },
-           "databaseSize": {
-            "type": "integer",
-            "format": "uint64"
-           },
-           "tenantId": {
-            "type": "string"
-           },
-           "type": {
-            "type": "string"
-           }
-          }
-         },
-         "oldestSnapshot": {
-          "type": "object",
-          "properties": {
-           "clusterId": {
-            "type": "string"
-           },
-           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "expiration": {
-            "type": "string",
-            "format": "date-time"
-           },
-           "id": {
-            "type": "string"
-           },
-           "progress": {
-            "type": "object",
-            "properties": {
-             "status": {
-              "type": "string"
-             },
-             "time": {
-              "type": "string",
-              "format": "date-time"
-             }
-            }
-           },
-           "projectId": {
-            "type": "string"
-           },
-           "appService": {
-            "type": "string"
-           },
-           "cmek": {
-            "type": "array",
-            "items": {
-             "type": "object",
-             "required": [
-              "id"
-             ],
-             "properties": {
-              "id": {
-               "type": "string",
-               "format": "uuid"
-              },
-              "providerId": {
-               "type": "string"
-              }
-             }
-            }
-           },
-           "crossRegionCopies": {
-            "type": "array",
-            "items": {
-             "type": "object",
-             "properties": {
-              "regionCode": {
-               "type": "string"
-              },
-              "status": {
-               "type": "string"
-              },
-              "time": {
-               "type": "string",
-               "format": "date-time"
-              }
-             }
-            }
-           },
-           "retention": {
-            "type": "integer"
-           },
-           "server": {
-            "type": "object",
-            "properties": {
-             "version": {
-              "type": "string"
-             }
-            }
-           },
-           "databaseSize": {
-            "type": "integer",
-            "format": "uint64"
-           },
-           "tenantId": {
-            "type": "string"
-           },
-           "type": {
-            "type": "string"
-           }
-          }
-         }
-        }
-       }
-      },
       "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
        "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
+        "hrefs": {
          "properties": {
-          "page": {
-           "type": "integer"
-          },
-          "next": {
-           "type": "integer"
-          },
-          "previous": {
-           "type": "integer"
+          "first": {
+           "format": "uri",
+           "type": "string"
           },
           "last": {
-           "type": "integer"
+           "format": "uri",
+           "type": "string"
           },
-          "perPage": {
-           "type": "integer"
+          "next": {
+           "format": "uri",
+           "type": "string"
           },
-          "totalItems": {
-           "type": "integer"
+          "previous": {
+           "format": "uri",
+           "type": "string"
           }
-         }
-        },
-        "hrefs": {
-         "type": "object",
+         },
          "required": [
           "first",
           "last",
           "previous",
           "next"
          ],
+         "type": "object"
+        },
+        "pages": {
          "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
           "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
+           "type": "integer"
           },
           "next": {
-           "type": "string",
-           "format": "uri"
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
           }
-         }
+         },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
         }
-       }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
+      },
+      "data": {
+       "items": {
+        "properties": {
+         "cloudProvider": {
+          "type": "string"
+         },
+         "clusterId": {
+          "type": "string"
+         },
+         "clusterName": {
+          "type": "string"
+         },
+         "createdBy": {
+          "type": "string"
+         },
+         "creationDateTime": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "currentStatus": {
+          "type": "string"
+         },
+         "mostRecentSnapshot": {
+          "properties": {
+           "appService": {
+            "type": "string"
+           },
+           "clusterId": {
+            "type": "string"
+           },
+           "cmek": {
+            "items": {
+             "properties": {
+              "id": {
+               "format": "uuid",
+               "type": "string"
+              },
+              "providerId": {
+               "type": "string"
+              }
+             },
+             "required": [
+              "id"
+             ],
+             "type": "object"
+            },
+            "type": "array"
+           },
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "crossRegionCopies": {
+            "items": {
+             "properties": {
+              "regionCode": {
+               "type": "string"
+              },
+              "status": {
+               "type": "string"
+              },
+              "time": {
+               "format": "date-time",
+               "type": "string"
+              }
+             },
+             "type": "object"
+            },
+            "type": "array"
+           },
+           "databaseSize": {
+            "format": "uint64",
+            "type": "integer"
+           },
+           "expiration": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "id": {
+            "type": "string"
+           },
+           "progress": {
+            "properties": {
+             "status": {
+              "type": "string"
+             },
+             "time": {
+              "format": "date-time",
+              "type": "string"
+             }
+            },
+            "type": "object"
+           },
+           "projectId": {
+            "type": "string"
+           },
+           "retention": {
+            "type": "integer"
+           },
+           "server": {
+            "properties": {
+             "version": {
+              "type": "string"
+             }
+            },
+            "type": "object"
+           },
+           "tenantId": {
+            "type": "string"
+           },
+           "type": {
+            "type": "string"
+           }
+          },
+          "type": "object"
+         },
+         "oldestSnapshot": {
+          "properties": {
+           "appService": {
+            "type": "string"
+           },
+           "clusterId": {
+            "type": "string"
+           },
+           "cmek": {
+            "items": {
+             "properties": {
+              "id": {
+               "format": "uuid",
+               "type": "string"
+              },
+              "providerId": {
+               "type": "string"
+              }
+             },
+             "required": [
+              "id"
+             ],
+             "type": "object"
+            },
+            "type": "array"
+           },
+           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "crossRegionCopies": {
+            "items": {
+             "properties": {
+              "regionCode": {
+               "type": "string"
+              },
+              "status": {
+               "type": "string"
+              },
+              "time": {
+               "format": "date-time",
+               "type": "string"
+              }
+             },
+             "type": "object"
+            },
+            "type": "array"
+           },
+           "databaseSize": {
+            "format": "uint64",
+            "type": "integer"
+           },
+           "expiration": {
+            "format": "date-time",
+            "type": "string"
+           },
+           "id": {
+            "type": "string"
+           },
+           "progress": {
+            "properties": {
+             "status": {
+              "type": "string"
+             },
+             "time": {
+              "format": "date-time",
+              "type": "string"
+             }
+            },
+            "type": "object"
+           },
+           "projectId": {
+            "type": "string"
+           },
+           "retention": {
+            "type": "integer"
+           },
+           "server": {
+            "properties": {
+             "version": {
+              "type": "string"
+             }
+            },
+            "type": "object"
+           },
+           "tenantId": {
+            "type": "string"
+           },
+           "type": {
+            "type": "string"
+           }
+          },
+          "type": "object"
+         },
+         "region": {
+          "type": "string"
+         }
+        },
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "type": "object"
     }
    }
   },
@@ -3684,12 +3682,12 @@
    "summary": "Create Cloud Snapshot Backup",
    "responses": {
     "202": {
-     "type": "object",
      "properties": {
       "backupId": {
        "type": "string"
       }
-     }
+     },
+     "type": "object"
     }
    }
   },
@@ -3709,8 +3707,8 @@
    "summary": "Delete Backup",
    "responses": {
     "202": {
-     "type": "object",
-     "properties": {}
+     "properties": {},
+     "type": "object"
     }
    }
   },
@@ -3721,12 +3719,12 @@
    "summary": "Restore Backup",
    "responses": {
     "202": {
-     "type": "object",
      "properties": {
       "restoreId": {
        "type": "string"
       }
-     }
+     },
+     "type": "object"
     }
    }
   },
@@ -3737,40 +3735,98 @@
    "summary": "List Cloud Snapshot Restores",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data",
-      "cursor"
-     ],
      "properties": {
+      "cursor": {
+       "properties": {
+        "hrefs": {
+         "properties": {
+          "first": {
+           "format": "uri",
+           "type": "string"
+          },
+          "last": {
+           "format": "uri",
+           "type": "string"
+          },
+          "next": {
+           "format": "uri",
+           "type": "string"
+          },
+          "previous": {
+           "format": "uri",
+           "type": "string"
+          }
+         },
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "type": "object"
+        },
+        "pages": {
+         "properties": {
+          "last": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "page": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         },
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "type": "object"
+        }
+       },
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "type": "object"
+      },
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
         "properties": {
          "clusterId": {
+          "type": "string"
+         },
+         "createdAt": {
+          "format": "date-time",
           "type": "string"
          },
          "id": {
           "type": "string"
          },
-         "createdAt": {
-          "type": "string",
-          "format": "date-time"
-         },
          "projectId": {
           "type": "string"
          },
          "restoreEnd": {
-          "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "type": "string"
          },
          "restoreTo": {
           "type": "string"
          },
          "snapshot": {
-          "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "type": "string"
          },
          "status": {
           "type": "string"
@@ -3778,75 +3834,17 @@
          "tenantId": {
           "type": "string"
          }
-        }
-       }
-      },
-      "cursor": {
-       "type": "object",
-       "required": [
-        "pages",
-        "hrefs"
-       ],
-       "properties": {
-        "pages": {
-         "type": "object",
-         "required": [
-          "page",
-          "last",
-          "perPage",
-          "totalItems"
-         ],
-         "properties": {
-          "page": {
-           "type": "integer"
-          },
-          "next": {
-           "type": "integer"
-          },
-          "previous": {
-           "type": "integer"
-          },
-          "last": {
-           "type": "integer"
-          },
-          "perPage": {
-           "type": "integer"
-          },
-          "totalItems": {
-           "type": "integer"
-          }
-         }
         },
-        "hrefs": {
-         "type": "object",
-         "required": [
-          "first",
-          "last",
-          "previous",
-          "next"
-         ],
-         "properties": {
-          "first": {
-           "type": "string",
-           "format": "uri"
-          },
-          "last": {
-           "type": "string",
-           "format": "uri"
-          },
-          "previous": {
-           "type": "string",
-           "format": "uri"
-          },
-          "next": {
-           "type": "string",
-           "format": "uri"
-          }
-         }
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "type": "object"
     }
    }
   },
@@ -3857,39 +3855,24 @@
    "summary": "Get Backup Schedule",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "type",
-      "clusterID",
-      "bucketId",
-      "weeklySchedule"
-     ],
      "properties": {
-      "type": {
-       "type": "string"
-      },
-      "clusterID": {
-       "type": "string",
-       "format": "uuid"
-      },
       "bucketId": {
        "type": "string"
       },
+      "clusterID": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "type": {
+       "type": "string"
+      },
       "weeklySchedule": {
-       "type": "object",
-       "required": [
-        "dayOfWeek",
-        "startAt",
-        "incrementalEvery",
-        "retentionTime",
-        "costOptimizedRetention"
-       ],
        "properties": {
+        "costOptimizedRetention": {
+         "type": "boolean"
+        },
         "dayOfWeek": {
          "type": "string"
-        },
-        "startAt": {
-         "type": "integer"
         },
         "incrementalEvery": {
          "type": "integer"
@@ -3897,12 +3880,27 @@
         "retentionTime": {
          "type": "string"
         },
-        "costOptimizedRetention": {
-         "type": "boolean"
+        "startAt": {
+         "type": "integer"
         }
-       }
+       },
+       "required": [
+        "dayOfWeek",
+        "startAt",
+        "incrementalEvery",
+        "retentionTime",
+        "costOptimizedRetention"
+       ],
+       "type": "object"
       }
-     }
+     },
+     "required": [
+      "type",
+      "clusterID",
+      "bucketId",
+      "weeklySchedule"
+     ],
+     "type": "object"
     }
    }
   },
@@ -3940,32 +3938,32 @@
    "summary": "List Cycles",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data"
-     ],
      "properties": {
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
+        "properties": {
+         "createdAt": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "cycleID": {
+          "format": "uuid",
+          "type": "string"
+         }
+        },
         "required": [
          "cycleID",
          "createdAt"
         ],
-        "properties": {
-         "cycleID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "createdAt": {
-          "type": "string",
-          "format": "date-time"
-         }
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -3976,15 +3974,135 @@
    "summary": "List Backups",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data"
-     ],
      "properties": {
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
+        "properties": {
+         "bucketID": {
+          "type": "string"
+         },
+         "bucketName": {
+          "type": "string"
+         },
+         "clusterID": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "cycleID": {
+          "type": "string"
+         },
+         "date": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "elapsedTimeInSeconds": {
+          "type": "integer"
+         },
+         "id": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "method": {
+          "enum": [
+           "incremental",
+           "full"
+          ],
+          "type": "string"
+         },
+         "projectID": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "provider": {
+          "type": "string"
+         },
+         "restoreBefore": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "scheduleInfo": {
+          "properties": {
+           "backupTime": {
+            "type": "string"
+           },
+           "backupType": {
+            "type": "string"
+           },
+           "increment": {
+            "type": "integer"
+           },
+           "retention": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "backupType",
+           "backupTime",
+           "increment",
+           "retention"
+          ],
+          "type": "object"
+         },
+         "source": {
+          "enum": [
+           "manual",
+           "scheduled"
+          ],
+          "type": "string"
+         },
+         "stats": {
+          "properties": {
+           "cbas": {
+            "type": "integer"
+           },
+           "event": {
+            "type": "integer"
+           },
+           "fts": {
+            "type": "integer"
+           },
+           "gsi": {
+            "type": "integer"
+           },
+           "items": {
+            "type": "integer"
+           },
+           "mutations": {
+            "type": "integer"
+           },
+           "sizeInMb": {
+            "format": "float",
+            "type": "number"
+           },
+           "tombstones": {
+            "type": "integer"
+           }
+          },
+          "required": [
+           "cbas",
+           "event",
+           "fts",
+           "gsi",
+           "tombstones",
+           "mutations",
+           "items",
+           "sizeInMb"
+          ],
+          "type": "object"
+         },
+         "status": {
+          "enum": [
+           "pending",
+           "ready",
+           "failed"
+          ],
+          "type": "string"
+         },
+         "tenantID": {
+          "format": "uuid",
+          "type": "string"
+         }
+        },
         "required": [
          "id",
          "clusterID",
@@ -4001,135 +4119,15 @@
          "elapsedTimeInSeconds",
          "scheduleInfo"
         ],
-        "properties": {
-         "id": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "clusterID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "tenantID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "projectID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "cycleID": {
-          "type": "string"
-         },
-         "date": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "restoreBefore": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "status": {
-          "type": "string",
-          "enum": [
-           "pending",
-           "ready",
-           "failed"
-          ]
-         },
-         "method": {
-          "type": "string",
-          "enum": [
-           "incremental",
-           "full"
-          ]
-         },
-         "bucketName": {
-          "type": "string"
-         },
-         "bucketID": {
-          "type": "string"
-         },
-         "source": {
-          "type": "string",
-          "enum": [
-           "manual",
-           "scheduled"
-          ]
-         },
-         "provider": {
-          "type": "string"
-         },
-         "stats": {
-          "type": "object",
-          "required": [
-           "cbas",
-           "event",
-           "fts",
-           "gsi",
-           "tombstones",
-           "mutations",
-           "items",
-           "sizeInMb"
-          ],
-          "properties": {
-           "sizeInMb": {
-            "type": "number",
-            "format": "float"
-           },
-           "items": {
-            "type": "integer"
-           },
-           "mutations": {
-            "type": "integer"
-           },
-           "tombstones": {
-            "type": "integer"
-           },
-           "gsi": {
-            "type": "integer"
-           },
-           "fts": {
-            "type": "integer"
-           },
-           "cbas": {
-            "type": "integer"
-           },
-           "event": {
-            "type": "integer"
-           }
-          }
-         },
-         "elapsedTimeInSeconds": {
-          "type": "integer"
-         },
-         "scheduleInfo": {
-          "type": "object",
-          "required": [
-           "backupType",
-           "backupTime",
-           "increment",
-           "retention"
-          ],
-          "properties": {
-           "backupType": {
-            "type": "string"
-           },
-           "backupTime": {
-            "type": "string"
-           },
-           "increment": {
-            "type": "integer"
-           },
-           "retention": {
-            "type": "string"
-           }
-          }
-         }
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -4149,15 +4147,138 @@
    "summary": "List Cluster Backups",
    "responses": {
     "200": {
-     "type": "object",
-     "required": [
-      "data"
-     ],
      "properties": {
       "data": {
-       "type": "array",
        "items": {
-        "type": "object",
+        "properties": {
+         "bucketDownloadsCount": {
+          "type": "integer"
+         },
+         "bucketID": {
+          "type": "string"
+         },
+         "bucketName": {
+          "type": "string"
+         },
+         "clusterID": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "cycleID": {
+          "type": "string"
+         },
+         "date": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "elapsedTimeInSeconds": {
+          "type": "integer"
+         },
+         "id": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "method": {
+          "enum": [
+           "incremental",
+           "full"
+          ],
+          "type": "string"
+         },
+         "projectID": {
+          "format": "uuid",
+          "type": "string"
+         },
+         "provider": {
+          "type": "string"
+         },
+         "restoreBefore": {
+          "format": "date-time",
+          "type": "string"
+         },
+         "scheduleInfo": {
+          "properties": {
+           "backupTime": {
+            "type": "string"
+           },
+           "backupType": {
+            "type": "string"
+           },
+           "increment": {
+            "type": "integer"
+           },
+           "retention": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "backupType",
+           "backupTime",
+           "increment",
+           "retention"
+          ],
+          "type": "object"
+         },
+         "source": {
+          "enum": [
+           "manual",
+           "scheduled"
+          ],
+          "type": "string"
+         },
+         "stats": {
+          "properties": {
+           "cbas": {
+            "type": "integer"
+           },
+           "event": {
+            "type": "integer"
+           },
+           "fts": {
+            "type": "integer"
+           },
+           "gsi": {
+            "type": "integer"
+           },
+           "items": {
+            "type": "integer"
+           },
+           "mutations": {
+            "type": "integer"
+           },
+           "sizeInMb": {
+            "format": "float",
+            "type": "number"
+           },
+           "tombstones": {
+            "type": "integer"
+           }
+          },
+          "required": [
+           "cbas",
+           "event",
+           "fts",
+           "gsi",
+           "tombstones",
+           "mutations",
+           "items",
+           "sizeInMb"
+          ],
+          "type": "object"
+         },
+         "status": {
+          "enum": [
+           "pending",
+           "ready",
+           "failed"
+          ],
+          "type": "string"
+         },
+         "tenantID": {
+          "format": "uuid",
+          "type": "string"
+         }
+        },
         "required": [
          "id",
          "clusterID",
@@ -4174,138 +4295,15 @@
          "elapsedTimeInSeconds",
          "scheduleInfo"
         ],
-        "properties": {
-         "id": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "clusterID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "tenantID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "projectID": {
-          "type": "string",
-          "format": "uuid"
-         },
-         "cycleID": {
-          "type": "string"
-         },
-         "date": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "restoreBefore": {
-          "type": "string",
-          "format": "date-time"
-         },
-         "status": {
-          "type": "string",
-          "enum": [
-           "pending",
-           "ready",
-           "failed"
-          ]
-         },
-         "method": {
-          "type": "string",
-          "enum": [
-           "incremental",
-           "full"
-          ]
-         },
-         "bucketName": {
-          "type": "string"
-         },
-         "bucketID": {
-          "type": "string"
-         },
-         "source": {
-          "type": "string",
-          "enum": [
-           "manual",
-           "scheduled"
-          ]
-         },
-         "provider": {
-          "type": "string"
-         },
-         "stats": {
-          "type": "object",
-          "required": [
-           "cbas",
-           "event",
-           "fts",
-           "gsi",
-           "tombstones",
-           "mutations",
-           "items",
-           "sizeInMb"
-          ],
-          "properties": {
-           "sizeInMb": {
-            "type": "number",
-            "format": "float"
-           },
-           "items": {
-            "type": "integer"
-           },
-           "mutations": {
-            "type": "integer"
-           },
-           "tombstones": {
-            "type": "integer"
-           },
-           "gsi": {
-            "type": "integer"
-           },
-           "fts": {
-            "type": "integer"
-           },
-           "cbas": {
-            "type": "integer"
-           },
-           "event": {
-            "type": "integer"
-           }
-          }
-         },
-         "elapsedTimeInSeconds": {
-          "type": "integer"
-         },
-         "scheduleInfo": {
-          "type": "object",
-          "required": [
-           "backupType",
-           "backupTime",
-           "increment",
-           "retention"
-          ],
-          "properties": {
-           "backupType": {
-            "type": "string"
-           },
-           "backupTime": {
-            "type": "string"
-           },
-           "increment": {
-            "type": "integer"
-           },
-           "retention": {
-            "type": "string"
-           }
-          }
-         },
-         "bucketDownloadsCount": {
-          "type": "integer"
-         }
-        }
-       }
+        "type": "object"
+       },
+       "type": "array"
       }
-     }
+     },
+     "required": [
+      "data"
+     ],
+     "type": "object"
     }
    }
   },
@@ -4316,7 +4314,132 @@
    "summary": "Get Backup",
    "responses": {
     "200": {
-     "type": "object",
+     "properties": {
+      "bucketID": {
+       "type": "string"
+      },
+      "bucketName": {
+       "type": "string"
+      },
+      "clusterID": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "cycleID": {
+       "type": "string"
+      },
+      "date": {
+       "format": "date-time",
+       "type": "string"
+      },
+      "elapsedTimeInSeconds": {
+       "type": "integer"
+      },
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "method": {
+       "enum": [
+        "incremental",
+        "full"
+       ],
+       "type": "string"
+      },
+      "projectID": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "provider": {
+       "type": "string"
+      },
+      "restoreBefore": {
+       "format": "date-time",
+       "type": "string"
+      },
+      "scheduleInfo": {
+       "properties": {
+        "backupTime": {
+         "type": "string"
+        },
+        "backupType": {
+         "type": "string"
+        },
+        "increment": {
+         "type": "integer"
+        },
+        "retention": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "backupType",
+        "backupTime",
+        "increment",
+        "retention"
+       ],
+       "type": "object"
+      },
+      "source": {
+       "enum": [
+        "manual",
+        "scheduled"
+       ],
+       "type": "string"
+      },
+      "stats": {
+       "properties": {
+        "cbas": {
+         "type": "integer"
+        },
+        "event": {
+         "type": "integer"
+        },
+        "fts": {
+         "type": "integer"
+        },
+        "gsi": {
+         "type": "integer"
+        },
+        "items": {
+         "type": "integer"
+        },
+        "mutations": {
+         "type": "integer"
+        },
+        "sizeInMb": {
+         "format": "float",
+         "type": "number"
+        },
+        "tombstones": {
+         "type": "integer"
+        }
+       },
+       "required": [
+        "cbas",
+        "event",
+        "fts",
+        "gsi",
+        "tombstones",
+        "mutations",
+        "items",
+        "sizeInMb"
+       ],
+       "type": "object"
+      },
+      "status": {
+       "enum": [
+        "pending",
+        "ready",
+        "failed"
+       ],
+       "type": "string"
+      },
+      "tenantID": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
      "required": [
       "id",
       "clusterID",
@@ -4333,132 +4456,7 @@
       "elapsedTimeInSeconds",
       "scheduleInfo"
      ],
-     "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "clusterID": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "tenantID": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "projectID": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "cycleID": {
-       "type": "string"
-      },
-      "date": {
-       "type": "string",
-       "format": "date-time"
-      },
-      "restoreBefore": {
-       "type": "string",
-       "format": "date-time"
-      },
-      "status": {
-       "type": "string",
-       "enum": [
-        "pending",
-        "ready",
-        "failed"
-       ]
-      },
-      "method": {
-       "type": "string",
-       "enum": [
-        "incremental",
-        "full"
-       ]
-      },
-      "bucketName": {
-       "type": "string"
-      },
-      "bucketID": {
-       "type": "string"
-      },
-      "source": {
-       "type": "string",
-       "enum": [
-        "manual",
-        "scheduled"
-       ]
-      },
-      "provider": {
-       "type": "string"
-      },
-      "stats": {
-       "type": "object",
-       "required": [
-        "cbas",
-        "event",
-        "fts",
-        "gsi",
-        "tombstones",
-        "mutations",
-        "items",
-        "sizeInMb"
-       ],
-       "properties": {
-        "sizeInMb": {
-         "type": "number",
-         "format": "float"
-        },
-        "items": {
-         "type": "integer"
-        },
-        "mutations": {
-         "type": "integer"
-        },
-        "tombstones": {
-         "type": "integer"
-        },
-        "gsi": {
-         "type": "integer"
-        },
-        "fts": {
-         "type": "integer"
-        },
-        "cbas": {
-         "type": "integer"
-        },
-        "event": {
-         "type": "integer"
-        }
-       }
-      },
-      "elapsedTimeInSeconds": {
-       "type": "integer"
-      },
-      "scheduleInfo": {
-       "type": "object",
-       "required": [
-        "backupType",
-        "backupTime",
-        "increment",
-        "retention"
-       ],
-       "properties": {
-        "backupType": {
-         "type": "string"
-        },
-        "backupTime": {
-         "type": "string"
-        },
-        "increment": {
-         "type": "integer"
-        },
-        "retention": {
-         "type": "string"
-        }
-       }
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -4487,21 +4485,21 @@
    "summary": "Create Backup Export",
    "responses": {
     "202": {
-     "type": "object",
+     "properties": {
+      "createdAt": {
+       "format": "date-time",
+       "type": "string"
+      },
+      "exportId": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
      "required": [
       "exportId",
       "createdAt"
      ],
-     "properties": {
-      "exportId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "createdAt": {
-       "type": "string",
-       "format": "date-time"
-      }
-     }
+     "type": "object"
     }
    }
   },
@@ -4512,7 +4510,60 @@
    "summary": "Get Backup Export",
    "responses": {
     "200": {
-     "type": "object",
+     "properties": {
+      "backupDownloadURL": {
+       "format": "uri",
+       "type": "string"
+      },
+      "bucketName": {
+       "type": "string"
+      },
+      "clusterId": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "createdAt": {
+       "format": "date-time",
+       "type": "string"
+      },
+      "cycleId": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "expiration": {
+       "format": "date-time",
+       "type": "string"
+      },
+      "id": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "projectId": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "sha256Checksum": {
+       "type": "string"
+      },
+      "sizeInBytes": {
+       "format": "int64",
+       "type": "integer"
+      },
+      "status": {
+       "enum": [
+        "pending",
+        "processing",
+        "complete",
+        "failed",
+        "expired"
+       ],
+       "type": "string"
+      },
+      "tenantId": {
+       "format": "uuid",
+       "type": "string"
+      }
+     },
      "required": [
       "id",
       "tenantId",
@@ -4523,60 +4574,7 @@
       "status",
       "createdAt"
      ],
-     "properties": {
-      "id": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "tenantId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "projectId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "clusterId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "cycleId": {
-       "type": "string",
-       "format": "uuid"
-      },
-      "bucketName": {
-       "type": "string"
-      },
-      "status": {
-       "type": "string",
-       "enum": [
-        "pending",
-        "processing",
-        "complete",
-        "failed",
-        "expired"
-       ]
-      },
-      "createdAt": {
-       "type": "string",
-       "format": "date-time"
-      },
-      "sizeInBytes": {
-       "type": "integer",
-       "format": "int64"
-      },
-      "sha256Checksum": {
-       "type": "string"
-      },
-      "expiration": {
-       "type": "string",
-       "format": "date-time"
-      },
-      "backupDownloadURL": {
-       "type": "string",
-       "format": "uri"
-      }
-     }
+     "type": "object"
     }
    }
   }
