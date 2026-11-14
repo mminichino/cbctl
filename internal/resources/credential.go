@@ -365,6 +365,9 @@ func (r *credentialRec) Key(desired any, parent *plan.Action) string {
 }
 
 func (r *credentialRec) Observe(ctx context.Context, rc *plan.RunContext, parent *plan.Action) ([]plan.Observed, error) {
+	if clusterContentsUnavailable(parent) {
+		return nil, nil
+	}
 	pid, cid := clusterIDs(parent)
 	if err := needIDs("credential", pid, cid); err != nil {
 		return nil, err

@@ -193,6 +193,9 @@ func (r *scopeRec) AfterChildrenNote() string { return "(after scope is created)
 func (r *scopeRec) Manages(o plan.Observed) bool { return !IsSystemScope(o.Body["name"]) }
 
 func (r *scopeRec) Observe(ctx context.Context, rc *plan.RunContext, parent *plan.Action) ([]plan.Observed, error) {
+	if parent != nil && clusterContentsUnavailable(parent.Parent) {
+		return nil, nil
+	}
 	pid, cid, bid := keyspaceIDs(parent)
 	if err := needIDs("scope", pid, cid, bid); err != nil {
 		return nil, err

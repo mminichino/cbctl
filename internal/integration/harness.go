@@ -265,7 +265,9 @@ func tryApplyShared(tg *Target) (*Shared, error) {
 	s := &Shared{
 		Cfg:     filepath.Join(dir, "capella.yaml"),
 		Project: tg.ProjectName("shared"),
-		Cluster: "ci-shared-01",
+		// Run-unique cluster name: Capella rename-detection blocks apply when another
+		// project already owns a fixed name like ci-shared-01.
+		Cluster: "ci-sh-" + tg.Run,
 		Bucket:  "it-data",
 	}
 	body := MultiNodeConfig(s.Project, s.Cluster, s.Bucket, os.Getenv("CAPELLA_SANDBOX_CLIENT_CIDR"))

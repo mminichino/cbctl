@@ -168,6 +168,27 @@ func TestCoverHelpers_unmanagedLabelsAndDeletes(t *testing.T) {
 	}
 }
 
+func TestCoverHelpers_clusterContentsUnavailable(t *testing.T) {
+	t.Parallel()
+	a := plan.NewAction(newCluster(), "cluster", "nova", plan.Noop)
+	if clusterContentsUnavailable(a) {
+		t.Fatal("empty state should be available")
+	}
+	a.Data = map[string]any{"state": "turnedOff"}
+	if !clusterContentsUnavailable(a) {
+		t.Fatal("turnedOff via Data")
+	}
+	a.Data = nil
+	a.Observed = &plan.Observed{Body: Obj{"currentState": "turningOn"}}
+	if !clusterContentsUnavailable(a) {
+		t.Fatal("turningOn via Observed")
+	}
+	a.Observed.Body["currentState"] = "healthy"
+	if clusterContentsUnavailable(a) {
+		t.Fatal("healthy should be available")
+	}
+}
+
 func TestCoverHelpers_childBlockAndEnsureReady(t *testing.T) {
 	t.Parallel()
 	r := newCluster()

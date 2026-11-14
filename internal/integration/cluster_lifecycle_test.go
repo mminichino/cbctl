@@ -18,7 +18,8 @@ func TestClusterLifecycle_CAP014_AC7(t *testing.T) {
 	tg.RequireClusters(t)
 
 	project := tg.ProjectName("clu-life")
-	cluster := "cbctl-it-lifecycle"
+	// Run-unique: a leftover project owning a fixed cluster name blocks apply via rename detection.
+	cluster := "life-" + tg.Run
 	tg.Cleanup(t, project)
 
 	dir := t.TempDir()
