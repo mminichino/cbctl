@@ -14,7 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Capella init wizard polish and live §13.4 declarative cluster flow (gated by `CBCTL_LIVE_CLUSTER=1`).
 - Hermetic `cli.Run` / `cli.Deps` entry for in-process tests; fake Inventory route parity test.
 - Phase 4 scaffolding: `cmd/cbdev`, CI libraries (`secretscan`, `releasegate`, `janitor`), `clitest`,
-  docs/backlog port, nightly/release gates (landing progressively).
+  nightly/release gates (landing progressively).
+- Phase 4 docs/backlog port: `docs/backlog/` (SOURCE, 1.0.0 `stories.yaml` + architecture,
+  26× release-1.5.0 CAP stories, API snapshots), `internal/docgen/port` rewrite engine,
+  `cbdev docs port`, and stub Capella guides under `docs/capella/`.
 
 ### Changed
 

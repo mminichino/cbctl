@@ -17,17 +17,17 @@ test-race: test-unit
 test-integration-fake:
 	@if [ ! -f internal/integration/harness.go ]; then \
 		echo "skip: internal/integration/harness.go not present yet"; \
-		exit 0; \
+	else \
+		CBCTL_IT_TARGET=fake go test -tags=integration -race -timeout 20m ./internal/integration/...; \
 	fi
-	CBCTL_IT_TARGET=fake go test -tags=integration -race -timeout 20m ./internal/integration/...
 
 # Sandbox Capella integration; needs CAPELLA_SANDBOX_API_KEY / CAPELLA_SANDBOX_ORG_ID.
 test-integration:
 	@if [ ! -f internal/integration/harness.go ]; then \
 		echo "skip: internal/integration/harness.go not present yet"; \
-		exit 0; \
+	else \
+		CBCTL_IT_TARGET=sandbox go test -tags=integration -timeout 300m ./internal/integration/... -v; \
 	fi
-	CBCTL_IT_TARGET=sandbox go test -tags=integration -timeout 300m ./internal/integration/... -v
 
 # Live Capella tests; need CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_LIVE_CLUSTER=1 adds the billable cluster parts).
 test-capella-live:

@@ -303,15 +303,19 @@ func (f *Fake) AddOrganization(name string) string {
 }
 
 // SeedProject creates a project directly and returns its ID.
-func (f *Fake) SeedProject(name string) string {
+func (f *Fake) SeedProject(name string, fields ...Field) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.newProject(name, "").obj["id"].(string)
+	id := f.newProject(name, "").obj["id"].(string)
+	if p := f.findProject(id); p != nil {
+		applyFields(p.obj, fields)
+	}
+	return id
 }
 
 // SeedCluster creates a cluster in the given project directly, already in state (for example
 // "healthy"), and returns its ID. It has one data/index/query node of 4 vCPU / 16 GB.
-func (f *Fake) SeedCluster(projectID, name, state string) string {
+func (f *Fake) SeedCluster(projectID, name, state string, fields ...Field) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	p := f.findProject(projectID)
@@ -328,20 +332,24 @@ func (f *Fake) SeedCluster(projectID, name, state string) string {
 	}, false)
 	c.obj["currentState"] = state
 	c.target = ""
+	applyFields(c.obj, fields)
 	return c.obj["id"].(string)
 }
 
 // clockNow is the Fake's wall time (FakeClock when set).
 func (f *Fake) clockNow() time.Time {
 	if f != nil && f.clock != nil {
-		return f.clock.Now()
+		return f.clock.Now().UTC()
 	}
-	return time.Now()
+	return time.Now().UTC()
 }
+
+// now returns clockNow formatted as RFC3339.
+func (f *Fake) now() string { return f.clockNow().Format(time.RFC3339) }
 
 // matchPathGlob treats "{param}" segments as "*" for path.Match.
 func matchPathGlob(glob, p string) bool {
-	if glob == "" {
+	if glob == "" || glob == "*" {
 		return true
 	}
 	g := segment.ReplaceAllString(glob, "*")
@@ -360,6 +368,8 @@ func (f *Fake) SetClusterState(clusterID, state string) bool {
 	}
 	c.obj["currentState"] = state
 	c.target = ""
+	c.path = nil
+	c.pathStep = 0
 	return true
 }
 
@@ -692,27 +702,16 @@ func (c *rctx) page(key string, items []Obj) {
 
 // ---- small utilities -----------------------------------------------------------------------
 
+// now formats wall time as RFC3339. Prefer (*Fake).now when a Fake (and its clock) is available.
 func now() string { return time.Now().UTC().Format(time.RFC3339) }
 
 func audit(ver int) Obj {
 	return Obj{"createdBy": "capellafake", "createdAt": now(), "modifiedBy": "capellafake", "modifiedAt": now(), "version": ver}
 }
 
-// auditStamp is like audit but uses the Fake's clock when present.
-func (f *Fake) auditStamp(ver int) Obj {
-	ts := now()
-	if f != nil && f.clock != nil {
-		ts = f.clock.Now().UTC().Format(time.RFC3339)
-	}
-	return Obj{"createdBy": "capellafake", "createdAt": ts, "modifiedBy": "capellafake", "modifiedAt": ts, "version": ver}
-}
-
 // audit returns an audit block stamped with the Fake's clock.
 func (f *Fake) audit(ver int) Obj {
-	ts := now()
-	if f != nil && f.clock != nil {
-		ts = f.clock.Now().UTC().Format(time.RFC3339)
-	}
+	ts := f.now()
 	return Obj{"createdBy": "capellafake", "createdAt": ts, "modifiedBy": "capellafake", "modifiedAt": ts, "version": ver}
 }
 

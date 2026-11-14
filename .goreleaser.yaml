@@ -35,6 +35,11 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - CHANGELOG.md
     format_overrides:
       - goos: windows
         formats: [zip]
