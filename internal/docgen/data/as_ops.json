@@ -1,0 +1,294 @@
+{
+  "GET /v4/organizations/{organizationId}/appservices": {
+    "command": "app-service list",
+    "note": "Lists App Services across the organization."
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices": {
+    "command": "app-service create",
+    "note": "Needs a provisioned cluster (1.0.0 `cluster create`). Async (202)."
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}": {
+    "command": "app-service get",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}": {
+    "command": "app-service update",
+    "note": "Scales nodes and compute."
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}": {
+    "command": "app-service delete",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/activationState": {
+    "command": "app-service power on",
+    "note": "1.0.0 `turn_cluster_on` already sends `turnOnLinkedAppService` (default false)."
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/activationState": {
+    "command": "app-service power off",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/certificates": {
+    "command": "app-service certificate",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/metadataIsolation": {
+    "command": "app-service metadata-isolation show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/metadataIsolation": {
+    "command": "app-service metadata-isolation enable",
+    "note": "One-way opt back in."
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers": {
+    "command": "app-service admin-user create",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers": {
+    "command": "app-service admin-user list",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers/{userId}": {
+    "command": "app-service admin-user get",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers/{userId}": {
+    "command": "app-service admin-user update",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers/{userId}": {
+    "command": "app-service admin-user delete",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/adminUsers": {
+    "command": "app-endpoint admin-user list",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier": {
+    "command": "app-service create",
+    "note": "Free tier (`--free-tier`), mirroring 1.0.0 `cluster create --free-tier`."
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier/{appServiceId}": {
+    "command": "app-service get",
+    "note": "Free tier."
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier/{appServiceId}": {
+    "command": "app-service update",
+    "note": "Free tier."
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier/{appServiceId}": {
+    "command": "app-service delete",
+    "note": "Free tier."
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/allowedcidrs": {
+    "command": "app-service cidr list",
+    "note": "Same model as 1.0.0 `cidr` (no PUT, so a change is delete + create)."
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/allowedcidrs": {
+    "command": "app-service cidr create",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/allowedcidrs/{allowedCidrId}": {
+    "command": "app-service cidr delete",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints": {
+    "command": "app-endpoint list",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints": {
+    "command": "app-endpoint create",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}": {
+    "command": "app-endpoint get",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}": {
+    "command": "app-endpoint update",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}": {
+    "command": "app-endpoint delete",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/collections": {
+    "command": "app-endpoint collections",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/activationStatus": {
+    "command": "app-endpoint resume",
+    "note": "Brings the endpoint online."
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/activationStatus": {
+    "command": "app-endpoint pause",
+    "note": "Takes the endpoint offline."
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/cors": {
+    "command": "app-endpoint cors show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/cors": {
+    "command": "app-endpoint cors set",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/accessControlFunction": {
+    "command": "app-endpoint access-function show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/accessControlFunction": {
+    "command": "app-endpoint access-function set",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/accessControlFunction": {
+    "command": "app-endpoint access-function delete",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/importFilter": {
+    "command": "app-endpoint import-filter show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/importFilter": {
+    "command": "app-endpoint import-filter set",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/importFilter": {
+    "command": "app-endpoint import-filter delete",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders": {
+    "command": "app-endpoint oidc create",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders": {
+    "command": "app-endpoint oidc list",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/{OIDCProviderId}": {
+    "command": "app-endpoint oidc get",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/{OIDCProviderId}": {
+    "command": "app-endpoint oidc update",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/{OIDCProviderId}": {
+    "command": "app-endpoint oidc delete",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/defaultProvider": {
+    "command": "app-endpoint oidc set-default",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/resync": {
+    "command": "app-endpoint resync status",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/resync": {
+    "command": "app-endpoint resync start",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/resync": {
+    "command": "app-endpoint resync stop",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLog": {
+    "command": "app-service audit-log show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLog": {
+    "command": "app-service audit-log set",
+    "note": "Enables or disables audit logging."
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/auditLog": {
+    "command": "app-endpoint audit-log show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/auditLog": {
+    "command": "app-endpoint audit-log set",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/auditLogEvents": {
+    "command": "app-endpoint audit-log events",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogStreaming": {
+    "command": "app-service audit-stream configure",
+    "note": ""
+  },
+  "PATCH /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogStreaming": {
+    "command": "app-service audit-stream resume",
+    "note": "Starts or resumes streaming."
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogStreaming": {
+    "command": "app-service audit-stream show",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogExports": {
+    "command": "app-service audit-log export create",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogExports": {
+    "command": "app-service audit-log export list",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogExports/{auditLogExportId}": {
+    "command": "app-service audit-log export get",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming": {
+    "command": "app-service log-stream configure",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming": {
+    "command": "app-service log-stream show",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming": {
+    "command": "app-service log-stream disable",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming/activationState": {
+    "command": "app-service log-stream resume",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming/activationState": {
+    "command": "app-service log-stream pause",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/logStreaming": {
+    "command": "app-endpoint log-stream show",
+    "note": ""
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/logStreaming": {
+    "command": "app-endpoint log-stream set",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService": {
+    "command": "app-service private-endpoint enable",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService": {
+    "command": "app-service private-endpoint show",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService": {
+    "command": "app-service private-endpoint disable",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/privateEndpointCommand": {
+    "command": "app-service private-endpoint command",
+    "note": ""
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/endpoints": {
+    "command": "app-service private-endpoint list",
+    "note": ""
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/endpoints/{endpointId}": {
+    "command": "app-service private-endpoint accept",
+    "note": ""
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/endpoints/{endpointId}": {
+    "command": "app-service private-endpoint reject",
+    "note": ""
+  }
+}

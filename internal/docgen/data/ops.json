@@ -1,0 +1,2004 @@
+{
+  "GET /v4/organizations": {
+    "commands": "internal: `configure`, `init` (organization picker)",
+    "note": "No `org list` command; the organization is chosen once per profile.",
+    "left": "",
+    "status": "✅ Done",
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}": {
+    "commands": "internal: `validate`, `plan`, `sync`, `project get`",
+    "note": "Confirms that the organization exists and is reachable.",
+    "left": "",
+    "status": "✅ Done",
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/configuration": {
+    "commands": "org update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects": {
+    "commands": "project list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects": {
+    "commands": "project create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}": {
+    "commands": "project get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}": {
+    "commands": "project update",
+    "note": "CLI changes the description; a rename goes through capella.yaml and `apply`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}": {
+    "commands": "project delete",
+    "note": "`--cascade` deletes the project's clusters first.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters": {
+    "commands": "cluster list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters": {
+    "commands": "cluster create / cluster clone",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}": {
+    "commands": "cluster get / cluster group list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}": {
+    "commands": "cluster update / cluster scale / cluster group add / cluster group remove",
+    "note": "Description, support, scale out/in/up/down (capacity-checked), step scaling, adding and removing service groups.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}": {
+    "commands": "cluster delete",
+    "note": "`--discard-snapshots` maps to `retainsnapshotbackups=false`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/stats": {
+    "commands": "internal: bucket memory and scale-in checks",
+    "note": "No `cluster stats` command.",
+    "left": "",
+    "status": "✅ Done",
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/activationState": {
+    "commands": "cluster power on",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/activationState": {
+    "commands": "cluster power off",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/deletionProtection": {
+    "commands": "cluster protect",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/bucketStorageMigration": {
+    "commands": "cluster migrate-buckets",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier": {
+    "commands": "cluster create",
+    "note": "Uses `--free-tier`.",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}": {
+    "commands": "cluster get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}": {
+    "commands": "cluster update",
+    "note": "The API accepts only name and description.",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}": {
+    "commands": "cluster delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}/activationState": {
+    "commands": "cluster power on",
+    "note": "Free tier: no body; also turns on linked App Services.",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-019"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}/activationState": {
+    "commands": "cluster power off",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-019"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier": {
+    "commands": "bucket list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier": {
+    "commands": "bucket create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}": {
+    "commands": "bucket get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}": {
+    "commands": "bucket update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}": {
+    "commands": "bucket delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [
+      "CAP-041"
+    ],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule": {
+    "commands": "cluster schedule show",
+    "note": "Also read by plan, import and the power note.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule": {
+    "commands": "cluster schedule set / cluster schedule apply",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule": {
+    "commands": "cluster schedule set / cluster schedule apply",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule": {
+    "commands": "cluster schedule delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule/activationState": {
+    "commands": "cluster schedule pause",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule/activationState": {
+    "commands": "cluster schedule resume",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs": {
+    "commands": "cidr list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs": {
+    "commands": "cidr create",
+    "note": "No PUT exists, so a changed entry is replaced (delete + create).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs/{allowedCidrId}": {
+    "commands": "—",
+    "note": "Wired in the API client but unused: `cidr list` returns the same fields.",
+    "left": "",
+    "status": "➖ Not needed",
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs/{allowedCidrId}": {
+    "commands": "cidr delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets": {
+    "commands": "bucket list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets": {
+    "commands": "bucket create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}": {
+    "commands": "bucket get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}": {
+    "commands": "bucket update",
+    "note": "Immutable fields (type, storage backend, vbuckets, conflict resolution, eviction) are blocked.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}": {
+    "commands": "bucket delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/flush": {
+    "commands": "bucket flush",
+    "note": "Not exposed in 1.0.0 (CAP-024); 1.5.0 adds it behind a typed confirmation.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes": {
+    "commands": "scope list",
+    "note": "Also read by `plan`, `import` and `collection delete`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes": {
+    "commands": "scope create",
+    "note": "Also `collection create` for a new scope, and `apply`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}": {
+    "commands": "scope delete",
+    "note": "Lists the collections the confirmation shows.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}": {
+    "commands": "scope delete",
+    "note": "Also `apply --prune`. Refused for `_default`/`_system` and on a protected cluster.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections": {
+    "commands": "collection list",
+    "note": "Also read by `plan`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections": {
+    "commands": "collection create",
+    "note": "Also `apply`; `maxTTL` sent only when set.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}": {
+    "commands": "collection update",
+    "note": "Reads the ETag sent as `If-Match` on the update.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}": {
+    "commands": "collection update",
+    "note": "`maxTTL` only; BLOCKED below Couchbase Server 7.6.0.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}": {
+    "commands": "collection delete",
+    "note": "Also `apply --prune`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users": {
+    "commands": "credential list",
+    "note": "Also read by `import`, the `bucket delete` guard and `plan`.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users": {
+    "commands": "credential create",
+    "note": "Basic access only in 1.0.0; a generated password is saved locally.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}": {
+    "commands": "credential get",
+    "note": "Never returns the password.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}": {
+    "commands": "credential update",
+    "note": "Access changes and password rotation (`--rotate-password`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}": {
+    "commands": "credential delete",
+    "note": "Also `apply --prune`; the local password file is kept.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privileges": {
+    "commands": "db-role privileges",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles": {
+    "commands": "db-role list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles": {
+    "commands": "db-role create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles/{roleId}": {
+    "commands": "db-role get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles/{roleId}": {
+    "commands": "db-role update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles/{roleId}": {
+    "commands": "db-role delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets": {
+    "commands": "sample-bucket load",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets": {
+    "commands": "sample-bucket list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets/{bucketId}": {
+    "commands": "sample-bucket get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets/{bucketId}": {
+    "commands": "sample-bucket delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexes": {
+    "commands": "index create / index drop / index build",
+    "note": "One `CREATE`, `DROP` or `BUILD INDEX` statement per call.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexes": {
+    "commands": "index list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexes/{indexName}": {
+    "commands": "index get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexBuildStatus/{indexName}": {
+    "commands": "index status",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions": {
+    "commands": "eventing list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions": {
+    "commands": "eventing create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}": {
+    "commands": "eventing get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}": {
+    "commands": "eventing update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}": {
+    "commands": "eventing delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/code": {
+    "commands": "eventing code get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/code": {
+    "commands": "eventing code set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/activationState": {
+    "commands": "eventing state",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/logs": {
+    "commands": "eventing logs",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI": {
+    "commands": "data-api show",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI": {
+    "commands": "data-api update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpointCommand": {
+    "commands": "data-api endpoint-command",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpoints": {
+    "commands": "data-api endpoint list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpoints/{endpointId}/associate": {
+    "commands": "data-api endpoint accept",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpoints/{endpointId}/unassociate": {
+    "commands": "data-api endpoint reject",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications": {
+    "commands": "replication list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/replications": {
+    "commands": "replication list",
+    "note": "Project-wide listing (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications": {
+    "commands": "replication create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}": {
+    "commands": "replication get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}": {
+    "commands": "replication update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}": {
+    "commands": "replication delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}/activationStatus": {
+    "commands": "replication pause",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}/activationStatus": {
+    "commands": "replication resume",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/jobs/{jobId}": {
+    "commands": "replication job",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups": {
+    "commands": "bucket backup create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups": {
+    "commands": "bucket backup list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}": {
+    "commands": "bucket backup get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}": {
+    "commands": "bucket backup delete",
+    "note": "Deletes the whole backup cycle.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}/restore": {
+    "commands": "bucket backup restore",
+    "note": "Same or another cluster; partial restores.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups/{backupId}/export": {
+    "commands": "bucket backup export",
+    "note": "Packages a backup cycle as a zip.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups/{backupId}/exports/{exportId}": {
+    "commands": "bucket backup export",
+    "note": "Polled for the download URL.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules": {
+    "commands": "bucket backup schedule show",
+    "note": "Also read by plan, sync and drift.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules": {
+    "commands": "bucket backup schedule set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules": {
+    "commands": "bucket backup schedule set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules": {
+    "commands": "bucket backup schedule delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/cycles": {
+    "commands": "bucket backup cycle list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/cycles/{cycleId}": {
+    "commands": "bucket backup cycle get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups": {
+    "commands": "cluster backup create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups": {
+    "commands": "cluster backup list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/cloudsnapshotbackups": {
+    "commands": "cluster backup list",
+    "note": "Project-wide listing (no cluster name).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/restores": {
+    "commands": "cluster backup restores",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/regions": {
+    "commands": "cluster backup regions / cluster backup schedule options",
+    "note": "Regions a copy can go to.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}": {
+    "commands": "cluster backup retain",
+    "note": "Changes retention.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}": {
+    "commands": "cluster backup delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}/restore": {
+    "commands": "cluster backup restore",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/cloudsnapshotbackups/{backupId}/clone": {
+    "commands": "cluster backup clone",
+    "note": "Creates a new cluster from the backup.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule": {
+    "commands": "cluster backup schedule show",
+    "note": "Also read by plan, sync and drift.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule": {
+    "commands": "cluster backup schedule set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule": {
+    "commands": "cluster backup schedule delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule/options": {
+    "commands": "cluster backup schedule options / cluster backup schedule set",
+    "note": "Permitted intervals and retention for the support plan; read before every set.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers": {
+    "commands": "peer create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers": {
+    "commands": "peer list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers/{peerId}": {
+    "commands": "peer get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers/{peerId}": {
+    "commands": "peer delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers/networkPeerCommand": {
+    "commands": "peer azure-command",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService": {
+    "commands": "private-endpoint show",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService": {
+    "commands": "private-endpoint enable",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService": {
+    "commands": "private-endpoint update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService": {
+    "commands": "private-endpoint disable",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpoints": {
+    "commands": "private-endpoint list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpointCommand": {
+    "commands": "private-endpoint command",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpoints/{endpointId}/associate": {
+    "commands": "private-endpoint accept",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpoints/{endpointId}/unassociate": {
+    "commands": "private-endpoint reject",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/certificates": {
+    "commands": "cluster certificate",
+    "note": "Useful for TLS client setup.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLog": {
+    "commands": "audit-log get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLog": {
+    "commands": "audit-log update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogEvents": {
+    "commands": "audit-log events",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogExports": {
+    "commands": "audit-log export create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogExports": {
+    "commands": "audit-log export list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogExports/{auditLogExportId}": {
+    "commands": "audit-log export get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/cloudAccounts": {
+    "commands": "cmek accounts",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/cmekAzureApplication": {
+    "commands": "cmek azure-app",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/cmekAzureApplication": {
+    "commands": "cmek azure-app",
+    "note": "Project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/cmek": {
+    "commands": "cmek create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/cmek": {
+    "commands": "cmek create",
+    "note": "Azure, project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/cmek": {
+    "commands": "cmek list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/cmek": {
+    "commands": "cmek list",
+    "note": "Azure, project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/cmek/{cmekId}": {
+    "commands": "cmek get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/cmek/{cmekId}": {
+    "commands": "cmek get",
+    "note": "Azure, project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/cmek/{cmekId}/history": {
+    "commands": "cmek history",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/cmek/{cmekId}": {
+    "commands": "cmek rotate",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/cmek/{cmekId}": {
+    "commands": "cmek rotate",
+    "note": "Azure, project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/cmek/{cmekId}": {
+    "commands": "cmek delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/cmek/{cmekId}": {
+    "commands": "cmek delete",
+    "note": "Azure, project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/cmek/providers": {
+    "commands": "cmek enable-provider",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/cmek/providers": {
+    "commands": "cmek enable-provider",
+    "note": "Azure, project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cmek/{cmekId}/associate": {
+    "commands": "cmek associate",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cmek/{cmekId}/unassociate": {
+    "commands": "cmek unassociate",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations": {
+    "commands": "alert create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations": {
+    "commands": "alert list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/channels": {
+    "commands": "alert channels",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/{alertIntegrationId}": {
+    "commands": "alert get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/{alertIntegrationId}": {
+    "commands": "alert update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/{alertIntegrationId}": {
+    "commands": "alert delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/alertIntegrationTest": {
+    "commands": "alert test",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/events": {
+    "commands": "event list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/events": {
+    "commands": "event list",
+    "note": "Project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/events/{eventId}": {
+    "commands": "event get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/events/{eventId}": {
+    "commands": "event get",
+    "note": "Project level (`--project`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/users": {
+    "commands": "user create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/users": {
+    "commands": "user list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/users/{userId}": {
+    "commands": "user get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PATCH /v4/organizations/{organizationId}/users/{userId}": {
+    "commands": "user update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/users/{userId}": {
+    "commands": "user delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/apikeys": {
+    "commands": "apikey create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/apikeys": {
+    "commands": "apikey list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/apikeys/{ApiKeyId}": {
+    "commands": "apikey get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/apikeys/{ApiKeyId}": {
+    "commands": "apikey delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/apikeys/{ApiKeyId}/rotate": {
+    "commands": "apikey rotate",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/billing": {
+    "commands": "billing get",
+    "note": "Categorized.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/billing": {
+    "commands": "billing get",
+    "note": "Itemized for one cluster (`--cluster`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/billing/prePaidCredits": {
+    "commands": "billing prepaid",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/billing/payAsYouGo": {
+    "commands": "billing payg",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/billing/download": {
+    "commands": "billing download",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/billing/download": {
+    "commands": "billing download",
+    "note": "Itemized for one cluster (`--cluster`).",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters": {
+    "commands": "insights create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters": {
+    "commands": "insights list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/operationalInsightsClusters": {
+    "commands": "insights list",
+    "note": "Organization level.",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}": {
+    "commands": "insights get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}": {
+    "commands": "insights update",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}": {
+    "commands": "insights delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/activationState": {
+    "commands": "insights power on",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/activationState": {
+    "commands": "insights power off",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule": {
+    "commands": "insights schedule show",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule": {
+    "commands": "insights schedule set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule": {
+    "commands": "insights schedule set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule": {
+    "commands": "insights schedule delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs": {
+    "commands": "insights cidr list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs": {
+    "commands": "insights cidr create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}": {
+    "commands": "insights cidr get",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}": {
+    "commands": "insights cidr delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups": {
+    "commands": "insights backup create",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups": {
+    "commands": "insights backup list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}": {
+    "commands": "insights backup retain",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}": {
+    "commands": "insights backup delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}/restore": {
+    "commands": "insights backup restore",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/restores": {
+    "commands": "insights backup restores",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule": {
+    "commands": "insights backup schedule show",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "PUT /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule": {
+    "commands": "insights backup schedule set",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule": {
+    "commands": "insights backup schedule delete",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService": {
+    "commands": "insights private-endpoint show",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService": {
+    "commands": "insights private-endpoint enable",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "DELETE /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService": {
+    "commands": "insights private-endpoint disable",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpointCommand": {
+    "commands": "insights private-endpoint command",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "GET /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints": {
+    "commands": "insights private-endpoint list",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/associate": {
+    "commands": "insights private-endpoint accept",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  },
+  "POST /v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/unassociate": {
+    "commands": "insights private-endpoint reject",
+    "note": "",
+    "left": "",
+    "status": null,
+    "stories": [],
+    "requires": [],
+    "partial_use": false
+  }
+}
