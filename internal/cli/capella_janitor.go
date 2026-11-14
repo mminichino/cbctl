@@ -1,85 +1,100 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
-	"github.com/mminichino/cbctl/internal/capellaapi"
-	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/ci/janitor"
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/spf13/cobra"
 )
 
-// minJanitorPrefix is the shortest --prefix the janitor accepts, so a typo cannot match everything.
-const minJanitorPrefix = 3
-
 // janitorResult is the JSON document of the janitor.
 type janitorResult struct {
 	Prefix   string          `json:"prefix"`
-	Status   string          `json:"status"` // deleted | accepted | nothing | cancelled
+	Status   string          `json:"status"` // deleted | dry-run | nothing | cancelled
 	Projects []janitorTarget `json:"projects"`
+	Failed   int             `json:"failed,omitempty"`
 }
 
 type janitorTarget struct {
-	Project  string   `json:"project"`
-	ID       string   `json:"id"`
-	Clusters []string `json:"clusters"`
+	Project string `json:"project"`
+	ID      string `json:"id"`
+	Created string `json:"created,omitempty"`
 }
 
-// newCapellaJanitorCmd is the hidden test-cleanup command: it deletes every project whose name
-// starts with a prefix, together with its clusters (live tests name their projects with a run
-// prefix, so a crashed run leaves only prefixed leftovers).
+// newCapellaJanitorCmd is the hidden test-cleanup command: it deletes every stale project
+// whose name starts with a prefix (live tests name their projects with a run prefix).
 func newCapellaJanitorCmd() *cobra.Command {
-	var prefix string
-	cmd := capellaLeaf("janitor", "Delete every project whose name starts with --prefix, with its clusters (test cleanup)", cobra.NoArgs,
+	var (
+		prefix          string
+		olderThanHours  float64
+		dryRun          bool
+		failOnLeftovers bool
+		timeoutMinutes  float64
+	)
+	cmd := capellaLeaf("janitor", "Delete leftover CI projects whose name starts with --prefix", cobra.NoArgs,
 		func([]string) error {
-			if len(strings.TrimSpace(prefix)) < minJanitorPrefix {
-				return usageError(fmt.Sprintf("pass --prefix with at least %d characters", minJanitorPrefix), "--prefix is required and must have at least %d characters", minJanitorPrefix)
+			p := strings.TrimSpace(prefix)
+			if len(p) < 4 || !strings.HasSuffix(p, "-") {
+				return Errorf(ExitConfigInvalid,
+					"Use a short unique prefix that ends with '-' (for example cbctl-ci-).",
+					"--prefix must end with '-' and have at least 4 characters (got %q)", p)
 			}
 			return nil
 		},
-		func(rt *runtime, _ []string) error { return rt.runJanitor(strings.TrimSpace(prefix)) })
+		func(rt *runtime, _ []string) error {
+			return rt.runJanitor(strings.TrimSpace(prefix), time.Duration(olderThanHours*float64(time.Hour)),
+				dryRun, failOnLeftovers, time.Duration(timeoutMinutes*float64(time.Minute)))
+		})
 	cmd.Hidden = true
-	cmd.Long = "Delete every project whose name starts with --prefix, after deleting its clusters (deletion protection is\n" +
-		"turned off and snapshot backups are discarded). Meant for cleaning up after live tests.\n\n" +
-		"Example:\n  cbctl capella janitor --prefix cbctl-it- --yes"
-	cmd.Flags().StringVar(&prefix, "prefix", "", "Project name prefix to delete (at least 3 characters)")
+	cmd.Long = "Delete leftover Capella projects whose name starts with --prefix and that are older\n" +
+		"than --older-than-hours. Deletion protection is turned off and snapshot backups are discarded.\n\n" +
+		"Example:\n  cbctl capella janitor --prefix cbctl-ci- --older-than-hours 24 --yes"
+	cmd.Flags().StringVar(&prefix, "prefix", janitor.Prefix, "Project name prefix to delete (must end with '-', at least 4 characters)")
+	cmd.Flags().Float64Var(&olderThanHours, "older-than-hours", 24, "Only delete projects older than this many hours")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "List leftovers without deleting")
+	cmd.Flags().BoolVar(&failOnLeftovers, "fail-on-leftovers", false, "Exit 1 when any leftover project was found")
+	cmd.Flags().Float64Var(&timeoutMinutes, "timeout-minutes", 60, "Per-project delete timeout in minutes")
 	return cmd
 }
 
-func (rt *runtime) runJanitor(prefix string) error {
+func (rt *runtime) runJanitor(prefix string, olderThan time.Duration, dryRun, failOnLeftovers bool, timeout time.Duration) error {
 	projects, err := rt.Client.ListProjects(rt.Ctx)
 	if err != nil {
 		return fmt.Errorf("listing projects: %w", err)
 	}
-	res := janitorResult{Prefix: prefix, Status: "nothing", Projects: []janitorTarget{}}
-	clusters := map[string][]capellaapi.Cluster{}
-	var matched []capellaapi.Project
-	for _, p := range projects {
-		if !strings.HasPrefix(p.Name, prefix) {
-			continue
-		}
-		cs, err := rt.Client.ListClusters(rt.Ctx, p.ID)
-		if err != nil {
-			return fmt.Errorf("listing clusters in project %s: %w", p.Name, err)
-		}
-		matched = append(matched, p)
-		clusters[p.ID] = cs
-		names := make([]string, len(cs))
-		for i, c := range cs {
-			names[i] = c.Name
-		}
-		res.Projects = append(res.Projects, janitorTarget{Project: p.Name, ID: p.ID, Clusters: names})
+	now := rt.Clock.Now()
+	if now.IsZero() {
+		now = time.Now().UTC()
 	}
-	if len(matched) == 0 {
-		rt.report(res, "no project starts with %q; nothing to do", prefix)
+	found := janitor.Stale(projects, prefix, olderThan, now)
+	res := janitorResult{Prefix: prefix, Status: "nothing", Projects: []janitorTarget{}}
+	for _, p := range found {
+		created := "unknown"
+		if p.Audit != nil && p.Audit.CreatedAt != "" {
+			created = p.Audit.CreatedAt
+		}
+		res.Projects = append(res.Projects, janitorTarget{Project: p.Name, ID: p.ID, Created: created})
+	}
+	if len(found) == 0 {
+		rt.report(res, "no %s* projects older than %g hours", prefix, olderThan.Hours())
 		return nil
 	}
 	for _, t := range res.Projects {
-		rt.Out.Line("  - project %s  clusters: %s", t.Project, joinOrNone(t.Clusters))
+		rt.Out.Line("leftover project %s (created %s)", t.Project, t.Created)
 	}
-	ok, err := confirm(rt, fmt.Sprintf("Delete %d project(s) starting with %q and all their clusters and data?", len(matched), prefix))
+	if dryRun {
+		res.Status = "dry-run"
+		rt.report(res, "%d leftover project(s), 0 failed", len(found))
+		if failOnLeftovers {
+			return Errorf(ExitError, "", "%d leftover project(s) found", len(found))
+		}
+		return nil
+	}
+	ok, err := confirm(rt, fmt.Sprintf("Delete %d leftover project(s) starting with %q and all their clusters and data?", len(found), prefix))
 	if err != nil {
 		return err
 	}
@@ -89,67 +104,23 @@ func (rt *runtime) runJanitor(prefix string) error {
 		return nil
 	}
 
-	// Start every cluster delete first so the clusters are destroyed in parallel, then wait.
-	type pending struct {
-		project capellaapi.Project
-		cluster capellaapi.Cluster
-	}
-	var waits []pending
-	for _, p := range matched {
-		for _, c := range clusters[p.ID] {
-			if err := rt.janitorDeleteCluster(&p, &c); err != nil {
-				return err
-			}
-			waits = append(waits, pending{p, c})
+	failed := 0
+	for _, p := range found {
+		steps, err := janitor.DeleteProjectTree(rt.Ctx, rt.Client, p, timeout, rt.Clock)
+		for _, s := range steps {
+			rt.Out.Line("  %s", s)
+		}
+		if err != nil {
+			failed++
+			logging.Error("%s", err.Error())
+			fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
 		}
 	}
-	if rt.NoWait {
-		res.Status = "accepted"
-		rt.report(res, "deletion accepted; delete the projects once their clusters are gone")
-		return nil
-	}
-	for _, w := range waits {
-		if _, err := rt.waitCluster(w.project.ID, w.cluster.ID, w.cluster.Name, engine.OpDelete, isFreeCluster(&w.cluster)); err != nil {
-			return err
-		}
-	}
-	for _, p := range matched {
-		if err := rt.Client.DeleteProject(rt.Ctx, p.ID); err != nil && !errors.Is(err, capellaapi.ErrNotFound) {
-			return fmt.Errorf("deleting project %s: %w", p.Name, err)
-		}
-		logging.Info("deleted project %s", p.Name)
-	}
+	res.Failed = failed
 	res.Status = "deleted"
-	rt.report(res, "deleted %d project(s) starting with %q", len(matched), prefix)
+	rt.report(res, "%d leftover project(s) deleted, %d failed", len(found), failed)
+	if failed > 0 || failOnLeftovers {
+		return Errorf(ExitError, "", "%d leftover project(s) deleted, %d failed", len(found), failed)
+	}
 	return nil
-}
-
-// janitorDeleteCluster turns deletion protection off and starts the delete.
-func (rt *runtime) janitorDeleteCluster(p *capellaapi.Project, c *capellaapi.Cluster) error {
-	if c.CurrentState == "destroying" {
-		return nil // already on its way out
-	}
-	var err error
-	if isFreeCluster(c) {
-		err = rt.Client.DeleteFreeCluster(rt.Ctx, p.ID, c.ID)
-	} else {
-		if c.DeletionProtection != nil && *c.DeletionProtection {
-			if err := rt.Client.SetDeletionProtection(rt.Ctx, p.ID, c.ID, false); err != nil {
-				return fmt.Errorf("turning off deletion protection of %s: %w", c.Name, err)
-			}
-		}
-		err = rt.Client.DeleteCluster(rt.Ctx, p.ID, c.ID, false)
-	}
-	if err != nil && !errors.Is(err, capellaapi.ErrNotFound) {
-		return fmt.Errorf("deleting cluster %s: %w", c.Name, conflictAsBlocked(err, c.Name))
-	}
-	logging.Info("delete accepted for cluster %s", c.Name)
-	return nil
-}
-
-func joinOrNone(s []string) string {
-	if len(s) == 0 {
-		return "none"
-	}
-	return strings.Join(s, ", ")
 }
