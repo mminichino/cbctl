@@ -1,11 +1,11 @@
 package main
 
-import (
-	"fmt"
-	"io"
-)
+import "io"
+
+var apiCommands = map[string]groupFunc{
+	"responses": cmdAPIResponses,
+}
 
 func runAPI(args []string, stdout, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "cbdev api: not implemented")
-	return 2
+	return dispatch("api", apiCommands, args, stdout, stderr)
 }
