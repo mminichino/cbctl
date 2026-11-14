@@ -57,6 +57,7 @@ func (r *runtime) confirmDelete(question string) (bool, error) {
 		return false, err
 	}
 	if !ok {
+		r.markCancelled()
 		r.report(statusDoc{Status: "cancelled"}, "cancelled; nothing was deleted")
 	}
 	return ok, nil

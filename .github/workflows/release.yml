@@ -4,12 +4,40 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Release gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # --report-only until three consecutive nightlies exist; tighten later.
+        run: >
+          go run ./cmd/cbdev ci release-gate
+          --commit "${GITHUB_SHA}"
+          --repo "${GITHUB_REPOSITORY}"
+          --report-only
+
   goreleaser:
+    needs: gate
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

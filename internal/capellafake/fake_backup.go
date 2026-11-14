@@ -294,7 +294,7 @@ func (c *rctx) createSnapshot() {
 	for _, r := range regions {
 		copies = append(copies, Obj{"regionCode": r, "status": "pending"})
 	}
-	created := time.Now().UTC()
+	created := c.f.clockNow()
 	s := &snapshot{obj: Obj{
 		"id": uuid.NewString(), "createdAt": created.Format(time.RFC3339), "type": "adhoc",
 		"progress":     Obj{"status": "pending"},
@@ -369,7 +369,7 @@ func (c *rctx) restoreSnapshot() {
 		c.err(http.StatusConflict, "the cluster is "+cl.state()+"; a restore needs a healthy cluster")
 		return
 	}
-	r := &snapshot{obj: Obj{"id": uuid.NewString(), "snapshot": s.obj["id"], "status": "pending", "createdAt": now()}}
+	r := &snapshot{obj: Obj{"id": uuid.NewString(), "snapshot": s.obj["id"], "status": "pending", "createdAt": c.f.now()}}
 	cl.restores = append(cl.restores, r)
 	c.writeJSON(http.StatusAccepted, Obj{"restoreId": r.obj["id"]})
 }
@@ -495,8 +495,8 @@ func (c *rctx) createBackup() {
 	}
 	cl.backups = append(cl.backups, &backup{obj: Obj{
 		"id": uuid.NewString(), "bucketID": b.obj["id"], "bucketName": b.obj["name"],
-		"cycleID": uuid.NewString(), "date": now(), "method": "full", "source": "manual", "status": "complete",
-		"stats": Obj{"sizeInMb": 0, "items": 0}, "restoreBefore": now(),
+		"cycleID": uuid.NewString(), "date": c.f.now(), "method": "full", "source": "manual", "status": "complete",
+		"stats": Obj{"sizeInMb": 0, "items": 0}, "restoreBefore": c.f.now(),
 	}})
 	c.w.WriteHeader(http.StatusAccepted)
 }

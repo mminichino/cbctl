@@ -259,7 +259,7 @@ cbctl capella guide [TOPIC]     # built-in docs: getting-started, config, scalin
 
 Passwords never appear in the file: write `${VAR}` or `${file:PATH}` and `cbctl` reads the value at apply time; all output is redacted.
 
-**File-managed mode.** When a capella.yaml exists, `project create|update|delete`, `cluster scale` and `cluster protect` edit the file first, validate the result (reporting only the problems this change causes), show the plan, ask, save, then apply it. `--no-apply` only records the change (deploy later with `apply`); `--direct` acts on Capella only and leaves the file alone. If Capella refuses the change, the file is restored.
+**File-managed mode.** When a capella.yaml exists, every mutating Capella command edits the file first — `project create|update|delete`; `cluster create|update|scale|protect|delete|clone`, `cluster group add|remove`, `cluster schedule set|delete|pause|resume`, `cluster backup schedule set|delete`; `bucket add|update|delete`, `bucket backup schedule set|delete`; `scope add|delete`; `collection add|update|delete`; `cidr create|delete`; `credential create|update|delete` (passwords are written as `${VAR}` / `${file:PATH}` references from `--password-env` / `--password-file`, never literally). `cluster create` takes `--name`, `--size`, `--group SERVICES:NODESxCPU/RAM[:DISK]`, `--free-tier` and more in this mode. Deletes run the Capella-side delete (with its confirmations and protection checks) and then remove the entry from the file; declining leaves both untouched. Each command validates the result (reporting only the problems this change causes), shows the plan, asks, saves, then applies it. `--no-apply` only records the change (deploy later with `apply`); `--direct` acts on Capella only and leaves the file alone. If Capella refuses the change, the file is restored.
 
 Extra exit codes: 2 = changes found (`plan`/`drift --detailed-exitcode`, `sync --dry-run`), 3 = invalid config, 4 = blocked plan or confirmation without a terminal.
 
@@ -331,9 +331,11 @@ cbctl capella cluster backup schedule set my-cluster --every 24 --retain 30d
 
 ```bash
 make build              # bin/cbctl
-make test-unit          # with -race
+make test-unit          # with -race (./internal/...)
 make test-integration   # Docker required; Couchbase enterprise image
 make test-capella-live  # needs CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_LIVE_CLUSTER=1 adds billable clusters)
 make janitor PREFIX=cbctl-ci-   # delete leftover live-test projects
 make vet
 ```
+
+Offline Capella scenario tests use `internal/capellafake`. Live Capella tests (`//go:build integration`) skip unless sandbox credentials are set; with `CBCTL_LIVE_CLUSTER=1` they also run the declarative §13.4 validate/plan/apply/drift/prune/destroy flow. See `docs/specs/capella-fold-in-phase-4.md` for the Phase 4 harness (`CBCTL_IT_TARGET=fake|sandbox`), janitor, secret scanner, and release gate. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

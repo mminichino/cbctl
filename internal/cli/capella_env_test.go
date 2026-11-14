@@ -402,3 +402,75 @@ func TestInitInteractive(t *testing.T) {
 		t.Errorf("err = %v, want the end-of-input error", res.Err)
 	}
 }
+
+func TestInitOverwriteDecline(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	t.Setenv("CBCTL_HOME", t.TempDir())
+	for _, k := range []string{"CAPELLA_API_KEY", "CAPELLA_TOKEN", "CAPELLA_ORG_ID", "CBCTL_CONFIG"} {
+		t.Setenv(k, "")
+	}
+	path := filepath.Join(dir, "capella.yaml")
+	if err := os.WriteFile(path, []byte("keep-me\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fakeTTY(t)
+	res := runResourceIn(t, "n\n", "init")
+	if res.Err != nil {
+		t.Fatalf("init: %v\n%s\n%s", res.Err, res.Stdout, res.Stderr)
+	}
+	wantContains(t, res.Stdout, "Nothing was written.")
+	if got := string(mustRead(t, path)); got != "keep-me\n" {
+		t.Fatalf("file changed: %q", got)
+	}
+}
+
+func TestInitImportNeedsAPIKey(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	t.Setenv("CBCTL_HOME", t.TempDir())
+	for _, k := range []string{"CAPELLA_API_KEY", "CAPELLA_TOKEN", "CAPELLA_ORG_ID", "CBCTL_CONFIG"} {
+		t.Setenv(k, "")
+	}
+	fakeTTY(t)
+	res := runResourceIn(t, "import\n", "init", "--file", "imported.yaml", "--dry-run")
+	wantExit(t, res, ExitConfigInvalid, "importing an existing Capella project needs an API key")
+}
+
+func TestInitImportFromFake(t *testing.T) {
+	f := resEnv(t)
+	pid := f.SeedProject("alpha")
+	f.SeedCluster(pid, "alpha-01", "healthy")
+	dir := t.TempDir()
+	t.Chdir(dir)
+	t.Setenv("CBCTL_CONFIG", "")
+	fakeTTY(t)
+	res := runResourceIn(t, "import\n1\nalpha-01\n", "init", "--file", "from-capella.yaml")
+	if res.Err != nil {
+		t.Fatalf("init import: %v\n%s\n%s", res.Err, res.Stdout, res.Stderr)
+	}
+	text := string(mustRead(t, filepath.Join(dir, "from-capella.yaml")))
+	wantContains(t, text, "name: alpha", "name: alpha-01")
+	noWrites(t, f)
+}
+
+func TestInitAllowAnyIPConfirm(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	t.Setenv("CBCTL_HOME", t.TempDir())
+	for _, k := range []string{"CAPELLA_API_KEY", "CAPELLA_TOKEN", "CAPELLA_ORG_ID", "CBCTL_CONFIG"} {
+		t.Setenv(k, "")
+	}
+	fakeTTY(t)
+	answers := strings.Join([]string{
+		"new", "org-9", "web", "web-01", "aws", "", "", "dev", "", "y", "n",
+		"0.0.0.0/0", // cidrs
+		"y",         // allow any IP
+		"",          // no bucket
+	}, "\n") + "\n"
+	res := runResourceIn(t, answers, "init", "--file", "anyip.yaml", "--dry-run")
+	if res.Err != nil {
+		t.Fatalf("init: %v\n%s\n%s", res.Err, res.Stdout, res.Stderr)
+	}
+	wantContains(t, res.Stdout, "allowAnyIp: true", "0.0.0.0/0")
+}

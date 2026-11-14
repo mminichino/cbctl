@@ -43,7 +43,11 @@ cbctl capella destroy [--discard-snapshots] -y
 cbctl capella guide [topic|topics|config FIELD]
 # With a capella.yaml present these edit the file, plan, ask, save, apply; --no-apply only edits the file, --direct skips the file:
 cbctl capella project create|update|delete ... [--no-apply|--direct]
-cbctl capella cluster scale|protect ... [--no-apply|--direct]
+cbctl capella cluster create|update|scale|protect|delete|clone ... [--no-apply|--direct]
+cbctl capella cluster group add|remove|cluster schedule set|delete|pause|resume|cluster backup schedule set|delete ... [--no-apply|--direct]
+cbctl capella bucket add|update|delete|bucket backup schedule set|delete|scope add|delete|collection add|update|delete ... [--no-apply|--direct]
+cbctl capella cidr create|delete|credential create|update|delete ... [--no-apply|--direct]   # passwords only as ${VAR}/${file:PATH} via --password-env/--password-file
+# Managed 'cluster create': --name N [--size dev|small|medium|large|custom] [--group SERVICES:NODESxCPU/RAM[:DISK]]... [--free-tier] [--provider] [--region] [--cidr] [--support-plan]
 
 # Capella resources (auth: --token / CAPELLA_API_KEY, --org-id / CAPELLA_ORG_ID; <cluster> is a name, add --project NAME if ambiguous; -o json for one JSON document; -y skips confirmation)
 cbctl capella project list

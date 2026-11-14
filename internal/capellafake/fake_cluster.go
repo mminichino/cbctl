@@ -90,7 +90,7 @@ func (f *Fake) projectByName(name string) *project {
 }
 
 func (f *Fake) newProject(name, desc string) *project {
-	p := &project{res: res{ver: 1, obj: Obj{"id": uuid.NewString(), "name": name, "description": desc, "audit": audit(1)}}}
+	p := &project{res: res{ver: 1, obj: Obj{"id": uuid.NewString(), "name": name, "description": desc, "audit": f.audit(1)}}}
 	f.projects = append(f.projects, p)
 	return p
 }
@@ -156,7 +156,7 @@ func (c *rctx) updateProject() {
 	}
 	p.obj["name"] = name
 	p.obj["description"] = str(body, "description")
-	p.touch()
+	p.touch(c.f)
 	c.noContent()
 }
 
@@ -243,7 +243,7 @@ func (f *Fake) newCluster(p *project, body Obj, free bool) *cluster {
 		"support":            clone(sub(body, "support")),
 		"currentState":       "deploying",
 		"deletionProtection": false,
-		"audit":              audit(1),
+		"audit":              f.audit(1),
 	}
 	if v := sub(body, "couchbaseServer"); v != nil && str(v, "version") != "" {
 		obj["couchbaseServer"] = clone(v)
@@ -290,6 +290,9 @@ func (cl *cluster) transition(state, target string) {
 
 // poll advances a transitional cluster by one poll and reports whether it has gone away.
 func (f *Fake) poll(p *project, cl *cluster) (gone bool) {
+	if len(cl.path) > 0 && cl.pathStep > 0 && f.clock != nil {
+		return f.pollPath(p, cl)
+	}
 	if cl.target == "" {
 		return false
 	}
@@ -304,6 +307,34 @@ func (f *Fake) poll(p *project, cl *cluster) (gone bool) {
 		return true
 	}
 	cl.obj["currentState"] = target
+	return false
+}
+
+// pollPath advances a SetTransition clock-driven path.
+func (f *Fake) pollPath(p *project, cl *cluster) (gone bool) {
+	elapsed := f.clock.Now().Sub(cl.pathStart)
+	idx := 0
+	if cl.pathStep > 0 {
+		idx = int(elapsed / cl.pathStep)
+	}
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(cl.path) {
+		idx = len(cl.path) - 1
+	}
+	state := cl.path[idx]
+	if state == "deleted" {
+		cl.path = nil
+		p.removeCluster(cl)
+		return true
+	}
+	cl.obj["currentState"] = state
+	if idx == len(cl.path)-1 {
+		cl.path = nil
+		cl.pathStep = 0
+		cl.target = ""
+	}
 	return false
 }
 
@@ -409,7 +440,7 @@ func (c *rctx) updateCluster() {
 		cl.obj["serviceGroups"] = groups
 		cl.transition("scaling", "healthy")
 	}
-	cl.touch()
+	cl.touch(c.f)
 	c.noContent()
 }
 
@@ -426,7 +457,7 @@ func (c *rctx) updateFreeCluster() {
 		cl.obj["name"] = name
 	}
 	cl.obj["description"] = str(body, "description")
-	cl.touch()
+	cl.touch(c.f)
 	c.noContent()
 }
 
@@ -446,7 +477,12 @@ func (c *rctx) deleteCluster() {
 		c.err(http.StatusConflict, "the cluster has deletion protection on")
 		return
 	}
-	cl.transition("destroying", "deleted")
+	target := "deleted"
+	if cl.failDestroy {
+		target = "destroyFailed"
+		cl.failDestroy = false
+	}
+	cl.transition("destroying", target)
 	c.w.WriteHeader(http.StatusAccepted)
 }
 

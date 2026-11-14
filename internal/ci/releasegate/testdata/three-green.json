@@ -1,0 +1,31 @@
+{
+  "workflow_runs": [
+    {
+      "status": "completed",
+      "conclusion": "success",
+      "event": "schedule",
+      "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "html_url": "https://github.com/o/r/actions/runs/20",
+      "created_at": "2026-10-20T07:00:00Z",
+      "run_started_at": "2026-10-20T07:03:00Z"
+    },
+    {
+      "status": "completed",
+      "conclusion": "success",
+      "event": "schedule",
+      "head_sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "html_url": "https://github.com/o/r/actions/runs/19",
+      "created_at": "2026-10-19T07:00:00Z",
+      "run_started_at": "2026-10-19T07:03:00Z"
+    },
+    {
+      "status": "completed",
+      "conclusion": "success",
+      "event": "schedule",
+      "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "html_url": "https://github.com/o/r/actions/runs/18",
+      "created_at": "2026-10-18T07:00:00Z",
+      "run_started_at": "2026-10-18T07:03:00Z"
+    }
+  ]
+}

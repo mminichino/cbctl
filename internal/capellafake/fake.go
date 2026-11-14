@@ -14,13 +14,16 @@
 package capellafake
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -50,9 +53,45 @@ type Request struct {
 	IfMatch  string
 	Body     string
 	Status   int // status the Fake answered with
+	Header   http.Header
+	Time     time.Time
+}
+
+// Option configures a Fake before its HTTP server starts.
+type Option func(*Fake)
+
+// WithOrgID sets the organization ID (default "org-1").
+func WithOrgID(id string) Option {
+	return func(f *Fake) {
+		if id != "" {
+			f.OrgID = id
+		}
+	}
+}
+
+// WithAPIKey sets the bearer token the server accepts (default DefaultAPIKey).
+func WithAPIKey(key string) Option {
+	return func(f *Fake) {
+		if key != "" {
+			f.APIKey = key
+		}
+	}
+}
+
+// WithClock sets the FakeClock used for audit timestamps and SetTransition progression.
+// When omitted, New installs a new FakeClock at the engine default origin.
+func WithClock(c *engine.FakeClock) Option {
+	return func(f *Fake) {
+		if c != nil {
+			f.clock = c
+		}
+	}
 }
 
 // Fake is the in-memory Capella server. Create one with New; it is shut down when the test ends.
+//
+// Exported fields URL, OrgID, and APIKey are kept for existing call sites; Clock/Handler/Advance
+// are methods (Go cannot declare a method with the same name as an exported field).
 type Fake struct {
 	// URL is the base URL of the server (http://127.0.0.1:port), for CAPELLA_API_BASE_URL.
 	URL string
@@ -63,8 +102,9 @@ type Fake struct {
 	// Server is the underlying test server.
 	Server *httptest.Server
 
-	t  testing.TB
-	mu sync.Mutex
+	t     testing.TB
+	mu    sync.Mutex
+	clock *engine.FakeClock
 
 	orgs     []Obj
 	projects []*project
@@ -94,6 +134,14 @@ type cluster struct {
 	target    string // state the cluster moves to once polled settle times; "" = stays put
 	polls     int
 
+	// Clock-driven transition (SetTransition). When path is non-nil and a clock+step are set,
+	// poll advances by wall time instead of settle poll counts.
+	path      []string
+	pathStep  time.Duration
+	pathStart time.Time
+
+	failDestroy bool // FailDestroy: DELETE settles on destroyFailed instead of deleted
+
 	buckets []*bucket
 	creds   []*res
 	cidrs   []*res
@@ -120,17 +168,33 @@ type scope struct {
 	colls []*res
 }
 
-// New starts a Fake and registers its shutdown with t.Cleanup.
-func New(t testing.TB) *Fake {
+// New starts a Fake and registers its shutdown with t.Cleanup. Options may override the default
+// organization ("org-1"), API key (DefaultAPIKey), and FakeClock.
+func New(t testing.TB, opts ...Option) *Fake {
 	t.Helper()
 	f := &Fake{
 		t:      t,
-		OrgID:  uuid.NewString(),
+		OrgID:  "org-1",
 		APIKey: DefaultAPIKey,
 		settle: DefaultSettlePolls,
+		clock:  engine.NewFakeClock(time.Time{}),
+	}
+	for _, o := range opts {
+		if o != nil {
+			o(f)
+		}
+	}
+	if f.clock == nil {
+		f.clock = engine.NewFakeClock(time.Time{})
+	}
+	if f.OrgID == "" {
+		f.OrgID = uuid.NewString()
+	}
+	if f.APIKey == "" {
+		f.APIKey = DefaultAPIKey
 	}
 	f.orgs = []Obj{{"id": f.OrgID, "name": "cbctl-fake-org", "description": "fake organization",
-		"preferences": Obj{"sessionDuration": 7200}, "audit": audit(1)}}
+		"preferences": Obj{"sessionDuration": 7200}, "audit": f.audit(1)}}
 	f.routeAll()
 	f.Server = httptest.NewServer(http.HandlerFunc(f.dispatch))
 	f.URL = f.Server.URL
@@ -138,15 +202,21 @@ func New(t testing.TB) *Fake {
 	return f
 }
 
+// Clock returns the FakeClock driving audit timestamps and SetTransition.
+func (f *Fake) Clock() *engine.FakeClock { return f.clock }
+
+// Handler returns the Fake's HTTP handler for tests that want their own server.
+func (f *Fake) Handler() http.Handler { return http.HandlerFunc(f.dispatch) }
+
 // Client returns a capellaapi.Client wired to the Fake (base URL, API key, organization). Retries
-// run on a fake clock so they never sleep. Options are applied last and can override those
+// run on the Fake's clock so they never sleep. Options are applied last and can override those
 // defaults.
 func (f *Fake) Client(opts ...capellaapi.Option) *capellaapi.Client {
 	f.t.Helper()
 	base := []capellaapi.Option{
 		capellaapi.WithBaseURL(f.URL),
 		capellaapi.WithOrgID(f.OrgID),
-		capellaapi.WithClock(engine.NewFakeClock(time.Time{})),
+		capellaapi.WithClock(f.clock),
 	}
 	c, err := capellaapi.New(f.APIKey, append(base, opts...)...)
 	if err != nil {
@@ -174,6 +244,8 @@ func (f *Fake) SetPageSize(n int) {
 // FailNext makes the next times requests whose method equals method ("" or "*" matches any) and
 // whose unescaped path matches the regular expression pathRegex answer with status and an error
 // body instead of being handled. Failures are consumed in the order registered.
+//
+// Prefer FailNextOpts when injecting Capella error codes, custom messages, or DropAfterRead.
 func (f *Fake) FailNext(method, pathRegex string, status, times int) {
 	re, err := regexp.Compile(pathRegex)
 	if err != nil {
@@ -181,7 +253,10 @@ func (f *Fake) FailNext(method, pathRegex string, status, times int) {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.failures = append(f.failures, &failure{method: strings.ToUpper(method), re: re, status: status, left: times})
+	f.failures = append(f.failures, &failure{
+		method: strings.ToUpper(method), re: re, status: status, left: times,
+		message: "injected failure",
+	})
 }
 
 // RequestLog returns a copy of every request served so far, in order.
@@ -223,20 +298,24 @@ func (f *Fake) AddOrganization(name string) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id := uuid.NewString()
-	f.orgs = append(f.orgs, Obj{"id": id, "name": name, "audit": audit(1)})
+	f.orgs = append(f.orgs, Obj{"id": id, "name": name, "audit": f.audit(1)})
 	return id
 }
 
 // SeedProject creates a project directly and returns its ID.
-func (f *Fake) SeedProject(name string) string {
+func (f *Fake) SeedProject(name string, fields ...Field) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.newProject(name, "").obj["id"].(string)
+	id := f.newProject(name, "").obj["id"].(string)
+	if p := f.findProject(id); p != nil {
+		applyFields(p.obj, fields)
+	}
+	return id
 }
 
 // SeedCluster creates a cluster in the given project directly, already in state (for example
 // "healthy"), and returns its ID. It has one data/index/query node of 4 vCPU / 16 GB.
-func (f *Fake) SeedCluster(projectID, name, state string) string {
+func (f *Fake) SeedCluster(projectID, name, state string, fields ...Field) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	p := f.findProject(projectID)
@@ -253,7 +332,29 @@ func (f *Fake) SeedCluster(projectID, name, state string) string {
 	}, false)
 	c.obj["currentState"] = state
 	c.target = ""
+	applyFields(c.obj, fields)
 	return c.obj["id"].(string)
+}
+
+// clockNow is the Fake's wall time (FakeClock when set).
+func (f *Fake) clockNow() time.Time {
+	if f != nil && f.clock != nil {
+		return f.clock.Now().UTC()
+	}
+	return time.Now().UTC()
+}
+
+// now returns clockNow formatted as RFC3339.
+func (f *Fake) now() string { return f.clockNow().Format(time.RFC3339) }
+
+// matchPathGlob treats "{param}" segments as "*" for path.Match.
+func matchPathGlob(glob, p string) bool {
+	if glob == "" || glob == "*" {
+		return true
+	}
+	g := segment.ReplaceAllString(glob, "*")
+	ok, err := path.Match(g, p)
+	return err == nil && ok
 }
 
 // SetClusterState forces a cluster into state and stops it progressing, so a test can keep a
@@ -267,6 +368,8 @@ func (f *Fake) SetClusterState(clusterID, state string) bool {
 	}
 	c.obj["currentState"] = state
 	c.target = ""
+	c.path = nil
+	c.pathStep = 0
 	return true
 }
 
@@ -296,18 +399,27 @@ type params map[string]string
 type handler func(c *rctx)
 
 type route struct {
-	method string
-	re     *regexp.Regexp
-	names  []string
-	h      handler
-	anyOrg bool // does not require the {org} segment to be f.OrgID
+	method  string
+	pattern string // original {param} template, for inventory parity
+	re      *regexp.Regexp
+	names   []string
+	h       handler
+	anyOrg  bool // does not require the {org} segment to be f.OrgID
 }
 
 type failure struct {
-	method string
-	re     *regexp.Regexp
-	status int
-	left   int
+	method        string
+	re            *regexp.Regexp // optional; when set, matched with regexp
+	glob          string         // optional; path.Match style after {param}→*
+	status        int
+	code          int
+	message       string
+	headers       http.Header
+	left          int
+	dropAfterRead bool
+	applyThenDrop bool
+	delay         time.Duration
+	before        func()
 }
 
 // rctx is the per-request context handed to handlers; the Fake's mutex is held while it lives.
@@ -336,17 +448,38 @@ func (f *Fake) add(method, pattern string, h handler, anyOrg bool) {
 		names = append(names, segment.FindStringSubmatch(m)[1])
 		return `([^/]+)`
 	}) + "$"
-	f.routes = append(f.routes, route{method: method, re: regexp.MustCompile(expr), names: names, h: h, anyOrg: anyOrg})
+	f.routes = append(f.routes, route{method: method, pattern: pattern, re: regexp.MustCompile(expr), names: names, h: h, anyOrg: anyOrg})
+}
+
+// InventoryRoutes returns every registered method+path template (Phase 4 inventory parity).
+func (f *Fake) InventoryRoutes() []capellaapi.Endpoint {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]capellaapi.Endpoint, 0, len(f.routes))
+	for _, rt := range f.routes {
+		out = append(out, capellaapi.Endpoint{Method: rt.method, Path: rt.pattern})
+	}
+	return out
 }
 
 type statusRecorder struct {
 	http.ResponseWriter
-	status int
+	status   int
+	hijacked bool
 }
 
 func (s *statusRecorder) WriteHeader(code int) {
 	s.status = code
 	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj, ok := s.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("capellafake: ResponseWriter is not an http.Hijacker")
+	}
+	s.hijacked = true
+	return hj.Hijack()
 }
 
 func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
@@ -360,6 +493,7 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 		f.log = append(f.log, Request{
 			Method: r.Method, Path: r.URL.Path, RawQuery: r.URL.RawQuery,
 			IfMatch: r.Header.Get("If-Match"), Body: string(body), Status: rec.status,
+			Header: r.Header.Clone(), Time: f.clockNow(),
 		})
 	}()
 
@@ -369,13 +503,66 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, fl := range f.failures {
-		if fl.left > 0 && (fl.method == "" || fl.method == "*" || fl.method == r.Method) && fl.re.MatchString(r.URL.Path) {
-			fl.left--
-			c.err(fl.status, "injected failure")
+		if fl.left <= 0 || !faultMatches(fl, r.Method, r.URL.Path) {
+			continue
+		}
+		fl.left--
+		if fl.before != nil {
+			fl.before()
+		}
+		if fl.delay > 0 && f.clock != nil {
+			_ = f.clock.Sleep(r.Context(), fl.delay)
+		}
+		if fl.dropAfterRead && !fl.applyThenDrop {
+			f.dropConn(rec)
 			return
 		}
+		if fl.applyThenDrop {
+			// Apply the real handler with a discarding writer, then drop the client connection
+			// (ambiguous-write / lost-response case).
+			c.w = discardingWriter{}
+			f.serveRoute(c, r)
+			c.w = rec
+			f.dropConn(rec)
+			return
+		}
+		for k, vs := range fl.headers {
+			for _, v := range vs {
+				rec.Header().Add(k, v)
+			}
+		}
+		msg := fl.message
+		if msg == "" {
+			msg = "injected failure"
+		}
+		c.errCode(fl.status, fl.code, msg)
+		return
 	}
 
+	f.serveRoute(c, r)
+}
+
+func faultMatches(fl *failure, method, path string) bool {
+	if !(fl.method == "" || fl.method == "*" || fl.method == method) {
+		return false
+	}
+	if fl.re != nil {
+		return fl.re.MatchString(path)
+	}
+	return matchPathGlob(fl.glob, path)
+}
+
+func (f *Fake) dropConn(rec *statusRecorder) {
+	conn, _, err := rec.Hijack()
+	if err != nil {
+		rec.status = http.StatusInternalServerError
+		return
+	}
+	rec.status = 0
+	_ = conn.Close()
+}
+
+func (f *Fake) serveRoute(c *rctx, r *http.Request) {
 	esc := r.URL.EscapedPath()
 	for i := range f.routes {
 		rt := &f.routes[i]
@@ -404,6 +591,13 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 	c.err(http.StatusNotFound, "no such endpoint: "+r.Method+" "+r.URL.Path)
 }
 
+// discardingWriter swallows writes so ApplyThenDrop can mutate state without sending a response.
+type discardingWriter struct{}
+
+func (discardingWriter) Header() http.Header         { return make(http.Header) }
+func (discardingWriter) Write(b []byte) (int, error) { return len(b), nil }
+func (discardingWriter) WriteHeader(int)             {}
+
 // ---- response helpers ----------------------------------------------------------------------
 
 func (c *rctx) writeJSON(status int, v any) {
@@ -420,7 +614,15 @@ func (c *rctx) etag(ver int) { c.w.Header().Set("ETag", fmt.Sprintf(`"Version: %
 
 // err writes a Capella-style error body.
 func (c *rctx) err(status int, msg string) {
-	c.writeJSON(status, Obj{"httpStatusCode": status, "code": 1000 + status, "message": msg, "hint": ""})
+	c.errCode(status, 1000+status, msg)
+}
+
+// errCode writes a Capella-style error body with an explicit Capella code.
+func (c *rctx) errCode(status, code int, msg string) {
+	if code == 0 {
+		code = 1000 + status
+	}
+	c.writeJSON(status, Obj{"httpStatusCode": status, "code": code, "message": msg, "hint": ""})
 }
 
 func (c *rctx) notFound(what string) { c.err(http.StatusNotFound, what+" not found") }
@@ -500,10 +702,17 @@ func (c *rctx) page(key string, items []Obj) {
 
 // ---- small utilities -----------------------------------------------------------------------
 
+// now formats wall time as RFC3339. Prefer (*Fake).now when a Fake (and its clock) is available.
 func now() string { return time.Now().UTC().Format(time.RFC3339) }
 
 func audit(ver int) Obj {
 	return Obj{"createdBy": "capellafake", "createdAt": now(), "modifiedBy": "capellafake", "modifiedAt": now(), "version": ver}
+}
+
+// audit returns an audit block stamped with the Fake's clock.
+func (f *Fake) audit(ver int) Obj {
+	ts := f.now()
+	return Obj{"createdBy": "capellafake", "createdAt": ts, "modifiedBy": "capellafake", "modifiedAt": ts, "version": ver}
 }
 
 // clone deep-copies a JSON object.
@@ -549,8 +758,12 @@ func same(a, b any) bool {
 }
 
 // touch bumps r's version and audit after a modification.
-func (r *res) touch() {
+func (r *res) touch(f *Fake) {
 	r.ver++
+	if f != nil {
+		r.obj["audit"] = f.audit(r.ver)
+		return
+	}
 	r.obj["audit"] = audit(r.ver)
 }
 

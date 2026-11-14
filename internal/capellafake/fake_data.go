@@ -72,7 +72,7 @@ func (c *rctx) createCIDR() {
 		kind = "temporary"
 	}
 	e := &res{ver: 1, obj: Obj{"id": uuid.NewString(), "cidr": cidr, "comment": str(body, "comment"),
-		"expiresAt": str(body, "expiresAt"), "status": "active", "type": kind, "audit": audit(1)}}
+		"expiresAt": str(body, "expiresAt"), "status": "active", "type": kind, "audit": c.f.audit(1)}}
 	cl.cidrs = append(cl.cidrs, e)
 	c.writeJSON(http.StatusCreated, Obj{"id": e.obj["id"]})
 }
@@ -308,7 +308,7 @@ func (c *rctx) updateBucket() {
 			b.obj[k] = v
 		}
 	}
-	b.touch()
+	b.touch(c.f)
 	c.noContent()
 }
 
@@ -559,7 +559,7 @@ func (c *rctx) createUser() {
 	if access == nil {
 		access = []any{}
 	}
-	u := &res{ver: 1, obj: Obj{"id": uuid.NewString(), "name": name, "access": access, "audit": audit(1)}}
+	u := &res{ver: 1, obj: Obj{"id": uuid.NewString(), "name": name, "access": access, "audit": c.f.audit(1)}}
 	cl.creds = append(cl.creds, u)
 	out := Obj{"id": u.obj["id"]}
 	if generated {
@@ -604,7 +604,7 @@ func (c *rctx) updateUser() {
 	if access, ok := body["access"].([]any); ok {
 		u.obj["access"] = access
 	}
-	u.touch()
+	u.touch(c.f)
 	c.noContent()
 }
 

@@ -1,0 +1,625 @@
+release: "1.0.0"
+architecture: 00-architecture.md
+stories:
+  - id: CAP-001
+    title: "Python package scaffold, CLI skeleton & CI"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 3
+    depends: "—"
+    status: Implemented
+    phase: "Phase 0"
+    ref: "existing scaffold+CI (cbctl already has cobra CLI, Makefile, CI, GoReleaser)"
+    note: ""
+  - id: CAP-002
+    title: "Configuration file: schema, validation & secret references"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 5
+    depends: "CAP-001"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §3–§4"
+    note: ""
+  - id: CAP-003
+    title: "Management API client: auth, retries, rate limits, pagination & errors"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 5
+    depends: "CAP-001"
+    status: Not started
+    phase: "Phase 1"
+    ref: "phase-1 §2"
+    note: ""
+  - id: CAP-004
+    title: "Fake Capella test harness"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 5
+    depends: "CAP-003"
+    status: Not started
+    phase: "Phase 4"
+    ref: "phase-4 §3"
+    note: ""
+  - id: CAP-005
+    title: "Reconciler framework & plan engine"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 8
+    depends: "CAP-002, CAP-003"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §6"
+    note: ""
+  - id: CAP-006
+    title: "Apply executor, confirmation, output & exit codes"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 5
+    depends: "CAP-005"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §6.4,§9.3"
+    note: ""
+  - id: CAP-007
+    title: "Async operation waiter"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 3
+    depends: "CAP-003, CAP-004"
+    status: Not started
+    phase: "Phase 1"
+    ref: "phase-1 §2.10"
+    note: ""
+  - id: CAP-008
+    title: "Secret redaction & credential output files"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 3
+    depends: "CAP-002, CAP-003"
+    status: Not started
+    phase: "Phase 0"
+    ref: "phase-0 §1.6 + phase-3 §8"
+    note: ""
+  - id: CAP-009
+    title: "Ensure project (create & update)"
+    epic: "E2 Projects"
+    priority: P0
+    points: 2
+    depends: "CAP-005, CAP-006"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.1"
+    note: ""
+  - id: CAP-010
+    title: "Delete project"
+    epic: "E2 Projects"
+    priority: P0
+    points: 2
+    depends: "CAP-009"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 project delete + phase-3 §9.4"
+    note: ""
+  - id: CAP-011
+    title: "Create cluster"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 5
+    depends: "CAP-007, CAP-009"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.2 + phase-2 cluster create"
+    note: ""
+  - id: CAP-012
+    title: "Edit cluster settings & immutable-field protection"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 2
+    depends: "CAP-011"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.2"
+    note: ""
+  - id: CAP-013
+    title: "Deletion protection"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 2
+    depends: "CAP-011"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.3"
+    note: ""
+  - id: CAP-014
+    title: "Delete cluster"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 3
+    depends: "CAP-013"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster delete"
+    note: ""
+  - id: CAP-015
+    title: "Scale out: add nodes & service groups"
+    epic: "E4 Scaling"
+    priority: P0
+    points: 5
+    depends: "CAP-011"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
+    note: ""
+  - id: CAP-016
+    title: "Scale in: remove nodes & service groups safely"
+    epic: "E4 Scaling"
+    priority: P0
+    points: 5
+    depends: "CAP-015"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
+    note: ""
+  - id: CAP-017
+    title: "Vertical scaling: node compute & disk"
+    epic: "E4 Scaling"
+    priority: P0
+    points: 3
+    depends: "CAP-015"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
+    note: ""
+  - id: CAP-018
+    title: "Step scaling command with min/max guardrails"
+    epic: "E4 Scaling"
+    priority: P1
+    points: 3
+    depends: "CAP-016"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
+    note: ""
+  - id: CAP-019
+    title: "Power a cluster off and on (on-demand hibernation)"
+    epic: "E5 Hibernation"
+    priority: P0
+    points: 3
+    depends: "CAP-007, CAP-011"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster power"
+    note: ""
+  - id: CAP-020
+    title: "Hibernation schedule (on/off schedule) as code"
+    epic: "E5 Hibernation"
+    priority: P0
+    points: 5
+    depends: "CAP-011"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.4 + phase-2 cluster schedule"
+    note: ""
+  - id: CAP-021
+    title: "Pause & resume the hibernation schedule"
+    epic: "E5 Hibernation"
+    priority: P1
+    points: 2
+    depends: "CAP-020"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.4 + phase-2 cluster schedule"
+    note: ""
+  - id: CAP-022
+    title: "Ensure allowed CIDRs (IP allowlist)"
+    epic: "E6 Network access"
+    priority: P0
+    points: 3
+    depends: "CAP-011"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.6 + phase-2 cidr"
+    note: ""
+  - id: CAP-023
+    title: "Ensure bucket (create & update)"
+    epic: "E7 Data model"
+    priority: P0
+    points: 5
+    depends: "CAP-011"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
+    note: ""
+  - id: CAP-024
+    title: "Delete bucket"
+    epic: "E7 Data model"
+    priority: P0
+    points: 2
+    depends: "CAP-023, CAP-013"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
+    note: ""
+  - id: CAP-025
+    title: "Ensure scopes & collections"
+    epic: "E7 Data model"
+    priority: P0
+    points: 5
+    depends: "CAP-023"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
+    note: ""
+  - id: CAP-026
+    title: "Delete scopes & collections"
+    epic: "E7 Data model"
+    priority: P0
+    points: 2
+    depends: "CAP-025"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
+    note: ""
+  - id: CAP-027
+    title: "Ensure database credential (basic access)"
+    epic: "E8 Database credentials"
+    priority: P0
+    points: 5
+    depends: "CAP-025, CAP-008"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.9"
+    note: ""
+  - id: CAP-028
+    title: "Password rotation"
+    epic: "E8 Database credentials"
+    priority: P0
+    points: 3
+    depends: "CAP-027, CAP-008"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.9"
+    note: ""
+  - id: CAP-029
+    title: "Delete database credential"
+    epic: "E8 Database credentials"
+    priority: P0
+    points: 1
+    depends: "CAP-027"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.9"
+    note: ""
+  - id: CAP-030
+    title: "Full-environment apply & destroy"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 5
+    depends: "CAP-009–CAP-029 (all P0 resource stories)"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §9.3–§9.5"
+    note: ""
+  - id: CAP-031
+    title: "Drift report & prune"
+    epic: "E9 Lifecycle & release"
+    priority: P1
+    points: 3
+    depends: "CAP-030"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §9.3–§9.5"
+    note: ""
+  - id: CAP-032
+    title: "Nightly integration suite & release gate"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 5
+    depends: "CAP-030"
+    status: Not started
+    phase: "Phase 4"
+    ref: "phase-4 §5"
+    note: ""
+  - id: CAP-033
+    title: "Examples, runbook & customer documentation"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 3
+    depends: "CAP-030"
+    status: Not started
+    phase: "Phase 4"
+    ref: "phase-4 §8"
+    note: ""
+  - id: CAP-034
+    title: "Help command, help topics & shell completion"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 3
+    depends: "CAP-001, CAP-002"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §9.6 (guide)"
+    note: ""
+  - id: CAP-035
+    title: "`init` wizard: create capella.yaml interactively"
+    epic: "E2 Projects"
+    priority: P0
+    points: 5
+    depends: "CAP-002, CAP-003, CAP-009"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §11.3"
+    note: ""
+  - id: CAP-036
+    title: "Import an existing project & clusters into capella.yaml"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 8
+    depends: "CAP-005, CAP-020, CAP-022, CAP-025, CAP-027"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §11.1"
+    note: ""
+  - id: CAP-037
+    title: "`configure`: profiles, API key storage & config discovery"
+    epic: "E1 Foundation"
+    priority: P1
+    points: 3
+    depends: "CAP-003, CAP-008"
+    status: Not started
+    phase: "Phase 0"
+    ref: "phase-0 §1.7–§1.8"
+    note: ""
+  - id: CAP-038
+    title: "Manage clusters from the CLI: deploy, change and sync without editing capella.yaml"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 8
+    depends: "CAP-011, CAP-012, CAP-015, CAP-036"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §10"
+    note: ""
+  - id: CAP-039
+    title: "Create a project from the CLI"
+    epic: "E2 Projects"
+    priority: P0
+    points: 3
+    depends: "CAP-009, CAP-036, CAP-038"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 project create"
+    note: ""
+  - id: CAP-040
+    title: "Several projects in one capella.yaml"
+    epic: "E2 Projects"
+    priority: P0
+    points: 8
+    depends: "CAP-002, CAP-005, CAP-036, CAP-038, CAP-039"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 (multi-project)"
+    note: ""
+  - id: CAP-041
+    title: "Free-tier clusters and available cluster options"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 5
+    depends: "CAP-011, CAP-038, CAP-040"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster options/free tier"
+    note: ""
+  - id: CAP-042
+    title: "Non-interactive (CI/CD) mode for every command"
+    epic: "E1 Foundation"
+    priority: P0
+    points: 3
+    depends: "CAP-006, CAP-038"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 §3.2 (-y, --quiet, --no-wait)"
+    note: ""
+  - id: CAP-043
+    title: "One-command build of the distributables (source release)"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 3
+    depends: "CAP-001, CAP-044"
+    status: Descoped
+    note: "distributables: GoReleaser replaces wheel/sdist"
+  - id: CAP-044
+    title: "Licence, notices and third-party attributions"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 1
+    depends: "—"
+    status: Not started
+    phase: "Phase 4"
+    ref: "phase-4 §8.1 (NOTICE)"
+    note: ""
+  - id: CAP-045
+    title: "Standalone executables for macOS, Linux and Windows"
+    epic: "E9 Lifecycle & release"
+    priority: P1
+    points: 5
+    depends: "CAP-043, CAP-044"
+    status: Descoped
+    note: "standalone executables: GoReleaser builds native binaries"
+  - id: CAP-046
+    title: "Database credential commands: list, get, create, update"
+    epic: "E8 Database credentials"
+    priority: P0
+    points: 3
+    depends: "CAP-027, CAP-038"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 credential"
+    note: ""
+  - id: CAP-047
+    title: "configure and import check an existing capella.yaml against the key's organization"
+    epic: "E9 Lifecycle & release"
+    priority: P1
+    points: 3
+    depends: "CAP-036, CAP-037"
+    status: Not started
+    phase: "Phase 0"
+    ref: "phase-0 configure + phase-3 §11.2"
+    note: ""
+  - id: CAP-048
+    title: "Track projects and clusters by id so renames in the Capella UI are not mistaken for new resources"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 5
+    depends: "CAP-009, CAP-012, CAP-036, CAP-038"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §7.1–§7.2 (ids)"
+    note: ""
+  - id: CAP-049
+    title: "Clone a cluster into another region"
+    epic: "E3 Clusters"
+    priority: P1
+    points: 5
+    depends: "CAP-011, CAP-023, CAP-025, CAP-036, CAP-038, CAP-048"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster clone + phase-3 §10"
+    note: ""
+  - id: CAP-050
+    title: "Protect `main`: changes only through a reviewed pull request"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 3
+    depends: "CAP-001, CAP-043"
+    status: Descoped
+    note: "repository rulesets: out of scope here"
+  - id: CAP-051
+    title: "Create multi-dimensional (MDS) clusters from the CLI"
+    epic: "E3 Clusters"
+    priority: P0
+    points: 13
+    depends: "CAP-011, CAP-015, CAP-038, CAP-049"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster create/group/disk-types"
+    note: ""
+  - id: CAP-052
+    title: "Service group commands: list, add and remove groups on an existing cluster"
+    epic: "E4 Scaling"
+    priority: P1
+    points: 5
+    depends: "CAP-015, CAP-016, CAP-038, CAP-051"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster create/group/disk-types"
+    note: ""
+  - id: CAP-053
+    title: "Advanced cluster create options: server version, single node, zone, CMEK, private DNS, disk auto-expansion"
+    epic: "E3 Clusters"
+    priority: P1
+    points: 5
+    depends: "CAP-011, CAP-038, CAP-051"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster create/group/disk-types"
+    note: ""
+  - id: CAP-054
+    title: "One command to bring capella.yaml in line with Capella: `sync` covers the whole organization"
+    epic: "E9 Lifecycle & release"
+    priority: P1
+    points: 5
+    depends: "CAP-036, CAP-038, CAP-040"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §11.2"
+    note: ""
+  - id: CAP-055
+    title: "Install and run capellactl on Windows: step-by-step PowerShell table in the README"
+    epic: "E9 Lifecycle & release"
+    priority: P0
+    points: 3
+    depends: "CAP-033, CAP-045"
+    status: Descoped
+    note: "Windows PowerShell install steps: Python-specific"
+  - id: CAP-056
+    title: "Cluster backup schedule (cloud snapshots) as code"
+    epic: "E10 Backup & restore"
+    priority: P1
+    points: 5
+    depends: "CAP-011, CAP-020, CAP-038"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 backups (+ phase-3 §7.5)"
+    note: ""
+  - id: CAP-057
+    title: "Cluster backups: list, back up now, keep longer, delete and restore"
+    epic: "E10 Backup & restore"
+    priority: P1
+    points: 5
+    depends: "CAP-007, CAP-056"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 backups (+ phase-3 §7.5)"
+    note: ""
+  - id: CAP-058
+    title: "Bucket backup schedule as code, and backup cycles"
+    epic: "E10 Backup & restore"
+    priority: P1
+    points: 5
+    depends: "CAP-023, CAP-056"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 backups (+ phase-3 §7.5)"
+    note: ""
+  - id: CAP-059
+    title: "Bucket backups: list, back up now, delete, restore and export"
+    epic: "E10 Backup & restore"
+    priority: P1
+    points: 8
+    depends: "CAP-007, CAP-058"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 backups (+ phase-3 §7.5)"
+    note: ""
+  - id: CAP-060
+    title: "Choose the disk type, and see what each type means"
+    epic: "E3 Clusters"
+    priority: P1
+    points: 5
+    depends: "CAP-017, CAP-041, CAP-051, CAP-052"
+    status: Not started
+    phase: "Phase 2"
+    ref: "phase-2 cluster create/group/disk-types"
+    note: ""
+  - id: CAP-061
+    title: "Guides: backup and restore, and choosing a disk type, as steps CI runs"
+    epic: "E10 Backup & restore"
+    priority: P1
+    points: 3
+    depends: "CAP-056, CAP-057, CAP-058, CAP-059, CAP-060"
+    status: Not started
+    phase: "Phase 4"
+    ref: "phase-4 §8 (backup & disk guides)"
+    note: ""
+  - id: CAP-062
+    title: "Config problems say where they are, whether this command caused them, and how to fix them"
+    epic: "E1 Foundation"
+    priority: P1
+    points: 5
+    depends: "CAP-002, CAP-038, CAP-054"
+    status: Not started
+    phase: "Phase 3"
+    ref: "phase-3 §4.1"
+    note: ""
+  - id: CAP-063
+    title: "Every error and warning says what happened and what to do: [ERROR]/[WARNING] and [ACTION]"
+    epic: "E1 Foundation"
+    priority: P1
+    points: 8
+    depends: "CAP-006, CAP-062"
+    status: Not started
+    phase: "Phase 0"
+    ref: "phase-0–2 §2.8 + phase-3 §12"
+    note: ""
