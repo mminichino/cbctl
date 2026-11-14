@@ -115,7 +115,7 @@ func (p *passwordFlags) supplied() (string, error) {
 	var pw string
 	switch {
 	case p.env != "":
-		pw = os.Getenv(p.env)
+		pw = DefaultDeps().Env(p.env)
 		if pw == "" {
 			return "", usageError("export the variable before running the command", "environment variable %s is empty", p.env)
 		}

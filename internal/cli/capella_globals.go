@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -80,7 +79,7 @@ func readGlobals(cmd *cobra.Command) (globalFlags, error) {
 	if v, err := fs.GetBool("quiet"); err == nil {
 		g.Quiet = v
 	}
-	g.Quiet = g.Quiet || os.Getenv("CBCTL_QUIET") == "1"
+	g.Quiet = g.Quiet || envFrom(cmd)("CBCTL_QUIET") == "1"
 	if v, err := fs.GetBool("no-wait"); err == nil {
 		g.NoWait = v
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
@@ -46,7 +45,7 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 	if err != nil {
 		return nil, fmt.Errorf("encoding %s: %w", filepath.Base(ed.Path), err)
 	}
-	cfg, err := validateCandidate(ed, text)
+	cfg, err := validateCandidateEnv(ed, text, envFrom(e.cmd))
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +133,15 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 // candidate is reported with only the problems this change caused, apart from those the file
 // already had.
 func validateCandidate(ed *capellafile.Editor, text string) (*capellafile.Config, error) {
+	return validateCandidateEnv(ed, text, DefaultDeps().Env)
+}
+
+func validateCandidateEnv(ed *capellafile.Editor, text string, env func(string) string) (*capellafile.Config, error) {
 	name, dir := filepath.Base(ed.Path), filepath.Dir(ed.Path)
-	cfg, err := capellafile.LoadText(text, name, dir, os.Getenv)
+	if env == nil {
+		env = DefaultDeps().Env
+	}
+	cfg, err := capellafile.LoadText(text, name, dir, env)
 	if err == nil {
 		cfg.Path = ed.Path
 		return cfg, nil
@@ -146,7 +152,7 @@ func validateCandidate(ed *capellafile.Editor, text string) (*capellafile.Config
 	}
 	key := func(i capellafile.Issue) string { return i.Where + "\x00" + i.Message }
 	before := map[string]bool{}
-	if _, oldErr := capellafile.LoadText(ed.Original, name, dir, os.Getenv); oldErr != nil {
+	if _, oldErr := capellafile.LoadText(ed.Original, name, dir, env); oldErr != nil {
 		var oce *capellafile.ConfigError
 		if errors.As(oldErr, &oce) {
 			for _, i := range oce.Issues {
@@ -245,14 +251,14 @@ func newManagedEnv(cmd *cobra.Command) (*envRuntime, *capellafile.Editor, error)
 		return nil, nil, err
 	}
 	if !disc.Exists {
-		return nil, nil, notFoundError(displayPath(disc.Path))
+		return nil, nil, notFoundError(displayPathWith(disc.Path, cmd))
 	}
 	ed, err := capellafile.OpenEditor(disc.Path)
 	if err != nil {
 		return nil, nil, err
 	}
 	extra := runtimeExtras{}
-	if org, derr := capellafile.DeclaredOrgID(disc.Path, os.Getenv); derr == nil && org != "" {
+	if org, derr := capellafile.DeclaredOrgID(disc.Path, envFrom(cmd)); derr == nil && org != "" {
 		extra = runtimeExtras{FileOrgID: org, FileOrgSource: filepath.Base(disc.Path)}
 	}
 	rt, err := newRuntimeWith(cmd, readAPIFlags(cmd), extra)

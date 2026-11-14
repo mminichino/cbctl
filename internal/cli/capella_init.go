@@ -232,7 +232,7 @@ func (a *initAnswers) issues() []capellafile.Issue {
 		if pwEnv != "" && name == pwEnv {
 			return initPlaceholder
 		}
-		return os.Getenv(name)
+		return DefaultDeps().Env(name)
 	}
 	_, err = capellafile.LoadText(text, "capella.yaml", ".", env)
 	var ce *capellafile.ConfigError
@@ -471,7 +471,7 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 	if f.file != "" {
 		path = f.file
 		if !filepath.IsAbs(path) {
-			if wd, werr := os.Getwd(); werr == nil {
+			if wd, werr := cwdFrom(cmd); werr == nil {
 				path = filepath.Join(wd, path)
 			}
 		}

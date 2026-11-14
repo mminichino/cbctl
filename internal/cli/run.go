@@ -33,6 +33,7 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 	root.SetIn(d.Stdin)
 	root.SetOut(d.Stdout)
 	root.SetErr(d.Stderr)
+	ctx = contextWithDeps(ctx, d)
 
 	prevOut, prevErr := logging.Outputs()
 	logging.SetOutputs(d.Stdout, d.Stderr)

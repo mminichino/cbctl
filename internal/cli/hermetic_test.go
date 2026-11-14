@@ -108,13 +108,10 @@ func TestHermeticGrep(t *testing.T) {
 		"internal/secrets",
 	}
 	forbidden := []string{"os.Getenv", "os.LookupEnv", "os.Setenv", "os.Stdin", "os.Stdout", "os.Stderr", "os.Getwd", "time.Now()", "time.Sleep("}
-	// Known legacy call sites still migrating onto Deps/Clock (Phase 4 §2). Expand only with review.
+	// Known legacy call sites still migrating onto Deps/Clock (Phase 4 §2). Capella paths are
+	// mostly Deps-wired; remaining allow-list is process entry, Server CLI, and settings bootstrap.
 	allow := map[string]bool{
 		"deps.go": true, "run.go": true, "root.go": true, "configure.go": true,
-		"capella_globals.go": true, "capella_output.go": true, "capella_init.go": true,
-		"capella_managed.go": true, "capella_sync.go": true, "capella_env.go": true,
-		"capella_cluster_util.go": true, "capella_credential.go": true,
-		"capella_janitor.go": true,
 		"errors.go": true, "flags.go": true,
 		"cluster.go": true, "keyspace.go": true, "keyspace_cmd.go": true,
 		"warnings.go": true, "dotenv.go": true, "profiles.go": true, "settings.go": true,
