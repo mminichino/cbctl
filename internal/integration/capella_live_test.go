@@ -33,8 +33,10 @@ type liveCapella struct {
 func newLiveCapella(t *testing.T) *liveCapella {
 	t.Helper()
 	if wd, err := os.Getwd(); err == nil {
-		if _, _, err := settings.LoadDotEnv(wd); err != nil {
+		if _, values, _, err := settings.LoadDotEnv(wd, os.LookupEnv); err != nil {
 			t.Logf("ignoring .env: %v", err)
+		} else if err := settings.ApplyEnv(values); err != nil {
+			t.Logf("applying .env: %v", err)
 		}
 	}
 	if os.Getenv("CBCTL_IT_TARGET") == "fake" {

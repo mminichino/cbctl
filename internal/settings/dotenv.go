@@ -2,7 +2,6 @@ package settings
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -10,38 +9,41 @@ import (
 )
 
 // LoadDotEnv looks for ".env" in dir, then in each parent up to and including the first
-// directory containing go.mod or .git (the project root). The first file found is loaded
-// with godotenv semantics but NEVER overrides a variable already set in the process
-// environment. Returns the path loaded ("" if none) and the names set.
-func LoadDotEnv(startDir string) (path string, names []string, err error) {
+// directory containing go.mod or .git (the project root). The first file found is read with
+// godotenv semantics. Variables already present according to lookup are skipped. This function
+// never mutates the process environment — Execute (or a test) applies the returned values via
+// ApplyEnv.
+func LoadDotEnv(startDir string, lookup func(string) (string, bool)) (path string, values map[string]string, names []string, err error) {
+	if lookup == nil {
+		lookup = ProcessLookupEnv
+	}
 	if startDir == "" {
-		startDir, err = os.Getwd()
+		startDir, err = ProcessGetwd()
 		if err != nil {
-			return "", nil, nil
+			return "", nil, nil, nil
 		}
 	}
 	envPath, err := findDotEnv(startDir)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	if envPath == "" {
-		return "", nil, nil
+		return "", nil, nil, nil
 	}
 	kv, err := godotenv.Read(envPath)
 	if err != nil {
-		return "", nil, fmt.Errorf("parse %s: %w", envPath, err)
+		return "", nil, nil, fmt.Errorf("parse %s: %w", envPath, err)
 	}
+	values = make(map[string]string)
 	for k, v := range kv {
-		if _, exists := os.LookupEnv(k); exists {
+		if _, exists := lookup(k); exists {
 			continue
 		}
-		if err := os.Setenv(k, v); err != nil {
-			return envPath, names, fmt.Errorf("set %s from .env: %w", k, err)
-		}
+		values[k] = v
 		names = append(names, k)
 	}
 	sort.Strings(names)
-	return envPath, names, nil
+	return envPath, values, names, nil
 }
 
 func findDotEnv(startDir string) (string, error) {
@@ -51,7 +53,7 @@ func findDotEnv(startDir string) (string, error) {
 	}
 	for {
 		candidate := filepath.Join(dir, ".env")
-		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
+		if st, err := osStat(candidate); err == nil && !st.IsDir() {
 			return candidate, nil
 		}
 		// Stop after checking the project root (dir that contains go.mod or .git).
@@ -68,11 +70,11 @@ func findDotEnv(startDir string) (string, error) {
 }
 
 func fileExists(p string) bool {
-	st, err := os.Stat(p)
+	st, err := osStat(p)
 	return err == nil && !st.IsDir()
 }
 
 func dirExists(p string) bool {
-	st, err := os.Stat(p)
+	st, err := osStat(p)
 	return err == nil && st.IsDir()
 }

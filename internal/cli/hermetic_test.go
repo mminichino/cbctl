@@ -108,14 +108,11 @@ func TestHermeticGrep(t *testing.T) {
 		"internal/secrets",
 	}
 	forbidden := []string{"os.Getenv", "os.LookupEnv", "os.Setenv", "os.Stdin", "os.Stdout", "os.Stderr", "os.Getwd", "time.Now()", "time.Sleep("}
-	// Known legacy call sites still migrating onto Deps/Clock (Phase 4 §2). Capella paths are
-	// mostly Deps-wired; remaining allow-list is process entry, Server CLI, and settings bootstrap.
+	// Process-entry and the settings process-env adapter may touch os.Getenv/Stdin/etc.
+	// Capella + Server CLI paths are Deps-wired; LoadDotEnv no longer calls Setenv itself.
 	allow := map[string]bool{
-		"deps.go": true, "run.go": true, "root.go": true, "configure.go": true,
-		"errors.go": true, "flags.go": true,
-		"cluster.go": true, "keyspace.go": true, "keyspace_cmd.go": true,
-		// settings bootstrap still uses process env / Setenv for .env compatibility (§2.2).
-		"dotenv.go": true, "profiles.go": true, "settings.go": true,
+		"deps.go": true, "run.go": true, "root.go": true,
+		"osenv.go": true, // settings.ProcessEnv / ApplyEnv / ProcessGetwd
 	}
 	for _, pkg := range pkgs {
 		dir := filepath.Join(root, pkg)

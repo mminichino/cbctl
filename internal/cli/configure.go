@@ -82,11 +82,12 @@ func newConfigureCmd() *cobra.Command {
 }
 
 func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags) error {
+	d := depsFromCmd(cmd)
 	profile := f.profile
 	if profile == "" {
 		profile = "default"
 	}
-	key, err := readAPIKey(f.apiKeyStdin)
+	key, err := readAPIKey(cmd, f.apiKeyStdin)
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 			return Errorf(ExitConfigInvalid, "", "%v", err)
 		}
 	} else {
-		resolved, rerr := settings.Resolve(settings.Inputs{Profile: profile, APIHost: ""})
+		resolved, rerr := settings.Resolve(settings.Inputs{Profile: profile, APIHost: "", Env: d.Env, Home: d.Home, Keyring: d.Keyring})
 		if rerr != nil {
 			return rerr
 		}
@@ -148,12 +149,13 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		orgName = orgs[0].Name
 	} else if len(orgs) == 0 {
 		return Errorf(ExitConfigInvalid, "", "no organizations visible to this API key")
-	} else if isTTY(os.Stdin) {
+	} else if d.IsTTY(stdinFrom(cmd)) {
+		in, errOut := stdinFrom(cmd), stderrFrom(cmd)
 		for i, o := range orgs {
-			fmt.Fprintf(os.Stderr, "%d) %s (%s)\n", i+1, o.Name, o.ID)
+			fmt.Fprintf(errOut, "%d) %s (%s)\n", i+1, o.Name, o.ID)
 		}
-		fmt.Fprint(os.Stderr, "Select organization number: ")
-		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		fmt.Fprint(errOut, "Select organization number: ")
+		line, _ := bufio.NewReader(in).ReadString('\n')
 		var n int
 		if _, err := fmt.Sscanf(strings.TrimSpace(line), "%d", &n); err != nil || n < 1 || n > len(orgs) {
 			return Errorf(ExitConfigInvalid, "pass --org-id", "invalid organization selection")
@@ -168,7 +170,10 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		return Errorf(ExitConfigInvalid, "pass --org-id", "several organizations:\n%s", strings.TrimSpace(b.String()))
 	}
 
-	home := settings.HomeDir(os.Getenv)
+	home := d.Home
+	if home == "" {
+		home = settings.HomeDir(d.Env)
+	}
 	kr := keyringFactory()
 	if err := kr.Set(profile, key); err != nil {
 		return Errorf(ExitConfigInvalid, "set CAPELLA_API_KEY in your environment or .env instead", "no OS keychain available; %v", err)
@@ -209,28 +214,42 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	return nil
 }
 
-func readAPIKey(fromStdin bool) (string, error) {
+func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
+	d := depsFromCmd(cmd)
+	in := stdinFrom(cmd)
+	errOut := stderrFrom(cmd)
 	if fromStdin {
-		raw, err := io.ReadAll(os.Stdin)
+		raw, err := io.ReadAll(in)
 		if err != nil {
 			return "", err
 		}
 		return string(raw), nil
 	}
-	if isTTY(os.Stdin) {
-		fmt.Fprint(os.Stderr, "Capella API key (input hidden): ")
-		b, err := term.ReadPassword(int(os.Stdin.Fd()))
-		fmt.Fprintln(os.Stderr)
-		if err != nil {
+	if d.IsTTY(in) {
+		fmt.Fprint(errOut, "Capella API key (input hidden): ")
+		if f, ok := in.(*os.File); ok {
+			b, err := term.ReadPassword(int(f.Fd()))
+			fmt.Fprintln(errOut)
+			if err != nil {
+				return "", err
+			}
+			return string(b), nil
+		}
+		line, err := bufio.NewReader(in).ReadString('\n')
+		if err != nil && line == "" {
 			return "", err
 		}
-		return string(b), nil
+		return strings.TrimSpace(line), nil
 	}
 	return "", Errorf(ExitConfigInvalid, "pass --api-key-stdin or run in a terminal", "no API key supplied")
 }
 
 func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
-	home := settings.HomeDir(os.Getenv)
+	d := depsFromCmd(cmd)
+	home := d.Home
+	if home == "" {
+		home = settings.HomeDir(d.Env)
+	}
 	store := settings.ProfileStore{Path: settings.ProfilesPath(home)}
 	profiles, err := store.Load()
 	if err != nil {
@@ -264,7 +283,11 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 }
 
 func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
-	resolved, err := settings.Resolve(settings.Inputs{Profile: f.profile, ConfigFile: flagIfChanged(cmd, "config")})
+	d := depsFromCmd(cmd)
+	resolved, err := settings.Resolve(settings.Inputs{
+		Profile: f.profile, ConfigFile: flagIfChanged(cmd, "config"),
+		Env: d.Env, Home: d.Home, Keyring: d.Keyring,
+	})
 	if err != nil {
 		return err
 	}
@@ -298,11 +321,15 @@ func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
 }
 
 func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
+	d := depsFromCmd(cmd)
 	profile := f.profile
 	if profile == "" {
 		profile = "default"
 	}
-	home := settings.HomeDir(os.Getenv)
+	home := d.Home
+	if home == "" {
+		home = settings.HomeDir(d.Env)
+	}
 	store := settings.ProfileStore{Path: settings.ProfilesPath(home)}
 	profiles, err := store.Load()
 	if err != nil {
@@ -313,11 +340,12 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 		return nil
 	}
 	if !f.yes {
-		if !isTTY(os.Stdin) {
+		in := stdinFrom(cmd)
+		if !d.IsTTY(in) {
 			return Errorf(ExitBlocked, "re-run with --yes", "confirmation required but no terminal is attached")
 		}
-		fmt.Fprintf(os.Stderr, "Remove profile %q? [y/N] ", profile)
-		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		fmt.Fprintf(stderrFrom(cmd), "Remove profile %q? [y/N] ", profile)
+		line, _ := bufio.NewReader(in).ReadString('\n')
 		if strings.ToLower(strings.TrimSpace(line)) != "y" && strings.ToLower(strings.TrimSpace(line)) != "yes" {
 			return nil
 		}
@@ -329,14 +357,6 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 	}
 	logging.Info("Removed profile %q", profile)
 	return nil
-}
-
-func isTTY(f *os.File) bool {
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 func orNotSet(s string) string {
