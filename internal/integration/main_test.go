@@ -13,8 +13,10 @@ import (
 
 func TestMain(m *testing.M) {
 	if wd, err := os.Getwd(); err == nil {
-		if _, _, err := settings.LoadDotEnv(wd); err != nil {
+		if _, values, _, err := settings.LoadDotEnv(wd, os.LookupEnv); err != nil {
 			fmt.Fprintf(os.Stderr, "ignoring .env: %v\n", err)
+		} else if err := settings.ApplyEnv(values); err != nil {
+			fmt.Fprintf(os.Stderr, "applying .env: %v\n", err)
 		}
 	}
 

@@ -66,11 +66,15 @@ func buildRootCmd() *cobra.Command {
 func Execute() error {
 	d := DefaultDeps()
 	if wd, err := d.Cwd(); err == nil {
-		path, names, err := settings.LoadDotEnv(wd)
+		path, values, names, err := settings.LoadDotEnv(wd, d.LookupEnv)
 		if err != nil {
 			logging.Warning("ignoring .env: %v", err)
 		} else if path != "" {
-			logging.Debug("loaded .env from %s (%v)", path, names)
+			if err := settings.ApplyEnv(values); err != nil {
+				logging.Warning("applying .env: %v", err)
+			} else {
+				logging.Debug("loaded .env from %s (%v)", path, names)
+			}
 		}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"strings"
 	"unicode/utf8"
 
@@ -83,7 +82,7 @@ type Inputs struct {
 func Resolve(in Inputs) (*Settings, error) {
 	env := in.Env
 	if env == nil {
-		env = os.Getenv
+		env = ProcessEnv
 	}
 	home := in.Home
 	if home == "" {
@@ -154,7 +153,7 @@ func resolveConfigFile(flag string, env func(string) string, profile Profile, pr
 // not exist), so callers can use its settings before the full resolution runs.
 func LoadProfile(flag string, env func(string) string, home string) (Profile, error) {
 	if env == nil {
-		env = os.Getenv
+		env = ProcessEnv
 	}
 	if home == "" {
 		home = HomeDir(env)

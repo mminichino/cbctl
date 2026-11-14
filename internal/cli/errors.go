@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
@@ -56,7 +55,14 @@ func Errorf(code ExitCode, action, format string, a ...any) *CLIError {
 	return &CLIError{Code: code, Message: fmt.Sprintf(format, a...), Action: action}
 }
 
-var errWriter io.Writer = os.Stderr
+var errWriter io.Writer
+
+func errorOut() io.Writer {
+	if errWriter != nil {
+		return errWriter
+	}
+	return DefaultDeps().Stderr
+}
 
 // SetErrorWriter overrides stderr for HandleError (tests).
 func SetErrorWriter(w io.Writer) {
@@ -71,7 +77,7 @@ func HandleError(err error) ExitCode {
 		return ExitOK
 	}
 	if errors.Is(err, context.Canceled) {
-		fmt.Fprintln(errWriter)
+		fmt.Fprintln(errorOut())
 		return ExitInterrupted
 	}
 
@@ -146,12 +152,12 @@ func HandleError(err error) ExitCode {
 }
 
 func printError(msg string) {
-	fmt.Fprintf(errWriter, "[error] - %s\n", redact.String(msg))
+	fmt.Fprintf(errorOut(), "[error] - %s\n", redact.String(msg))
 }
 
 func printAction(action string) {
 	if action == "" {
 		return
 	}
-	fmt.Fprintf(errWriter, "  → %s\n", redact.String(action))
+	fmt.Fprintf(errorOut(), "  → %s\n", redact.String(action))
 }

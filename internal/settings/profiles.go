@@ -30,7 +30,7 @@ type ProfileStore struct {
 // Order: CBCTL_HOME → (windows) %APPDATA%\cbctl → $XDG_CONFIG_HOME/cbctl → ~/.config/cbctl.
 func HomeDir(env func(string) string) string {
 	if env == nil {
-		env = os.Getenv
+		env = ProcessEnv
 	}
 	if v := env("CBCTL_HOME"); v != "" {
 		return v
