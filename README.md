@@ -331,9 +331,11 @@ cbctl capella cluster backup schedule set my-cluster --every 24 --retain 30d
 
 ```bash
 make build              # bin/cbctl
-make test-unit          # with -race
+make test-unit          # with -race (./internal/...)
 make test-integration   # Docker required; Couchbase enterprise image
 make test-capella-live  # needs CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_LIVE_CLUSTER=1 adds billable clusters)
 make janitor PREFIX=cbctl-ci-   # delete leftover live-test projects
 make vet
 ```
+
+Offline Capella scenario tests use `internal/capellafake`. Live Capella tests (`//go:build integration`) skip unless sandbox credentials are set; with `CBCTL_LIVE_CLUSTER=1` they also run the declarative §13.4 validate/plan/apply/drift/prune/destroy flow. See `docs/specs/capella-fold-in-phase-4.md` for the Phase 4 harness (`CBCTL_IT_TARGET=fake|sandbox`), janitor, secret scanner, and release gate. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/mminichino/cbctl/internal/redact"
@@ -27,13 +28,16 @@ var (
 	errorColor = color.New(color.FgRed).SprintFunc()
 	debugColor = color.New(color.FgCyan).SprintFunc()
 
-	stdout io.Writer = os.Stdout
-	stderr io.Writer = os.Stderr
-	level            = LevelInfo
+	outputMu sync.Mutex
+	stdout   io.Writer = os.Stdout
+	stderr   io.Writer = os.Stderr
+	level              = LevelInfo
 )
 
 // SetOutputs overrides the writers used for log messages (tests).
 func SetOutputs(out, err io.Writer) {
+	outputMu.Lock()
+	defer outputMu.Unlock()
 	if out != nil {
 		stdout = out
 	}
@@ -42,9 +46,29 @@ func SetOutputs(out, err io.Writer) {
 	}
 }
 
+// WithOutputs temporarily redirects log writers for fn and restores them afterwards.
+// Legacy-command tests that rely on the package-level logger must not use t.Parallel().
+func WithOutputs(out, err io.Writer, fn func()) {
+	outputMu.Lock()
+	prevOut, prevErr := stdout, stderr
+	if out != nil {
+		stdout = out
+	}
+	if err != nil {
+		stderr = err
+	}
+	outputMu.Unlock()
+	defer SetOutputs(prevOut, prevErr)
+	fn()
+}
+
 // Outputs returns the writers currently used for log messages, so a caller that redirects them
 // with SetOutputs can restore them afterwards.
-func Outputs() (out, err io.Writer) { return stdout, stderr }
+func Outputs() (out, err io.Writer) {
+	outputMu.Lock()
+	defer outputMu.Unlock()
+	return stdout, stderr
+}
 
 // SetLevel sets the minimum log level.
 func SetLevel(l Level) { level = l }
