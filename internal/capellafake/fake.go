@@ -758,8 +758,12 @@ func same(a, b any) bool {
 }
 
 // touch bumps r's version and audit after a modification.
-func (r *res) touch() {
+func (r *res) touch(f *Fake) {
 	r.ver++
+	if f != nil {
+		r.obj["audit"] = f.audit(r.ver)
+		return
+	}
 	r.obj["audit"] = audit(r.ver)
 }
 

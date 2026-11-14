@@ -308,7 +308,7 @@ func (c *rctx) updateBucket() {
 			b.obj[k] = v
 		}
 	}
-	b.touch()
+	b.touch(c.f)
 	c.noContent()
 }
 
@@ -604,7 +604,7 @@ func (c *rctx) updateUser() {
 	if access, ok := body["access"].([]any); ok {
 		u.obj["access"] = access
 	}
-	u.touch()
+	u.touch(c.f)
 	c.noContent()
 }
 

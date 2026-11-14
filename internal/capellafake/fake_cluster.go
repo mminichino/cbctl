@@ -156,7 +156,7 @@ func (c *rctx) updateProject() {
 	}
 	p.obj["name"] = name
 	p.obj["description"] = str(body, "description")
-	p.touch()
+	p.touch(c.f)
 	c.noContent()
 }
 
@@ -440,7 +440,7 @@ func (c *rctx) updateCluster() {
 		cl.obj["serviceGroups"] = groups
 		cl.transition("scaling", "healthy")
 	}
-	cl.touch()
+	cl.touch(c.f)
 	c.noContent()
 }
 
@@ -457,7 +457,7 @@ func (c *rctx) updateFreeCluster() {
 		cl.obj["name"] = name
 	}
 	cl.obj["description"] = str(body, "description")
-	cl.touch()
+	cl.touch(c.f)
 	c.noContent()
 }
 
