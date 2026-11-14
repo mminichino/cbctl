@@ -39,9 +39,7 @@ func NewScenario(t testing.TB, opts ...ScenarioOption) *Scenario {
 	t.Helper()
 	dir := t.TempDir()
 	clk := engine.NewFakeClock(time.Time{})
-	// New(t) today; when WithClock lands, prefer New(t, capellafake.WithClock(clk)) so the
-	// fake and CLI share one FakeClock for deterministic waits.
-	fake := capellafake.New(t)
+	fake := capellafake.New(t, capellafake.WithClock(clk))
 	s := &Scenario{
 		T:       t,
 		Fake:    fake,

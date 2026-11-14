@@ -78,11 +78,8 @@ func AssertNoWrites(t testing.TB, f *capellafake.Fake) {
 
 func writeLabels(f *capellafake.Fake) []string {
 	var out []string
-	for _, r := range f.RequestLog() {
-		switch r.Method {
-		case "POST", "PUT", "PATCH", "DELETE":
-			out = append(out, r.Method+" "+r.Path)
-		}
+	for _, c := range f.Writes() {
+		out = append(out, c.Method+" "+c.Path)
 	}
 	return out
 }
