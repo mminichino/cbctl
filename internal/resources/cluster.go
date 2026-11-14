@@ -703,10 +703,14 @@ func (r *clusterRec) Apply(ctx context.Context, rc *plan.RunContext, a *plan.Act
 			return fmt.Errorf("cluster %s has no id to update", a.Key)
 		}
 		cid := a.Observed.ID
-		if a.Data["state"] != "healthy" {
+		// Capella only accepts deployments when Draft/Healthy. Always wait (unless
+		// --no-wait) so a prior scale still marked scaling cannot 422 this PUT.
+		if !rc.NoWait {
 			if err := r.wait(ctx, rc, a, engine.OpReady); err != nil {
 				return err
 			}
+		} else if st, _ := a.Data["state"].(string); st != "" && st != "healthy" && engine.Transitional[st] {
+			return fmt.Errorf("cluster %s is %s; wait until it is healthy, or omit --no-wait", a.Key, st)
 		}
 		current, etag, err := api.get(ctx, api.cluster(pid, cid))
 		if err != nil {
