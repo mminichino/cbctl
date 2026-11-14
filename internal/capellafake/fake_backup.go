@@ -349,7 +349,8 @@ func (c *rctx) deleteSnapshot() {
 		return
 	}
 	cl.snapshots = append(cl.snapshots[:i], cl.snapshots[i+1:]...)
-	c.w.WriteHeader(http.StatusAccepted)
+	// Spec documents 202 with an empty object body (not 204).
+	c.writeJSON(http.StatusAccepted, Obj{})
 }
 
 func (c *rctx) restoreSnapshot() {
@@ -416,7 +417,7 @@ func (f *Fake) routeBucketBackups() {
 }
 
 func (c *rctx) getBucketSchedule() {
-	_, b := c.bucket()
+	cl, b := c.bucket()
 	if b == nil {
 		return
 	}
@@ -424,7 +425,13 @@ func (c *rctx) getBucketSchedule() {
 		c.notFound("backup schedule")
 		return
 	}
-	c.writeJSON(http.StatusOK, clone(b.backupSched))
+	body := clone(b.backupSched)
+	if str(body, "type") == "" {
+		body["type"] = "weekly"
+	}
+	body["clusterID"] = cl.obj["id"]
+	body["bucketId"] = b.obj["id"]
+	c.writeJSON(http.StatusOK, body)
 }
 
 func (c *rctx) createBucketSchedule() {
@@ -493,11 +500,7 @@ func (c *rctx) createBackup() {
 		c.err(http.StatusConflict, "the cluster is "+cl.state()+"; a backup needs a healthy cluster")
 		return
 	}
-	cl.backups = append(cl.backups, &backup{obj: Obj{
-		"id": uuid.NewString(), "bucketID": b.obj["id"], "bucketName": b.obj["name"],
-		"cycleID": uuid.NewString(), "date": c.f.now(), "method": "full", "source": "manual", "status": "complete",
-		"stats": Obj{"sizeInMb": 0, "items": 0}, "restoreBefore": c.f.now(),
-	}})
+	cl.backups = append(cl.backups, &backup{obj: c.f.newBackupObj(cl, b, uuid.NewString(), "full", "manual", "")})
 	c.w.WriteHeader(http.StatusAccepted)
 }
 
@@ -623,14 +626,19 @@ func (c *rctx) exportBackup() {
 	}
 	cycle := str(bk.obj, "cycleID")
 	for _, e := range cl.exports {
-		if e.cycleID == cycle {
+		if e.cycleID == cycle && str(e.obj, "status") != "failed" {
 			c.err(http.StatusConflict, "the backup's cycle already has an export")
 			return
 		}
 	}
-	e := &export{cycleID: cycle, backupID: str(bk.obj, "id"), obj: Obj{"exportId": uuid.NewString(), "status": "pending"}}
+	id := uuid.NewString()
+	created := c.f.now()
+	e := &export{cycleID: cycle, backupID: str(bk.obj, "id"), obj: Obj{
+		"id": id, "exportId": id, "tenantId": c.f.OrgID, "projectId": cl.projectID, "clusterId": cl.obj["id"],
+		"cycleId": cycle, "bucketName": b.obj["name"], "status": "pending", "createdAt": created,
+	}}
 	cl.exports = append(cl.exports, e)
-	c.writeJSON(http.StatusAccepted, Obj{"exportId": e.obj["exportId"]})
+	c.writeJSON(http.StatusAccepted, Obj{"exportId": id, "createdAt": created})
 }
 
 func (c *rctx) getExport() {
@@ -639,7 +647,11 @@ func (c *rctx) getExport() {
 		return
 	}
 	for _, e := range cl.exports {
-		if str(e.obj, "exportId") != c.p["export"] || e.backupID != c.p["backup"] {
+		eid := str(e.obj, "id")
+		if eid == "" {
+			eid = str(e.obj, "exportId")
+		}
+		if eid != c.p["export"] || e.backupID != c.p["backup"] {
 			continue
 		}
 		if str(e.obj, "status") == "pending" {
@@ -647,11 +659,40 @@ func (c *rctx) getExport() {
 				e.polls++
 			} else {
 				e.obj["status"] = "complete"
-				e.obj["backupDownloadURL"] = "https://capella-fake.test/exports/" + str(e.obj, "exportId")
+				e.obj["backupDownloadURL"] = "https://capella-fake.test/exports/" + eid
 			}
 		}
 		c.writeJSON(http.StatusOK, clone(e.obj))
 		return
 	}
 	c.notFound("export")
+}
+
+// newBackupObj builds a bucket-backup record with the fields the Management API schema requires.
+func (f *Fake) newBackupObj(cl *cluster, b *bucket, cycleID, method, source, status string) Obj {
+	if cycleID == "" {
+		cycleID = uuid.NewString()
+	}
+	if method == "" {
+		method = "full"
+	}
+	if source == "" {
+		source = "manual"
+	}
+	if status == "" {
+		status = "ready"
+	}
+	date := f.now()
+	provider := str(sub(cl.obj, "cloudProvider"), "type")
+	if provider == "" {
+		provider = "aws"
+	}
+	return Obj{
+		"id": uuid.NewString(), "clusterID": cl.obj["id"], "tenantID": f.OrgID, "projectID": cl.projectID,
+		"cycleID": cycleID, "date": date, "restoreBefore": date, "status": status, "method": method,
+		"bucketName": b.obj["name"], "bucketID": b.obj["id"], "source": source, "provider": provider,
+		"stats":                Obj{"sizeInMb": 0, "items": 0, "mutations": 0, "tombstones": 0, "gsi": 0, "fts": 0, "cbas": 0, "event": 0},
+		"elapsedTimeInSeconds": 0,
+		"scheduleInfo":         Obj{"backupType": "weekly", "backupTime": date, "increment": 24, "retention": "30days"},
+	}
 }

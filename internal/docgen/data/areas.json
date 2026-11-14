@@ -1,0 +1,172 @@
+[
+  {
+    "tag": "Organizations",
+    "label": "Organizations",
+    "in_1_0": true
+  },
+  {
+    "tag": "Projects",
+    "label": "Projects",
+    "in_1_0": true
+  },
+  {
+    "tag": "Clusters",
+    "label": "Clusters",
+    "in_1_0": true
+  },
+  {
+    "tag": "Free Tier",
+    "label": "Free tier (clusters & buckets)",
+    "in_1_0": true
+  },
+  {
+    "tag": "On/Off Schedule",
+    "label": "On/Off schedule (hibernation)",
+    "in_1_0": true
+  },
+  {
+    "tag": "Allowed CIDRs (Cluster)",
+    "label": "Allowed CIDRs (cluster)",
+    "in_1_0": true
+  },
+  {
+    "tag": "Buckets, Scopes, & Collections",
+    "label": "Buckets, scopes & collections",
+    "in_1_0": true
+  },
+  {
+    "tag": "Database Credentials",
+    "label": "Database credentials",
+    "in_1_0": true
+  },
+  {
+    "tag": "Database Roles",
+    "label": "Database roles (custom)",
+    "in_1_0": false
+  },
+  {
+    "tag": "Sample Bucket",
+    "label": "Sample buckets",
+    "in_1_0": false
+  },
+  {
+    "tag": "Query Indexes",
+    "label": "Query indexes",
+    "in_1_0": false
+  },
+  {
+    "tag": "Eventing Functions",
+    "label": "Eventing functions",
+    "in_1_0": false
+  },
+  {
+    "tag": "Data API",
+    "label": "Data API",
+    "in_1_0": false
+  },
+  {
+    "tag": "Replications",
+    "label": "Replications (XDCR)",
+    "in_1_0": false
+  },
+  {
+    "tag": "Backups & Restore (Bucket)",
+    "label": "Backups & restore (bucket)",
+    "in_1_0": true
+  },
+  {
+    "tag": "Backup Schedule (Bucket)",
+    "label": "Backup schedule (bucket)",
+    "in_1_0": true
+  },
+  {
+    "tag": "Cloud Snapshot Backups & Restore",
+    "label": "Cloud snapshot backups & restore (cluster)",
+    "in_1_0": true
+  },
+  {
+    "tag": "Cloud Snapshot Backups Schedule",
+    "label": "Cloud snapshot backup schedule (cluster)",
+    "in_1_0": true
+  },
+  {
+    "tag": "Network Peers",
+    "label": "Network peers",
+    "in_1_0": false
+  },
+  {
+    "tag": "Private Endpoint Service",
+    "label": "Private endpoint service",
+    "in_1_0": false
+  },
+  {
+    "tag": "Certificates",
+    "label": "Certificates",
+    "in_1_0": false
+  },
+  {
+    "tag": "Audit Logs",
+    "label": "Audit logs",
+    "in_1_0": false
+  },
+  {
+    "tag": "CMEK",
+    "label": "CMEK (customer-managed keys)",
+    "in_1_0": false
+  },
+  {
+    "tag": "Alert Integration",
+    "label": "Alert integrations",
+    "in_1_0": false
+  },
+  {
+    "tag": "Events",
+    "label": "Events",
+    "in_1_0": false
+  },
+  {
+    "tag": "Users",
+    "label": "Organization users",
+    "in_1_0": false
+  },
+  {
+    "tag": "Api Keys",
+    "label": "API keys",
+    "in_1_0": false
+  },
+  {
+    "tag": "Billing",
+    "label": "Billing",
+    "in_1_0": false
+  },
+  {
+    "tag": "Operational Insights Clusters",
+    "label": "Operational Insights clusters",
+    "in_1_0": false
+  },
+  {
+    "tag": "Operational Insights On/Off Schedule",
+    "label": "Operational Insights on/off schedule",
+    "in_1_0": false
+  },
+  {
+    "tag": "Allowed CIDRs (Operational Insights Cluster)",
+    "label": "Allowed CIDRs (Operational Insights)",
+    "in_1_0": false
+  },
+  {
+    "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+    "label": "Operational Insights snapshot backups & restore",
+    "in_1_0": false
+  },
+  {
+    "tag": "Operational Insights Cloud Snapshot Backups Schedule",
+    "label": "Operational Insights snapshot backup schedule",
+    "in_1_0": false
+  },
+  {
+    "tag": "Operational Insights Private Endpoint Service",
+    "label": "Operational Insights private endpoints",
+    "in_1_0": false
+  }
+]

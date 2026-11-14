@@ -172,18 +172,69 @@ func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string) string
 	if b == nil {
 		f.t.Fatalf("capellafake: SeedBucketBackup: unknown bucket %q", bucket)
 	}
-	if method == "" {
-		method = "full"
+	obj := f.newBackupObj(cl, b, "", method, source, "ready")
+	cl.backups = append(cl.backups, &backup{obj: obj})
+	return str(obj, "id")
+}
+
+// DetachCluster removes a cluster from fake state and returns a function that puts it back.
+// Used by parity tests to temporarily clear a one-per-org free-tier cluster around create.
+func (f *Fake) DetachCluster(clusterID string) (restore func()) {
+	f.mu.Lock()
+	p, cl := f.findClusterAnywhere(clusterID)
+	if cl == nil {
+		f.mu.Unlock()
+		return func() {}
 	}
-	if source == "" {
-		source = "manual"
+	p.removeCluster(cl)
+	f.mu.Unlock()
+	return func() {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		if _, existing := f.findClusterAnywhere(str(cl.obj, "id")); existing != nil {
+			return
+		}
+		if proj := f.findProject(cl.projectID); proj != nil {
+			proj.clusters = append(proj.clusters, cl)
+		}
+	}
+}
+
+// ClearProjectClusters removes every cluster from a project (parity DELETE project prep).
+func (f *Fake) ClearProjectClusters(projectID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p := f.findProject(projectID); p != nil {
+		p.clusters = nil
+	}
+}
+
+// SeedExport creates a bucket-backup export record and returns its ID.
+// Status "failed" leaves the cycle free for a subsequent POST /export (parity with capellactl).
+func (f *Fake) SeedExport(clusterID, backupID, status string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, cl := f.findClusterAnywhere(clusterID)
+	if cl == nil {
+		f.t.Fatalf("capellafake: SeedExport: unknown cluster %q", clusterID)
+	}
+	bk := cl.findBackup(backupID)
+	if bk == nil {
+		f.t.Fatalf("capellafake: SeedExport: unknown backup %q", backupID)
+	}
+	if status == "" {
+		status = "pending"
 	}
 	id := uuid.NewString()
-	cl.backups = append(cl.backups, &backup{obj: Obj{
-		"id": id, "bucketID": b.obj["id"], "bucketName": b.obj["name"],
-		"cycleID": uuid.NewString(), "date": f.clockNow().UTC().Format(time.RFC3339), "method": method, "source": source, "status": "complete",
-		"stats": Obj{"sizeInMb": 0, "items": 0}, "restoreBefore": f.clockNow().UTC().Format(time.RFC3339),
-	}})
+	bucketName := str(bk.obj, "bucketName")
+	e := &export{cycleID: str(bk.obj, "cycleID"), backupID: backupID, obj: Obj{
+		"id": id, "exportId": id, "tenantId": f.OrgID, "projectId": cl.projectID, "clusterId": cl.obj["id"],
+		"cycleId": str(bk.obj, "cycleID"), "bucketName": bucketName, "status": status, "createdAt": f.now(),
+	}}
+	if status == "complete" || status == "pending" {
+		e.polls = f.settle + 1
+	}
+	cl.exports = append(cl.exports, e)
 	return id
 }
 

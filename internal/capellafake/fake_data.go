@@ -204,19 +204,20 @@ func (c *rctx) listFreeBuckets() {
 // addBucket creates the bucket with its _default scope and collection.
 func (cl *cluster) addBucket(name string, fields Obj) *bucket {
 	obj := Obj{
-		"id":                       capellaapi.BucketID(name),
-		"name":                     name,
-		"type":                     "couchbase",
-		"storageBackend":           "couchstore",
-		"memoryAllocationInMb":     100,
-		"bucketConflictResolution": "seqno",
-		"durabilityLevel":          "none",
-		"replicas":                 1,
-		"flush":                    false,
-		"timeToLiveInSeconds":      0,
-		"evictionPolicy":           "fullEviction",
-		"priority":                 0,
-		"stats":                    Obj{"itemCount": 0, "opsPerSecond": 0, "diskUsedInMib": 0, "memoryUsedInMib": 0},
+		"id":                           capellaapi.BucketID(name),
+		"name":                         name,
+		"type":                         "couchbase",
+		"storageBackend":               "couchstore",
+		"memoryAllocationInMb":         100,
+		"bucketConflictResolution":     "seqno",
+		"durabilityLevel":              "none",
+		"replicas":                     1,
+		"flush":                        false,
+		"timeToLiveInSeconds":          0,
+		"evictionPolicy":               "fullEviction",
+		"priority":                     0,
+		"enableCrossClusterVersioning": false,
+		"stats":                        Obj{"itemCount": 0, "opsPerSecond": 0, "diskUsedInMib": 0, "memoryUsedInMib": 0},
 	}
 	for k, v := range fields {
 		if k != "id" && k != "name" && k != "stats" {
@@ -398,7 +399,8 @@ func (c *rctx) createScope() {
 		return
 	}
 	b.scopes = append(b.scopes, &scope{name: name})
-	c.writeJSON(http.StatusCreated, Obj{"name": name})
+	// Spec documents 201 with no body.
+	c.w.WriteHeader(http.StatusCreated)
 }
 
 func (c *rctx) getScope() {
@@ -457,7 +459,8 @@ func (c *rctx) createCollection() {
 		obj["maxTTL"] = v
 	}
 	s.colls = append(s.colls, &res{ver: 1, obj: obj})
-	c.writeJSON(http.StatusCreated, Obj{"name": name})
+	// Spec documents 201 with no body.
+	c.w.WriteHeader(http.StatusCreated)
 }
 
 func (c *rctx) collection() (*scope, int, *res) {

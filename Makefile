@@ -68,16 +68,10 @@ docs:
 	go run ./cmd/cbdev docs reference
 
 docs-check:
-	@set +e; \
-	go run ./cmd/cbdev docs index --check; e1=$$?; \
-	go run ./cmd/cbdev docs coverage --check; e2=$$?; \
-	go run ./cmd/cbdev docs reference --check; e3=$$?; \
-	go run ./cmd/cbdev docs links --check; e4=$$?; \
-	if [ $$e1 -eq 2 ] || [ $$e2 -eq 2 ] || [ $$e3 -eq 2 ] || [ $$e4 -eq 2 ]; then \
-		echo "docs-check: docs tools not fully implemented yet (stub ok)"; \
-		exit 0; \
-	fi; \
-	exit $$(( e1 | e2 | e3 | e4 ))
+	go run ./cmd/cbdev docs index --check
+	go run ./cmd/cbdev docs coverage --check
+	go run ./cmd/cbdev docs reference --check
+	go run ./cmd/cbdev docs links --check
 
 index:
 	go run ./cmd/cbdev docs index
@@ -92,10 +86,7 @@ coverage-check:
 	go run ./cmd/cbdev docs coverage --check
 
 ac-coverage:
-	@go run ./cmd/cbdev docs ac-coverage --docs docs/backlog/release-1.5.0; \
-	ec=$$?; \
-	if [ $$ec -eq 2 ]; then echo "ac-coverage: not implemented yet (stub ok)"; exit 0; fi; \
-	exit $$ec
+	go run ./cmd/cbdev docs ac-coverage --docs docs/backlog/release-1.5.0
 
 links-check:
 	go run ./cmd/cbdev docs links --check

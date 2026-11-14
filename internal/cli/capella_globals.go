@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -80,7 +79,7 @@ func readGlobals(cmd *cobra.Command) (globalFlags, error) {
 	if v, err := fs.GetBool("quiet"); err == nil {
 		g.Quiet = v
 	}
-	g.Quiet = g.Quiet || os.Getenv("CBCTL_QUIET") == "1"
+	g.Quiet = g.Quiet || envFrom(cmd)("CBCTL_QUIET") == "1"
 	if v, err := fs.GetBool("no-wait"); err == nil {
 		g.NoWait = v
 	}
@@ -197,6 +196,7 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		f = &apiFlags{}
 	}
 
+	d := depsFromCmd(cmd)
 	resolved, err := settings.Resolve(settings.Inputs{
 		Profile:       g.Profile,
 		Token:         f.token,
@@ -205,6 +205,9 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		ConfigFile:    flagIfChanged(cmd, "config"),
 		FileOrgID:     extra.FileOrgID,
 		FileOrgSource: extra.FileOrgSource,
+		Env:           d.Env,
+		Home:          d.Home,
+		Keyring:       d.Keyring,
 	})
 	if err != nil {
 		return nil, Errorf(ExitConfigInvalid, "", "%v", err)

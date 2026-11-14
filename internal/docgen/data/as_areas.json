@@ -1,0 +1,30 @@
+[
+  {
+    "label": "App Services",
+    "tag": "App Services"
+  },
+  {
+    "label": "App Services (free tier)",
+    "tag": "Free Tier"
+  },
+  {
+    "label": "Allowed CIDRs (App Services)",
+    "tag": "Allowed CIDRs (App Services)"
+  },
+  {
+    "label": "App Endpoints",
+    "tag": "App Endpoints"
+  },
+  {
+    "label": "App Services audit logging",
+    "tag": "App Services Audit Logging"
+  },
+  {
+    "label": "App Services log streaming",
+    "tag": "App Services Log Streaming"
+  },
+  {
+    "label": "App Services private endpoints",
+    "tag": "App Services Private Endpoints"
+  }
+]

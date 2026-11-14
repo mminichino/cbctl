@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -68,7 +67,7 @@ func (rt *runtime) runJanitor(prefix string, olderThan time.Duration, dryRun, fa
 	}
 	now := rt.Clock.Now()
 	if now.IsZero() {
-		now = time.Now().UTC()
+		now = clockFactory().Now().UTC()
 	}
 	found := janitor.Stale(projects, prefix, olderThan, now)
 	res := janitorResult{Prefix: prefix, Status: "nothing", Projects: []janitorTarget{}}
@@ -113,7 +112,7 @@ func (rt *runtime) runJanitor(prefix string, olderThan time.Duration, dryRun, fa
 		if err != nil {
 			failed++
 			logging.Error("%s", err.Error())
-			fmt.Fprintf(os.Stderr, "  FAILED: %v\n", err)
+			fmt.Fprintf(rt.errOut(), "  FAILED: %v\n", err)
 		}
 	}
 	res.Failed = failed

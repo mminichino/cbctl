@@ -79,7 +79,7 @@ func runSync(cmd *cobra.Command, af *apiFlags, sf *syncFlags) error {
 	if sf.file != "" {
 		path = sf.file
 		if !filepath.IsAbs(path) {
-			if wd, werr := os.Getwd(); werr == nil {
+			if wd, werr := cwdFrom(cmd); werr == nil {
 				path = filepath.Join(wd, path)
 			}
 		}
@@ -101,7 +101,7 @@ func runSync(cmd *cobra.Command, af *apiFlags, sf *syncFlags) error {
 	// for another organization is never rewritten with this one's projects.
 	fileOrg := ""
 	if isCbctl {
-		if org, derr := capellafile.DeclaredOrgID(path, os.Getenv); derr == nil {
+		if org, derr := capellafile.DeclaredOrgID(path, envFrom(cmd)); derr == nil {
 			fileOrg = org
 		}
 	}

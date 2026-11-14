@@ -56,15 +56,16 @@ func discoverConfig(cmd *cobra.Command) (capellafile.Discovery, error) {
 	if err != nil {
 		return capellafile.Discovery{}, err
 	}
-	cwd, err := os.Getwd()
+	cwd, err := cwdFrom(cmd)
 	if err != nil {
 		return capellafile.Discovery{}, fmt.Errorf("finding the working directory: %w", err)
 	}
-	profile, err := settings.LoadProfile(g.Profile, os.Getenv, "")
+	env := envFrom(cmd)
+	profile, err := settings.LoadProfile(g.Profile, env, "")
 	if err != nil {
 		return capellafile.Discovery{}, Errorf(ExitConfigInvalid, "", "%v", err)
 	}
-	disc, err := capellafile.Discover(flagIfChanged(cmd, "config"), os.Getenv, profile, cwd)
+	disc, err := capellafile.Discover(flagIfChanged(cmd, "config"), env, profile, cwd)
 	if err != nil {
 		var ce *capellafile.ConfigError
 		if errors.As(err, &ce) {
@@ -82,9 +83,9 @@ func loadConfig(cmd *cobra.Command, mode WarningMode) (*capellafile.Config, cape
 		return nil, disc, err
 	}
 	if !disc.Exists {
-		return nil, disc, notFoundError(displayPath(disc.Path))
+		return nil, disc, notFoundError(displayPathWith(disc.Path, cmd))
 	}
-	cfg, err := capellafile.Load(disc.Path, os.Getenv)
+	cfg, err := capellafile.Load(disc.Path, envFrom(cmd))
 	if err != nil {
 		return nil, disc, err
 	}
@@ -106,10 +107,17 @@ func loadConfig(cmd *cobra.Command, mode WarningMode) (*capellafile.Config, cape
 
 // displayPath shows a path relative to the working directory when it is below it.
 func displayPath(p string) string {
-	if wd, err := os.Getwd(); err == nil {
-		if rel := strings.TrimPrefix(p, wd+string(os.PathSeparator)); rel != p {
-			return rel
-		}
+	return displayPathWith(p, nil)
+}
+
+// displayPathWith is displayPath using cmd's Deps when available.
+func displayPathWith(p string, cmd *cobra.Command) string {
+	wd, err := cwdFrom(cmd)
+	if err != nil {
+		return p
+	}
+	if rel := strings.TrimPrefix(p, wd+string(os.PathSeparator)); rel != p {
+		return rel
 	}
 	return p
 }
@@ -187,7 +195,7 @@ func newRunContext(rt *runtime, cfg *capellafile.Config) *plan.RunContext {
 	rc.Clock = rt.Clock
 	rc.Timeout = rt.Timeout
 	rc.NoWait = rt.NoWait
-	rc.Env = os.Getenv
+	rc.Env = envFrom(rt.cmd)
 	pw := &progressWriter{w: rt.errOut(), quiet: rt.Quiet, tty: ttyCheck(rt.errOut())}
 	rc.Progress = pw.line
 	rc.ProgressInline = pw.inline
@@ -259,10 +267,7 @@ func (rt *runtime) note(format string, a ...any) {
 
 // terminalIn returns the input stream and reports whether a person can answer on it.
 func (rt *runtime) terminalIn() (io.Reader, bool) {
-	in := io.Reader(os.Stdin)
-	if rt.cmd != nil {
-		in = rt.cmd.InOrStdin()
-	}
+	in := stdinFrom(rt.cmd)
 	return in, ttyCheck(in)
 }
 

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/netip"
-	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -86,10 +85,7 @@ func (rt *runtime) report(v any, format string, a ...any) {
 
 // errOut returns the writer for stderr messages.
 func (rt *runtime) errOut() io.Writer {
-	if rt.cmd != nil {
-		return rt.cmd.ErrOrStderr()
-	}
-	return os.Stderr
+	return stderrFrom(rt.cmd)
 }
 
 // usageError is an invalid flag combination or value (exit 3).
@@ -554,10 +550,7 @@ func confirmTyped(rt *runtime, question, want string) (bool, error) {
 	if rt.Yes {
 		return true, nil
 	}
-	in, errOut := io.Reader(os.Stdin), io.Writer(os.Stderr)
-	if rt.cmd != nil {
-		in, errOut = rt.cmd.InOrStdin(), rt.cmd.ErrOrStderr()
-	}
+	in, errOut := stdinFrom(rt.cmd), stderrFrom(rt.cmd)
 	if !ttyCheck(in) {
 		return false, blockedError("re-run with --yes", "confirmation required but no terminal is attached")
 	}

@@ -54,7 +54,7 @@ type baseRenderer struct {
 }
 
 func (b baseRenderer) Progress(dot string) {
-	if b.quiet || os.Getenv("CI") != "" || !terminalCheck(b.err) {
+	if b.quiet || DefaultDeps().Env("CI") != "" || !terminalCheck(b.err) {
 		return
 	}
 	fmt.Fprint(b.err, dot)
@@ -334,10 +334,7 @@ func confirm(rt *runtime, question string) (bool, error) {
 	if rt.Yes {
 		return true, nil
 	}
-	in, errOut := io.Reader(os.Stdin), io.Writer(os.Stderr)
-	if rt.cmd != nil {
-		in, errOut = rt.cmd.InOrStdin(), rt.cmd.ErrOrStderr()
-	}
+	in, errOut := stdinFrom(rt.cmd), stderrFrom(rt.cmd)
 	if !ttyCheck(in) {
 		return false, Errorf(ExitBlocked, "re-run with --yes", "confirmation required but no terminal is attached")
 	}

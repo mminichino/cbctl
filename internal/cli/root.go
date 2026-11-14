@@ -64,7 +64,8 @@ func buildRootCmd() *cobra.Command {
 
 // Execute runs the root command under a signal-aware context.
 func Execute() error {
-	if wd, err := os.Getwd(); err == nil {
+	d := DefaultDeps()
+	if wd, err := d.Cwd(); err == nil {
 		path, names, err := settings.LoadDotEnv(wd)
 		if err != nil {
 			logging.Warning("ignoring .env: %v", err)
@@ -74,7 +75,12 @@ func Execute() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return rootCmd.ExecuteContext(ctx)
+	ctx = contextWithDeps(ctx, d)
+	root := NewRootCmd(d)
+	root.SetIn(d.Stdin)
+	root.SetOut(d.Stdout)
+	root.SetErr(d.Stderr)
+	return root.ExecuteContext(ctx)
 }
 
 func exitErr() {
