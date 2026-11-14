@@ -26,7 +26,7 @@ Helpers (not a `test_*.py`):
 | 1 | `test_allowed_cidrs.py` | CAP-022 | `internal/cli/capella_cidr_test.go` | partial | Imperative CIDR verbs; declarative allowlist on Scenario planned |
 | 2 | `test_apply.py` | CAP-006 | `internal/cli/scenario_apply_test.go` | ported | validate/plan/apply; zero-writes re-run; `--yes` / blocked |
 | 3 | `test_auth.py` | CAP-003 | `internal/cli/configure_test.go`, `capella_globals_test.go` | partial | Key/profile resolution; Scenario auth cases planned |
-| 4 | `test_backup_restore_guide.py` | CAP-061 | — | planned | Guide runner (`scenario_guides_test.go`) later |
+| 4 | `test_backup_restore_guide.py` | CAP-061 | `internal/cli/scenario_guides_test.go` | planned | Getting-started runner landed (CAP-033); backup guide walkthrough still open |
 | 5 | `test_bucket.py` | CAP-023 | `internal/cli/capella_bucket_test.go` | partial | |
 | 6 | `test_bucket_backup.py` | CAP-059 | `internal/cli/capella_bucket_backup_test.go` | partial | |
 | 7 | `test_bucket_backup_schedule.py` | CAP-058 | `internal/cli/capella_bucket_backup_test.go` | partial | |
@@ -46,13 +46,13 @@ Helpers (not a `test_*.py`):
 | 21 | `test_cluster_update.py` | CAP-012 | `internal/cli/capella_cluster_scale_test.go` | partial | |
 | 22 | `test_configure.py` | CAP-037 | `internal/cli/configure_test.go` | partial | Profiles/keyring; Windows install bits → see CAP-055 N/A |
 | 23 | `test_configure_check.py` | CAP-047 | `internal/cli/configure_test.go` | partial | Org mismatch checks |
-| 24 | `test_credential.py` | CAP-027 | `internal/cli/capella_credential_test.go` | partial | Declarative credential apply planned on Scenario |
+| 24 | `test_credential.py` | CAP-027 | `internal/cli/scenario_credentials_test.go` | ported | Declarative credential apply + AssertNoSecret; access-edge cases still partial elsewhere |
 | 25 | `test_credential_access_kept.py` | CAP-027/028/036 | `internal/cli/capella_credential_test.go` | partial | Access-preservation edge cases |
 | 26 | `test_credential_cli.py` | CAP-046 | `internal/cli/capella_credential_test.go` | partial | |
 | 27 | `test_credential_delete.py` | CAP-029 | `internal/cli/capella_credential_test.go` | partial | |
 | 28 | `test_custom_clusters_guide.py` | CAP-051/061 | — | planned | Guide runner later |
 | 29 | `test_deletion_protection.py` | CAP-013 | `internal/cli/capella_cluster_lifecycle_test.go` | partial | |
-| 30 | `test_drift.py` | CAP-031 | `internal/cli/capella_env_test.go` (`TestDriftAndDestroy`) | partial | Migrate onto Scenario |
+| 30 | `test_drift.py` | CAP-031 | `internal/cli/scenario_drift_test.go` | ported | Clean/unmanaged drift + destroy/protection on Scenario |
 | 31 | `test_environment.py` | CAP-030 | `scenario_apply_test.go` + `capella_env_test.go` | partial | Apply/destroy lifecycle; Scenario covers create + zero-writes |
 | 32 | `test_error_messages.py` | CAP-062 | `internal/cli/errors_test.go`, `capella_env_test.go` | partial | |
 | 33 | `test_errors.py` | CAP-003 | `internal/cli/errors_test.go` | partial | Message + ACTION hints |
@@ -80,14 +80,14 @@ Helpers (not a `test_*.py`):
 | 55 | `test_scope_collection_delete.py` | CAP-026 | `internal/cli/capella_scope_test.go`, `capella_collection_test.go` | partial | |
 | 56 | `test_scopes_collections.py` | CAP-025 | `internal/cli/capella_scope_test.go`, `capella_collection_test.go` | partial | |
 | 57 | `test_step_scaling.py` | CAP-018 | `internal/cli/capella_cluster_scale_test.go` | partial | |
-| 58 | `test_sync.py` | CAP-038 | `internal/cli/capella_env_test.go` (`TestSync*`) | partial | |
+| 58 | `test_sync.py` | CAP-038 | `internal/cli/scenario_sync_test.go` | ported | stdout/dry-run/write/org-mismatch on Scenario |
 | 59 | `test_sync_all.py` | CAP-054 | — | planned | `sync` for every org project |
 | 60 | `test_track_by_id.py` | CAP-048 | — | planned | Pin-by-id rename behaviour |
 | 61 | `test_validate.py` | CAP-002 | `scenario_apply_test.go`, `capella_env_test.go` | partial | Offline validate on Scenario; schema ACs still ad-hoc |
 | 62 | `test_vertical_scaling.py` | CAP-017 | `internal/cli/capella_cluster_scale_test.go` | partial | |
 | 63 | `test_waiter_cli.py` | CAP-007 | — | planned | `--timeout` / waiter CLI flags on Scenario |
 
-**Coverage count:** 63/63 files accounted for · **ported** 3 (`test_apply.py`, `test_plan.py`, `test_redaction.py`) · **partial** 50 · **planned** 10 · **N/A** 0 among `test_*.py`.
+**Coverage count:** 63/63 files accounted for · **ported** 7 (`test_apply`, `test_plan`, `test_redaction`, `test_drift`, `test_sync`, `test_credential`, plus init/project Scenario rows) · **partial** ~46 · **planned** ~10 · **N/A** 0 among `test_*.py`. Getting-started guide runner: `scenario_guides_test.go` (CAP-033).
 
 ## Related / descoped (not `tests/scenario/test_*.py`)
 

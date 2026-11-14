@@ -101,12 +101,28 @@ func cmdDocsIndex(args []string, stdout, stderr io.Writer) int {
 
 func cmdDocsCoverage(args []string, stdout, stderr io.Writer) int {
 	check := false
-	for _, a := range args {
-		switch a {
-		case "--check":
+	allowDiff := false
+	var compareWith string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--check":
 			check = true
-		case "-h", "--help":
-			fmt.Fprint(stdout, "usage: cbdev docs coverage [--check]\n")
+		case a == "--allow-diff":
+			allowDiff = true
+		case a == "--compare-with" && i+1 < len(args):
+			i++
+			compareWith = args[i]
+		case strings.HasPrefix(a, "--compare-with="):
+			compareWith = strings.TrimPrefix(a, "--compare-with=")
+		case a == "-h" || a == "--help":
+			fmt.Fprint(stdout, `usage: cbdev docs coverage [--check] [--compare-with <capellactl>/docs] [--allow-diff]
+
+Without --compare-with: regenerate (or --check) docs/backlog/**/API-COVERAGE*.md.
+With --compare-with: §9.7 parity oracle — force stories.yaml statuses to Implemented
+(except CAP-032/CAP-055 In progress), regenerate, rewrite capellactl reports with
+port rules, and print diffs. Exit 1 when any report differs unless --allow-diff.
+`)
 			return 0
 		default:
 			fmt.Fprintf(stderr, "cbdev docs coverage: unknown argument %q\n", a)
@@ -119,6 +135,36 @@ func cmdDocsCoverage(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	backlog := filepath.Join(root, "docs", "backlog")
+	if compareWith != "" {
+		res, err := coverage.CompareWith(coverage.CompareOptions{
+			BacklogRoot: backlog,
+			CapellaDocs: compareWith,
+			AllowDiff:   allowDiff,
+		})
+		if err != nil {
+			fmt.Fprintf(stderr, "cbdev docs coverage: %v\n", err)
+			return 1
+		}
+		differs := 0
+		for _, r := range res.Reports {
+			if r.Differs {
+				differs++
+				fmt.Fprintf(stderr, "diff: %s (ours %d lines, theirs %d)\n%s\n",
+					r.Name, r.OursLines, r.TheirLines, r.Sample)
+			} else {
+				fmt.Fprintf(stdout, "match: %s\n", r.Name)
+			}
+		}
+		if differs == 0 {
+			fmt.Fprintln(stdout, "compare-with: all coverage reports match after status forcing")
+			return 0
+		}
+		fmt.Fprintf(stderr, "compare-with: %d report(s) differ (Go vs rewritten Python; --allow-diff for soft pass)\n", differs)
+		if allowDiff {
+			return 0
+		}
+		return 1
+	}
 	if err := coverage.Generate(backlog, check); err != nil {
 		fmt.Fprintf(stderr, "cbdev docs coverage: %v\n", err)
 		return 1

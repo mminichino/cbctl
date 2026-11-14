@@ -65,6 +65,4 @@ Releases: 1.5.0 (CAP-*.md), 1.0.0-architecture (00-architecture.md).
 	return 0
 }
 
-func cmdDocsExtractData(args []string, stdout, stderr io.Writer) int {
-	return notImplemented("docs extract-data", stderr)
-}
+// cmdDocsExtractData is implemented in docs_extract.go.
