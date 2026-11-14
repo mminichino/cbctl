@@ -20,8 +20,9 @@ import (
 )
 
 // liveCapella drives the real cbctl binary against the real Capella. It is skipped unless
-// CAPELLA_API_KEY and CAPELLA_ORG_ID are set (directly or in .env). Cluster-cost parts need
-// CBCTL_LIVE_CLUSTER=1.
+// sandbox/API credentials are set. Prefer CBCTL_IT_TARGET=sandbox with
+// CAPELLA_SANDBOX_*; CAPELLA_API_KEY/ORG_ID still work. Cluster-cost parts need
+// CBCTL_IT_CLUSTERS=1 (CBCTL_LIVE_CLUSTER=1 remains an alias).
 type liveCapella struct {
 	t      *testing.T
 	bin    string
@@ -36,9 +37,20 @@ func newLiveCapella(t *testing.T) *liveCapella {
 			t.Logf("ignoring .env: %v", err)
 		}
 	}
-	if os.Getenv("CAPELLA_API_KEY") == "" || os.Getenv("CAPELLA_ORG_ID") == "" {
-		t.Skip("CAPELLA_API_KEY and CAPELLA_ORG_ID are not set; skipping live Capella tests")
+	if os.Getenv("CBCTL_IT_TARGET") == "fake" {
+		t.Skip("CBCTL_IT_TARGET=fake: live binary Capella test is separate from the harness suite")
 	}
+	key := os.Getenv("CAPELLA_SANDBOX_API_KEY")
+	org := os.Getenv("CAPELLA_SANDBOX_ORG_ID")
+	if key == "" || org == "" {
+		key = os.Getenv("CAPELLA_API_KEY")
+		org = os.Getenv("CAPELLA_ORG_ID")
+	}
+	if key == "" || org == "" {
+		t.Skip("CAPELLA_SANDBOX_API_KEY/ORG_ID or CAPELLA_API_KEY/ORG_ID are not set; skipping live Capella tests")
+	}
+	t.Setenv("CAPELLA_API_KEY", key)
+	t.Setenv("CAPELLA_ORG_ID", org)
 	bin := filepath.Join(t.TempDir(), "cbctl")
 	build := exec.Command("go", "build", "-o", bin, "../../cmd/cbctl")
 	if out, err := build.CombinedOutput(); err != nil {
@@ -146,8 +158,12 @@ func TestCapellaLive(t *testing.T) {
 
 	// §13.4 declarative cluster flow (not the older Phase 2 imperative protect/scale/power path).
 	t.Run("cluster", func(t *testing.T) {
-		if os.Getenv("CBCTL_LIVE_CLUSTER") != "1" {
-			t.Skip("CBCTL_LIVE_CLUSTER=1 is not set; skipping the parts that create (billable) clusters")
+		clusters := os.Getenv("CBCTL_IT_CLUSTERS") == "1" || os.Getenv("CBCTL_LIVE_CLUSTER") == "1"
+		if os.Getenv("CBCTL_LIVE_CLUSTER") == "1" && os.Getenv("CBCTL_IT_CLUSTERS") == "" {
+			t.Log("CBCTL_LIVE_CLUSTER=1 is deprecated; use CBCTL_IT_CLUSTERS=1")
+		}
+		if !clusters {
+			t.Skip("CBCTL_IT_CLUSTERS=1 is not set; skipping the parts that create (billable) clusters")
 		}
 		dir := t.TempDir()
 		envProject := l.name("env")

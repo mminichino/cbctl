@@ -196,6 +196,7 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		f = &apiFlags{}
 	}
 
+	d := depsFromCmd(cmd)
 	resolved, err := settings.Resolve(settings.Inputs{
 		Profile:       g.Profile,
 		Token:         f.token,
@@ -204,6 +205,9 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		ConfigFile:    flagIfChanged(cmd, "config"),
 		FileOrgID:     extra.FileOrgID,
 		FileOrgSource: extra.FileOrgSource,
+		Env:           d.Env,
+		Home:          d.Home,
+		Keyring:       d.Keyring,
 	})
 	if err != nil {
 		return nil, Errorf(ExitConfigInvalid, "", "%v", err)
