@@ -78,6 +78,10 @@ func TestWaitForClusterOps(t *testing.T) {
 		{name: "create healthy", op: OpCreate, states: []string{"draft", "deploying", "healthy"}, want: "healthy"},
 		{name: "create failed", op: OpCreate, states: []string{"deploying", "deploymentFailed"}, wantFail: "deploymentFailed"},
 		{name: "update healthy", op: OpUpdate, states: []string{"scaling", "healthy"}, want: "healthy"},
+		// Capella may still say healthy on the first poll after accepting a scale PUT.
+		{name: "update ignores stale healthy then settles", op: OpUpdate, states: []string{"healthy", "scaling", "healthy"}, want: "healthy"},
+		// Missed the transitional window entirely: accept healthy once firstPoll has elapsed.
+		{name: "update accepts healthy after firstPoll", op: OpUpdate, states: []string{"healthy"}, want: "healthy"},
 		{name: "update failed", op: OpUpdate, states: []string{"scaling", "scaleFailed"}, wantFail: "scaleFailed"},
 		{name: "power off", op: OpPowerOff, states: []string{"turningOff", "turnedOff"}, want: "turnedOff"},
 		{name: "power off failed", op: OpPowerOff, states: []string{"turningOffFailed"}, wantFail: "turningOffFailed"},

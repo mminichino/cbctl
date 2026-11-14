@@ -171,6 +171,10 @@ func WaitForCluster(ctx context.Context, c ClusterGetter, projectID, clusterID s
 	nextTick := tickEvery
 	interval := firstPoll
 	last, polled := "", false
+	// Capella often still reports healthy for a moment after accepting a scale/update
+	// PUT. For OpUpdate, require a transitional poll (or firstPoll elapsed) before
+	// treating healthy as success, otherwise a follow-up scale races with 422.
+	seenTransitional := false
 	for {
 		cl, err := c.GetCluster(ctx, projectID, clusterID)
 		elapsed := clk.Monotonic() - start
@@ -198,8 +202,15 @@ func WaitForCluster(ctx context.Context, c ClusterGetter, projectID, clusterID s
 			}
 			last, polled = state, true
 		}
+		if Transitional[state] {
+			seenTransitional = true
+		}
 		if success[state] {
-			return state, nil
+			if op == OpUpdate && !seenTransitional && elapsed < firstPoll {
+				// keep polling through the post-accept healthy flicker
+			} else {
+				return state, nil
+			}
 		}
 		if failure[state] {
 			return state, &WaitFailed{Name: label, State: state}
