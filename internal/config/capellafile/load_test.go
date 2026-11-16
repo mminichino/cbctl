@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -209,13 +210,18 @@ func TestLoadMissingFile(t *testing.T) {
 }
 
 func TestCredentialsOutput(t *testing.T) {
+	// An absolute path needs a drive letter on Windows; "/var/secrets" is rooted but relative there.
+	abs, absWant := "/var/secrets", "/var/secrets"
+	if runtime.GOOS == "windows" {
+		abs, absWant = `C:\secrets`, "C:/secrets"
+	}
 	tests := []struct {
 		name, setting, want string
 	}{
 		{"default", "", "/base/.cbctl/credentials"},
 		{"relative explicit", "credentialsOutput: ./out\n", "/base/out"},
 		{"legacy namespace honoured", "credentialsOutput: ./.capellactl/credentials\n", "/base/.capellactl/credentials"},
-		{"absolute", "credentialsOutput: /var/secrets\n", "/var/secrets"},
+		{"absolute", "credentialsOutput: '" + abs + "'\n", absWant},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"strings"
 	"testing"
 
@@ -168,6 +169,9 @@ func TestCredentialCreate(t *testing.T) {
 		}
 	})
 	t.Run("a world-readable password file only warns", func(t *testing.T) {
+		if goruntime.GOOS == "windows" {
+			t.Skip("POSIX permission bits; the check is skipped on Windows by design")
+		}
 		path := filepath.Join(t.TempDir(), "pw")
 		if err := os.WriteFile(path, []byte("S3cure-Passw0rd!z"), 0o644); err != nil {
 			t.Fatal(err)

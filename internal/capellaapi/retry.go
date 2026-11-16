@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/mminichino/cbctl/internal/logging"
@@ -99,9 +98,9 @@ func classifyTransport(err error) string {
 	switch {
 	case errors.As(err, &dns):
 		return "dns lookup failed"
-	case errors.Is(err, syscall.ECONNREFUSED):
+	case isConnRefused(err):
 		return "connection refused"
-	case errors.Is(err, syscall.ECONNRESET):
+	case isConnReset(err):
 		return "connection reset"
 	case errors.As(err, &certErr), errors.As(err, &unknown), errors.As(err, &hostErr), errors.As(err, &tlsRec):
 		return "tls error"
