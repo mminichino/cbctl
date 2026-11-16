@@ -2,7 +2,7 @@
 
 .PHONY: build test test-unit test-race test-integration test-integration-fake test-capella-live
 .PHONY: janitor vet fmt-check tidy-check tidy cover-engine docs docs-check index index-check
-.PHONY: coverage coverage-check ac-coverage links-check check release-snapshot
+.PHONY: coverage coverage-check ac-coverage links-check lint check release-snapshot
 
 build:
 	go build -o bin/cbctl ./cmd/cbctl
@@ -91,7 +91,17 @@ ac-coverage:
 links-check:
 	go run ./cmd/cbdev docs links --check
 
-check: vet fmt-check test-unit test-integration-fake cover-engine docs-check ac-coverage tidy-check
+GOLANGCI_LINT_VERSION ?= v2.15.0
+
+lint:
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint not found; install $(GOLANGCI_LINT_VERSION):" >&2; \
+		echo "  go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)" >&2; \
+		exit 1; \
+	fi
+	golangci-lint run ./...
+
+check: vet fmt-check lint test-unit test-integration-fake cover-engine docs-check ac-coverage tidy-check
 
 release-snapshot:
 	goreleaser release --snapshot --clean

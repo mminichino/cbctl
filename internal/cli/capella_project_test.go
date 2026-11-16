@@ -66,7 +66,7 @@ func TestProjectGet(t *testing.T) {
 		}
 	})
 	t.Run("not found", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "project", "get", "missing"), ExitConfigInvalid, "project missing not found")
+		ce := wantExitErr(t, runResource(t, "project", "get", "missing"), ExitConfigInvalid, "project missing not found")
 		if !strings.Contains(ce.Action, "project list") {
 			t.Errorf("action = %q", ce.Action)
 		}
@@ -209,7 +209,7 @@ func TestProjectDelete(t *testing.T) {
 	t.Run("not empty", func(t *testing.T) {
 		fx := newFixture(t)
 		res := runResource(t, "project", "delete", fx.ProjectName, "--yes")
-		ce := wantExit(t, res, ExitError, "project proj is not empty")
+		ce := wantExitErr(t, res, ExitError, "project proj is not empty")
 		if !strings.Contains(ce.Action, "--cascade") {
 			t.Errorf("action = %q", ce.Action)
 		}
@@ -270,7 +270,7 @@ func TestProjectDeleteCascade(t *testing.T) {
 			t.Fatal(err)
 		}
 		fx.Fake.ResetLog()
-		ce := wantExit(t, runResource(t, "project", "delete", fx.ProjectName, "--cascade", "-y"), ExitBlocked, "cluster clu has deletion protection on")
+		ce := wantExitErr(t, runResource(t, "project", "delete", fx.ProjectName, "--cascade", "-y"), ExitBlocked, "cluster clu has deletion protection on")
 		if !strings.Contains(ce.Action, "cluster protect clu --off") {
 			t.Errorf("action = %q", ce.Action)
 		}

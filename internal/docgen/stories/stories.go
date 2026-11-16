@@ -15,7 +15,7 @@ import (
 	"github.com/mminichino/cbctl/internal/docgen/data"
 )
 
-// Status values accepted in story headers and stories.yaml.
+// Statuses are the status values accepted in story headers and stories.yaml.
 var Statuses = []string{"Not started", "In progress", "Implemented", "Descoped"}
 
 var priorities = []string{"P0", "P1", "P2"}

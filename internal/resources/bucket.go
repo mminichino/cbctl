@@ -294,10 +294,10 @@ func (r *bucketRec) clusterStats(ctx context.Context, rc *plan.RunContext, clust
 	if _, ok := r.stats[id]; !ok {
 		raw, err := rc.Client.GetClusterStats(ctx, projectID(cluster), id)
 		var s *clusterStats
-		switch {
-		case err == nil:
+		if err == nil {
 			s = &clusterStats{free: int64(raw.FreeMemoryInMb), maxReplicas: int64(raw.MaxReplicas), hasFree: true, hasMaxReplicas: true}
-		default:
+		} else {
+			// An API error (e.g. 403 on stats) leaves s nil: the guard reports "stats unavailable".
 			var apiErr *capellaapi.APIError
 			if !errors.As(err, &apiErr) {
 				return nil, err

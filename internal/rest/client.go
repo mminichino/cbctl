@@ -93,7 +93,7 @@ func (c *Client) DoForm(method string, endpoint Endpoint, username, password *st
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // body fully read below
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err
@@ -144,7 +144,7 @@ func (c *Client) DoJSON(method string, endpoint Endpoint, username, password *st
 	if err != nil {
 		return nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // body fully read below
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, resp.StatusCode, err
@@ -178,7 +178,7 @@ func (c *Client) GetJSON(endpoint Endpoint, username, password *string, path str
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // body fully read below
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.StatusCode, err
@@ -215,7 +215,7 @@ func (c *Client) PostQueryForm(endpoint Endpoint, username, password *string, st
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // body fully read below
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err

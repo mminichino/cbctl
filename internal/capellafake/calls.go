@@ -35,7 +35,7 @@ func (f *Fake) Calls(method, pathGlob string) []Call {
 	defer f.mu.Unlock()
 	out := make([]Call, 0)
 	for _, r := range f.log {
-		if !(method == "" || method == "*" || r.Method == method) {
+		if method != "" && method != "*" && r.Method != method {
 			continue
 		}
 		if !matchPathGlob(pathGlob, r.Path) {

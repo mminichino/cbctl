@@ -88,7 +88,7 @@ func (b *Backend) CreateCluster(cfg *config.Config) (created bool, err error) {
 
 	cluster, err := project.CreateCluster(b.Database, clusterCfg)
 	if err != nil {
-		return false, fmt.Errorf("Failed to create Capella cluster: %w", err)
+		return false, fmt.Errorf("failed to create Capella cluster: %w", err)
 	}
 	b.Cluster = cluster
 
@@ -160,7 +160,7 @@ func (b *Backend) DestroyCluster(cfg *config.Config) error {
 		}
 	}
 	if err := b.Cluster.Delete(); err != nil {
-		return fmt.Errorf("Failed to destroy Capella cluster: %w", err)
+		return fmt.Errorf("failed to destroy Capella cluster: %w", err)
 	}
 	b.Cluster = nil
 	b.StreamHost = ""

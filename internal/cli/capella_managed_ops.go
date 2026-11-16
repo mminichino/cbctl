@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1328,10 +1329,12 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 			}
 		}
 	}
-	var n, cpu, ram int
-	fmt.Sscanf(m[1], "%d", &n)
-	fmt.Sscanf(m[2], "%d", &cpu)
-	fmt.Sscanf(m[3], "%d", &ram)
+	n, errN := strconv.Atoi(m[1])
+	cpu, errC := strconv.Atoi(m[2])
+	ram, errR := strconv.Atoi(m[3])
+	if err := errors.Join(errN, errC, errR); err != nil {
+		return nil, usageError(help, "%s: node count, CPU and RAM must be whole numbers (got %q): %v", where, parts[1], err)
+	}
 	return capellafile.Obj{
 		"node": capellafile.Obj{
 			"compute": capellafile.Obj{"cpu": int64(cpu), "ram": int64(ram)},

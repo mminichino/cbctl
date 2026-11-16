@@ -336,8 +336,7 @@ type scheduleResult struct {
 func newScheduleSetCmd() *cobra.Command {
 	var project, tz, weekdays, weekend string
 	days := make([]string, len(scheduleDays))
-	var cmd *cobra.Command
-	cmd = capellaLeaf("set CLUSTER", "Create or change the schedule", cobra.ExactArgs(1),
+	cmd := capellaLeaf("set CLUSTER", "Create or change the schedule", cobra.ExactArgs(1),
 		func([]string) error {
 			given := tz != "" || weekdays != "" || weekend != ""
 			for _, d := range days {

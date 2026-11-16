@@ -61,8 +61,14 @@ func mustRun(t *testing.T, args ...string) resResult {
 	return res
 }
 
-// wantExit asserts that the run failed with a CLIError carrying code and returns it.
-func wantExit(t *testing.T, res resResult, code ExitCode, msgPart string) *CLIError {
+// wantExit asserts that the run failed with a CLIError carrying code.
+func wantExit(t *testing.T, res resResult, code ExitCode, msgPart string) {
+	t.Helper()
+	_ = wantExitErr(t, res, code, msgPart) // the returned error was already asserted
+}
+
+// wantExitErr asserts like wantExit and returns the CLIError for further checks.
+func wantExitErr(t *testing.T, res resResult, code ExitCode, msgPart string) *CLIError {
 	t.Helper()
 	var ce *CLIError
 	if !errors.As(res.Err, &ce) {

@@ -37,11 +37,20 @@ func (s *Server) CollectionIsEmpty(bucketName, scopeName, collectionName string)
 	if err != nil {
 		return false, err
 	}
-	defer result.Close()
 	if result.Next() {
+		if err := result.Close(); err != nil {
+			return false, fmt.Errorf("closing query result: %w", err)
+		}
 		return false, nil
 	}
-	return true, result.Err()
+	if err := result.Err(); err != nil {
+		_ = result.Close() // the stream error is the one worth reporting
+		return false, err
+	}
+	if err := result.Close(); err != nil {
+		return false, fmt.Errorf("closing query result: %w", err)
+	}
+	return true, nil
 }
 
 func (s *Server) createPrimaryIndex(bucketName, scopeName, collectionName string) error {

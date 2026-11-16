@@ -543,7 +543,7 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func faultMatches(fl *failure, method, path string) bool {
-	if !(fl.method == "" || fl.method == "*" || fl.method == method) {
+	if fl.method != "" && fl.method != "*" && fl.method != method {
 		return false
 	}
 	if fl.re != nil {

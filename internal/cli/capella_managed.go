@@ -129,13 +129,9 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 	return p, applyPlan(e, p, applyOptions{Shown: true, OnFailure: restore})
 }
 
-// validateCandidate loads text as the editor's file would be, without writing it. An invalid
+// validateCandidateEnv loads text as the editor's file would be, without writing it. An invalid
 // candidate is reported with only the problems this change caused, apart from those the file
 // already had.
-func validateCandidate(ed *capellafile.Editor, text string) (*capellafile.Config, error) {
-	return validateCandidateEnv(ed, text, DefaultDeps().Env)
-}
-
 func validateCandidateEnv(ed *capellafile.Editor, text string, env func(string) string) (*capellafile.Config, error) {
 	name, dir := filepath.Base(ed.Path), filepath.Dir(ed.Path)
 	if env == nil {

@@ -335,9 +335,9 @@ func writeFileAtomic(path, text string) error {
 	if err != nil {
 		return fmt.Errorf("writing %s: %w", path, err)
 	}
-	defer os.Remove(tmp.Name())
+	defer func() { _ = os.Remove(tmp.Name()) }() // best-effort; the file was renamed into place on success
 	if _, err := tmp.WriteString(text); err != nil {
-		tmp.Close()
+		_ = tmp.Close() // the write error is the one worth reporting
 		return fmt.Errorf("writing %s: %w", path, err)
 	}
 	if err := tmp.Close(); err != nil {

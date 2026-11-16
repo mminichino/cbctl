@@ -95,7 +95,7 @@ func TestFake_FailNextOpts_DropAfterRead(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+f.APIKey)
 	res, err := http.DefaultClient.Do(req)
 	if err == nil {
-		defer res.Body.Close()
+		defer func() { _ = res.Body.Close() }()
 		_, _ = io.Copy(io.Discard, res.Body)
 		t.Fatalf("expected connection error from DropAfterRead, got status %d", res.StatusCode)
 	}

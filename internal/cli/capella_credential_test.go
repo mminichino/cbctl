@@ -184,7 +184,7 @@ func TestCredentialCreate(t *testing.T) {
 		}
 	})
 	t.Run("same name with other access is an error", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "credential", "create", "clu", "app_ro", "--privileges", "write", "--bucket", "travel-sample"),
+		ce := wantExitErr(t, runResource(t, "credential", "create", "clu", "app_ro", "--privileges", "write", "--bucket", "travel-sample"),
 			ExitError, "already exists with different access")
 		if !strings.Contains(ce.Action, "credential update clu app_ro") {
 			t.Errorf("action = %q", ce.Action)
@@ -272,7 +272,7 @@ func TestCredentialListAndGet(t *testing.T) {
 		}
 	})
 	t.Run("get unknown", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "credential", "get", "clu", "ghost"), ExitConfigInvalid, "credential ghost not found")
+		ce := wantExitErr(t, runResource(t, "credential", "get", "clu", "ghost"), ExitConfigInvalid, "credential ghost not found")
 		if !strings.Contains(ce.Action, "credential list clu") {
 			t.Errorf("action = %q", ce.Action)
 		}

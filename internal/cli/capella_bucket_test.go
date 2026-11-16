@@ -90,7 +90,7 @@ func TestBucketGet(t *testing.T) {
 		}
 	})
 	t.Run("unknown", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "bucket", "get", "clu", "ghost"), ExitConfigInvalid, "bucket ghost not found")
+		ce := wantExitErr(t, runResource(t, "bucket", "get", "clu", "ghost"), ExitConfigInvalid, "bucket ghost not found")
 		if !strings.Contains(ce.Action, "bucket list clu") {
 			t.Errorf("action = %q", ce.Action)
 		}
@@ -256,7 +256,7 @@ func TestBucketFreeTier(t *testing.T) {
 	})
 	t.Run("add refuses unsupported flags", func(t *testing.T) {
 		fx.Fake.ResetLog()
-		ce := wantExit(t, runResource(t, "bucket", "add", "freebie", "more", "--replicas", "2", "--durability", "majority"),
+		ce := wantExitErr(t, runResource(t, "bucket", "add", "freebie", "more", "--replicas", "2", "--durability", "majority"),
 			ExitConfigInvalid, "not supported on free-tier clusters")
 		if !strings.Contains(ce.Message, "--replicas") || !strings.Contains(ce.Message, "--durability") {
 			t.Errorf("error should name the refused flags: %s", ce.Message)
@@ -282,7 +282,7 @@ func TestBucketFreeTier(t *testing.T) {
 		}
 	})
 	t.Run("update refuses unsupported flags", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "bucket", "update", "freebie", "orders", "--replicas", "2"), ExitConfigInvalid, "--replicas not supported")
+		ce := wantExitErr(t, runResource(t, "bucket", "update", "freebie", "orders", "--replicas", "2"), ExitConfigInvalid, "--replicas not supported")
 		if !strings.Contains(ce.Action, "only --memory and --cross-cluster-versioning") {
 			t.Errorf("action = %q", ce.Action)
 		}
@@ -415,7 +415,7 @@ func TestBucketDelete(t *testing.T) {
 		if err := fx.Client.SetDeletionProtection(ctx, fx.ProjectID, fx.ClusterID, true); err != nil {
 			t.Fatal(err)
 		}
-		ce := wantExit(t, runResource(t, "bucket", "delete", "clu", "orders", "-y"), ExitBlocked, "deletion protection")
+		ce := wantExitErr(t, runResource(t, "bucket", "delete", "clu", "orders", "-y"), ExitBlocked, "deletion protection")
 		if !strings.Contains(ce.Action, "cluster protect clu --off") {
 			t.Errorf("action = %q", ce.Action)
 		}

@@ -755,7 +755,7 @@ func (r *clusterRec) wait(ctx context.Context, rc *plan.RunContext, a *plan.Acti
 	if rc.ProgressInline != nil {
 		hooks.OnTick = func() { rc.Inline(".", false) }
 	}
-	var getter engine.ClusterGetter = rc.Client.AsClusterGetter()
+	getter := rc.Client.AsClusterGetter()
 	if truthy(a.Data["free"]) {
 		api, err := newRawAPI(rc)
 		if err != nil {

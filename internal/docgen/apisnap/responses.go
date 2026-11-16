@@ -87,7 +87,7 @@ func LoadSpec(source string) (map[string]any, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }() // body fully read below
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("GET %s: %s", source, resp.Status)
 		}

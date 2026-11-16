@@ -198,7 +198,7 @@ func copyReplace(src, dst string, mode fs.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }() // read-only handle
 	if err := os.Remove(dst); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}

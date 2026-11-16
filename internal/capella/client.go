@@ -58,7 +58,7 @@ func NewClientFromConfig(cfg *config.Config) (*Client, error) {
 	}
 	token := cfg.Prop(config.PropCapellaToken)
 	if token == "" {
-		return nil, fmt.Errorf("Capella API key not set; use --token, set CAPELLA_API_KEY (or put it in .env), or run 'cbctl configure'")
+		return nil, errors.New("Capella API key not set; use --token, set CAPELLA_API_KEY (or put it in .env), or run 'cbctl configure'")
 	}
 	c := NewClient(token, cfg.Prop(config.PropCapellaAPIHost))
 	c.OrganizationName = cfg.Prop(config.PropCapellaOrgName)
@@ -77,7 +77,6 @@ func NewClientFromConfig(cfg *config.Config) (*Client, error) {
 func (c *Client) hasOrganizationID() bool   { return c != nil && c.OrganizationID != "" }
 func (c *Client) hasOrganizationName() bool { return c != nil && c.OrganizationName != "" }
 func (c *Client) hasProjectID() bool        { return c != nil && c.ProjectID != "" }
-func (c *Client) hasProjectName() bool      { return c != nil && c.ProjectName != "" }
 func (c *Client) hasDatabaseID() bool       { return c != nil && c.DatabaseID != "" }
 func (c *Client) hasDatabaseName() bool     { return c != nil && c.DatabaseName != "" }
 func (c *Client) hasAccountEmail() bool     { return c != nil && c.AccountEmail != "" }

@@ -172,7 +172,7 @@ func TestCIDRCreateLimit(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	ce := wantExit(t, runResource(t, "cidr", "create", "clu", "192.0.2.1"), ExitBlocked, "maximum of 75 allowed CIDRs")
+	ce := wantExitErr(t, runResource(t, "cidr", "create", "clu", "192.0.2.1"), ExitBlocked, "maximum of 75 allowed CIDRs")
 	if ce.Action == "" {
 		t.Error("no action hint")
 	}

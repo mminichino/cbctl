@@ -22,7 +22,7 @@ func (s *Server) PopulateCollection(path, bucketName, scopeName, collectionName 
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only handle
 
 	imported := 0
 	err = forEachJSONLDocument(f, path, func(doc any) error {
@@ -43,7 +43,7 @@ func DecodeJSONLLine(line string, lineNumber int, path string) (any, error) {
 	}
 	var doc any
 	if err := json.Unmarshal([]byte(trimmed), &doc); err != nil {
-		return nil, fmt.Errorf("Invalid JSON on line %d of %s", lineNumber, path)
+		return nil, fmt.Errorf("invalid JSON on line %d of %s", lineNumber, path)
 	}
 	return doc, nil
 }

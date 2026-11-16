@@ -111,7 +111,7 @@ func TestConfigDiscovery(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	ce := wantExit(t, runResource(t, "validate"), ExitConfigInvalid, "not found")
+	ce := wantExitErr(t, runResource(t, "validate"), ExitConfigInvalid, "not found")
 	if !strings.Contains(ce.Action, "cbctl capella sync") {
 		t.Errorf("action = %q", ce.Action)
 	}
@@ -252,7 +252,7 @@ func TestGuide(t *testing.T) {
 	wantContains(t, mustRun(t, "guide").Stdout, "Getting started:", "Topics")
 	wantContains(t, mustRun(t, "guide", "config", "cloudProvider.region").Stdout, "region")
 
-	ce := wantExit(t, runResource(t, "guide", "nope"), ExitConfigInvalid, `unknown guide topic "nope"`)
+	ce := wantExitErr(t, runResource(t, "guide", "nope"), ExitConfigInvalid, `unknown guide topic "nope"`)
 	wantContains(t, ce.Action, "getting-started", "exit-codes")
 	wantExit(t, runResource(t, "guide", "config", "cloudProvidr.region"), ExitConfigInvalid, "")
 }
@@ -315,7 +315,7 @@ func TestSyncOrgMismatch(t *testing.T) {
 	if err := os.WriteFile("capella.yaml", []byte(doc), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	ce := wantExit(t, runResource(t, "sync"), ExitConfigInvalid, "is for organization some-other-org")
+	ce := wantExitErr(t, runResource(t, "sync"), ExitConfigInvalid, "is for organization some-other-org")
 	wantContains(t, ce.Action, "--force", "--file")
 }
 
@@ -326,7 +326,7 @@ func TestInitNonInteractive(t *testing.T) {
 	for _, k := range []string{"CAPELLA_API_KEY", "CAPELLA_TOKEN", "CAPELLA_ORG_ID", "CBCTL_CONFIG"} {
 		t.Setenv(k, "")
 	}
-	ce := wantExit(t, runResource(t, "init", "--non-interactive"), ExitConfigInvalid, "missing required options")
+	ce := wantExitErr(t, runResource(t, "init", "--non-interactive"), ExitConfigInvalid, "missing required options")
 	wantContains(t, ce.Message, "--org-id", "--project", "--cluster")
 
 	args := []string{"init", "--non-interactive", "--org-id", "org-1", "--project", "nova", "--cluster", "nova-01",

@@ -65,7 +65,7 @@ func TestScopeList(t *testing.T) {
 		}
 	})
 	t.Run("unknown bucket", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "scope", "list", "clu", "ghost"), ExitConfigInvalid, "bucket ghost not found")
+		ce := wantExitErr(t, runResource(t, "scope", "list", "clu", "ghost"), ExitConfigInvalid, "bucket ghost not found")
 		if !strings.Contains(ce.Action, "bucket list") {
 			t.Errorf("action = %q", ce.Action)
 		}
@@ -155,7 +155,7 @@ func TestScopeDelete(t *testing.T) {
 		}
 	})
 	t.Run("unknown scope", func(t *testing.T) {
-		ce := wantExit(t, runResource(t, "scope", "delete", "clu", "orders", "ghost", "-y"), ExitConfigInvalid, "scope ghost not found")
+		ce := wantExitErr(t, runResource(t, "scope", "delete", "clu", "orders", "ghost", "-y"), ExitConfigInvalid, "scope ghost not found")
 		if !strings.Contains(ce.Action, "scope list clu orders") {
 			t.Errorf("action = %q", ce.Action)
 		}

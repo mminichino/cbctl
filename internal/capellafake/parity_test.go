@@ -425,7 +425,7 @@ func doParityRequest(f *capellafake.Fake, method, path string, body any) (int, [
 	if err != nil {
 		return 0, nil, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	b, err := io.ReadAll(res.Body)
 	return res.StatusCode, b, err
 }

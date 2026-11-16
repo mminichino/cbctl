@@ -77,7 +77,7 @@ func (c *Credentials) CreateCredential(username, password string, access []Datab
 	}
 	user, err := c.GetByID(resp.ID)
 	if err != nil {
-		return nil, fmt.Errorf("Database credential creation failed: %w", err)
+		return nil, fmt.Errorf("database credential creation failed: %w", err)
 	}
 	c.User = user
 	return &resp, nil

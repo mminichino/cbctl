@@ -336,6 +336,10 @@ make test-integration   # Docker required; Couchbase enterprise image
 make test-capella-live  # needs CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_LIVE_CLUSTER=1 adds billable clusters)
 make janitor PREFIX=cbctl-ci-   # delete leftover live-test projects
 make vet
+make lint               # golangci-lint v2.15.0 (config: .golangci.yml)
+make check              # everything CI runs, including lint
 ```
+
+CI (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main` and `mm--capellactl-port`. Workflow actions are pinned by commit SHA; Dependabot (`.github/dependabot.yml`) proposes weekly bumps.
 
 Offline Capella scenario tests use `internal/capellafake`. Live Capella tests (`//go:build integration`) skip unless sandbox credentials are set; with `CBCTL_LIVE_CLUSTER=1` they also run the declarative §13.4 validate/plan/apply/drift/prune/destroy flow. See `docs/specs/capella-fold-in-phase-4.md` for the Phase 4 harness (`CBCTL_IT_TARGET=fake|sandbox`), janitor, secret scanner, and release gate. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

@@ -32,8 +32,3 @@ func dispatch(group string, cmds map[string]groupFunc, args []string, stdout, st
 	}
 	return c(args[1:], stdout, stderr)
 }
-
-func notImplemented(name string, stderr io.Writer) int {
-	fmt.Fprintf(stderr, "cbdev %s: not implemented\n", name)
-	return 2
-}

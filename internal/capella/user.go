@@ -1,6 +1,7 @@
 package capella
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/mminichino/cbctl/internal/logging"
@@ -73,7 +74,7 @@ func (u *User) GetByEmail(email string) (*CapellaOrgUserData, error) {
 		email = u.Email
 	}
 	if email == "" {
-		return nil, fmt.Errorf("No email configured")
+		return nil, errors.New("no email configured")
 	}
 	if u.User != nil && u.User.Email == email {
 		return u.User, nil
@@ -87,7 +88,7 @@ func (u *User) GetByEmail(email string) (*CapellaOrgUserData, error) {
 			return &users[i], nil
 		}
 	}
-	return nil, fmt.Errorf("No user for email: %s", email)
+	return nil, fmt.Errorf("no user for email: %s", email)
 }
 
 // ProjectIDs returns project resource IDs from the user.

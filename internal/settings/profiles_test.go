@@ -24,13 +24,8 @@ func TestProfileStoreModesAndNoKeyOnDisk(t *testing.T) {
 	}
 
 	if runtime.GOOS != "windows" {
-		fi, err := os.Stat(home)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fi.Mode().Perm()&0o077 != 0 {
-			// MkdirAll on TempDir may already exist with different mode; chmod applied on save parent.
-		}
+		// The home dir mode isn't asserted: t.TempDir may already exist with
+		// another mode. The profiles file itself must be private.
 		pfi, err := os.Stat(store.Path)
 		if err != nil {
 			t.Fatal(err)

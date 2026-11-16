@@ -355,7 +355,7 @@ func (c *Client) attempt(ctx context.Context, method, target string, payload []b
 	if err != nil {
 		return attemptResult{transportErr: redactErr(err), wrote: wrote.Load()}, nil
 	}
-	defer hr.Body.Close()
+	defer func() { _ = hr.Body.Close() }() // body fully read below; close errors carry no information
 	data, err := io.ReadAll(hr.Body)
 	if err != nil {
 		return attemptResult{transportErr: redactErr(err), wrote: wrote.Load()}, nil
@@ -413,7 +413,7 @@ func normalizeBaseURL(s string) (string, error) {
 		return "", errors.New("invalid API base URL: missing host")
 	}
 	scheme := strings.ToLower(u.Scheme)
-	if scheme != "https" && !(scheme == "http" && isLocalHost(host)) {
+	if scheme != "https" && (scheme != "http" || !isLocalHost(host)) {
 		return "", fmt.Errorf("API base URL must use https (got %s)", scheme)
 	}
 	return strings.TrimRight(scheme+"://"+u.Host, "/"), nil

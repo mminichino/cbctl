@@ -60,7 +60,7 @@ func (a *AllowedCIDRs) CreateAllowedCIDR(network string) (*AllowedCIDRData, erro
 	}
 	data, err := a.GetByID(idResp.ID)
 	if err != nil {
-		return nil, fmt.Errorf("Allowed CIDR creation failed: %w", err)
+		return nil, fmt.Errorf("allowed CIDR creation failed: %w", err)
 	}
 	a.CIDR = data
 	return data, nil

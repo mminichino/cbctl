@@ -44,29 +44,6 @@ func projectNames(data Obj) []string {
 	return []string{str(sub(data, "project"), "name")}
 }
 
-func clustersOf(data Obj) []Obj {
-	var out []Obj
-	collect := func(v any) {
-		if l, ok := v.([]any); ok {
-			for _, c := range l {
-				if m, ok := c.(Obj); ok {
-					out = append(out, m)
-				}
-			}
-		}
-	}
-	if ps, ok := data["projects"].([]any); ok {
-		for _, p := range ps {
-			if m, ok := p.(Obj); ok {
-				collect(m["clusters"])
-			}
-		}
-		return out
-	}
-	collect(data["clusters"])
-	return out
-}
-
 // Header is the comment block at the top of a file written by sync.
 func Header(orgID, orgName string, names []string) string {
 	org := orgID
@@ -101,12 +78,8 @@ func Render(res *Result, orgName string) (string, error) {
 	}
 	orgID, _ := res.Data["organizationId"].(string)
 	text := Header(orgID, orgName, projectNames(res.Data)) + body
-	if strings.Contains(text, "projects: []\n") {
-		text = strings.Replace(text, "projects: []\n", "projects: []\n"+NoProjectsTemplate, 1)
-	}
-	if strings.Contains(text, "clusters: []\n") {
-		text = strings.Replace(text, "clusters: []\n", "clusters: []\n"+NewClusterTemplate, 1)
-	}
+	text = strings.Replace(text, "projects: []\n", "projects: []\n"+NoProjectsTemplate, 1)
+	text = strings.Replace(text, "clusters: []\n", "clusters: []\n"+NewClusterTemplate, 1)
 	return text, nil
 }
 

@@ -81,7 +81,7 @@ func coverPackage(pkg string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }() // temp dir cleanup; failure only leaks a temp file
 	profile := filepath.Join(dir, "cover.out")
 	cmd := exec.Command("go", "test", "-cover", "-coverprofile="+profile, pkg)
 	var out bytes.Buffer

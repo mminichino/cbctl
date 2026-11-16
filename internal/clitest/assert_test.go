@@ -104,7 +104,7 @@ func TestAssertWritesAndNoWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res.Body.Close()
+	_ = res.Body.Close()
 
 	labels := writeLabels(f)
 	if len(labels) == 0 {
