@@ -110,8 +110,14 @@ func TestLoadInvalidGolden(t *testing.T) {
 			if !errors.As(err, &ce) {
 				t.Fatalf("Load(%s) error = %v, want *ConfigError", f, err)
 			}
-			abs, _ := filepath.Abs(filepath.Dir(f))
+			abs, err := filepath.Abs(filepath.Dir(f))
+			if err != nil {
+				t.Fatal(err)
+			}
 			got := strings.ReplaceAll(ce.Error(), abs, "<testdata>") + "\n"
+			// The product prints native paths; goldens use '/' so they hold on every OS.
+			got = strings.ReplaceAll(got, `<testdata>\`, "<testdata>/")
+			got = strings.ReplaceAll(got, `secrets\`, "secrets/")
 			golden := strings.TrimSuffix(f, ".yaml") + ".golden"
 			if *update {
 				if err := os.WriteFile(golden, []byte(got), 0o644); err != nil {
