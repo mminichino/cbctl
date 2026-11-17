@@ -91,7 +91,7 @@ No new packages; dependencies keep flowing `cmd → internal/cli → internal/*`
 | G3 | `TestMigrationEndToEndDoctorClean`. It also showed that `organizationName` was dropped by `migrate`, against criterion 1 (INTENTIONALLY-DROPPED only for features capellactl never shipped). It is now stored, migrated and shown by `configure list` (`TestMigrateKeepsOrganizationName`). |
 | G4 | `cbctl capella --version` = `cbctl --version` (`TestCLI_CAP001_AC1_CapellaVersionMatchesRoot`). |
 | G5 | IPv6 parsing and URL bracketing, `addNode` port, `--ext-api` alternate-address setup, query-readiness warning. All tested. |
-| G6 | §3 item 7 reworded (dispatched nightly before the merge; scheduled streak gates the tag). |
+| G6 | §3 item 7 reworded (dispatched nightly before the merge; scheduled streak gates the tag). **Open:** the dispatched run [44118563577](https://github.com/mminichino/cbctl/actions/runs/44118563577) stopped at preflight because the repository variable `CAPELLA_SANDBOX_ORG_ID` does not exist (Phase 5 moved the org ID from a secret to a variable). Create it, then dispatch `nightly.yml` on the branch again. |
 | G7 | `CHANGELOG.md` `[0.6.0] - 2026-11-17`; a build with goreleaser's ldflags reports `cbctl version 0.6.0`. |
 
 Known limitation, not fixed: the deprecated legacy `internal/capella` `Buckets.List` (behind the hidden
