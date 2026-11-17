@@ -1042,11 +1042,19 @@ func (d diskChange) any() bool {
 	return d.diskType != "" || d.size != nil || d.iops != nil || d.autoExpansion != nil
 }
 
-// apply returns the group's new disk mapping. A new type starts from that type's defaults (size
-// and IOPS belong to the type); otherwise the given values change the current disk.
+// apply returns the group's new disk mapping. A new type starts from that type's defaults, but
+// keeps the current size where the type allows it (IOPS become the recommendation for the
+// size); otherwise the given values change the current disk.
 func (d diskChange) apply(provider string, current capellafile.Obj) capellafile.Obj {
-	if d.diskType != "" {
-		return diskToFile(makeDisk(provider, d.diskType, d.size, d.iops, d.autoExpansion))
+	if curType, _ := current["type"].(string); d.diskType != "" && d.diskType != curType {
+		size := d.size
+		if cur, ok := current["storage"].(int64); ok && size == nil && !fixedSizeDisk(provider, d.diskType) {
+			keep := int(cur)
+			if t, ok := presetDisk(provider, d.diskType); !ok || len(t.Sizes) == 0 || slices.Contains(t.Sizes, keep) {
+				size = &keep
+			}
+		}
+		return diskToFile(makeDisk(provider, d.diskType, size, d.iops, d.autoExpansion))
 	}
 	out := capellafile.Obj{}
 	for k, v := range current {
@@ -1165,6 +1173,33 @@ func managedGroupAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capel
 	}
 	key := strings.Join(names, ",")
 	disk := diskChangeOf(cmd)
+	var picked capellafile.Obj
+	if canPrompt(cmd) {
+		if cl, err := clusterEntry(cmd, args, ed); err == nil {
+			if _, err := ed.Group(cl, key); err != nil { // a new group: ask what capellactl asks
+				w := promptOf(cmd)
+				if !ch("nodes") {
+					if nodes, err = w.askInt("Nodes", 2, func(n int) error {
+						if n < otherGroupMin || n > otherGroupMax {
+							return fmt.Errorf("an extra group has %d–%d nodes", otherGroupMin, otherGroupMax)
+						}
+						return nil
+					}); err != nil {
+						return Mutation{}, err
+					}
+				}
+				if disk.diskType == "" && disk.size == nil && disk.iops == nil {
+					provider := clusterProviderOf(ed, cl)
+					d, err := w.askDisk(provider, dataGroupDisk(ed, cl, provider))
+					if err != nil {
+						return Mutation{}, err
+					}
+					size, iops := intOrNil(d.size), intOrNil(d.iops)
+					picked = diskToFile(makeDisk(provider, d.diskType, size, iops, disk.autoExpansion))
+				}
+			}
+		}
+	}
 	return Mutation{
 		Target:      "cluster/" + args[0],
 		Question:    fmt.Sprintf("Add service group %s to %s in %s and apply it?", key, args[0], fileName(ed)),
@@ -1208,7 +1243,10 @@ func managedGroupAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capel
 				compute["ram"] = int64(flagInt(cmd, "ram"))
 			}
 			node["compute"] = compute
-			if disk.any() {
+			switch {
+			case picked != nil:
+				node["disk"] = picked
+			case disk.any():
 				cur, _ := node["disk"].(map[string]any)
 				node["disk"] = disk.apply(clusterProviderOf(ed, cl), cur)
 			}
@@ -1270,7 +1308,7 @@ func addClusterCreateFlags(cmd *cobra.Command) {
 	f.Int("cpu", 0, "vCPUs per node (overrides the preset)")
 	f.Int("ram", 0, "RAM GB per node (overrides the preset)")
 	f.StringArray("group", nil, "Service group SERVICES:NODESxCPU/RAM[:DISK] (repeatable), for example data:3x8/32 or index,query:2x8/32:type=io2")
-	f.String("disk-type", "", "Disk type (default per provider)")
+	f.String("disk-type", "", "Disk type (default per provider; see 'cbctl capella cluster disk-types')")
 	f.Int("disk-size", 0, "Disk GB per node")
 	f.Int("disk-iops", 0, "Disk IOPS")
 	f.Bool("disk-auto-expansion", false, "Azure: let disk storage expand automatically")
@@ -1298,7 +1336,7 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 	parts := strings.Split(text, ":")
 	help := "write each --group as SERVICES:NODESxCPU/RAM[:DISK], for example data:3x8/32 or index,query:2x8/32:type=io2"
 	if len(parts) != 2 && len(parts) != 3 {
-		return nil, usageError(help, "%s: expected SERVICES:NODESxCPU/RAM[:DISK]", where)
+		return nil, usageError(help, "%s: expected SERVICES:NODESxCPU/RAM[:DISK], e.g. data:3x8/32", where)
 	}
 	services, err := parseServices(parts[0], where)
 	if err != nil {
@@ -1306,37 +1344,39 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 	}
 	m := groupSpecPattern.FindStringSubmatch(parts[1])
 	if m == nil {
-		return nil, usageError(help, "%s: expected NODESxCPU/RAM, for example 3x8/32 (got %q)", where, parts[1])
+		return nil, usageError(help, "%s: expected NODESxCPU/RAM, e.g. 3x8/32 (got '%s')", where, parts[1])
 	}
 	disk := base
 	if len(parts) == 3 {
 		for _, item := range strings.Split(parts[2], ",") {
 			k, v, ok := strings.Cut(strings.TrimSpace(item), "=")
 			k, v = strings.TrimSpace(k), strings.TrimSpace(v)
-			if !ok || v == "" {
-				return nil, usageError("use type=, size=, iops= or auto-expansion=, for example type=io2,size=200", "%s: invalid disk option %q", where, item)
+			if !ok || !slices.Contains([]string{"type", "size", "iops", "auto-expansion"}, k) {
+				return nil, usageError("use type=, size=, iops= or auto-expansion=, for example data:3x8/32:type=io2,size=200", "%s: unknown disk option '%s'", where, k)
 			}
 			switch k {
 			case "type":
+				if v == "" {
+					return nil, usageError("give a disk type, for example type=io2 ('cbctl capella cluster disk-types' lists them)", "%s: type= has no value", where)
+				}
 				disk.diskType = v
 			case "size", "iops":
 				var n int
-				if _, err := fmt.Sscanf(v, "%d", &n); err != nil || fmt.Sprint(n) != v {
-					return nil, usageError("give a whole number, for example size=200", "%s: %s must be a whole number (got %q)", where, k, v)
+				if _, err := fmt.Sscanf(v, "%d", &n); err != nil || fmt.Sprint(n) != v || n < 0 {
+					return nil, usageError("give a whole number, for example size=200", "%s: %s must be a whole number (got '%s')", where, k, v)
 				}
 				if k == "size" {
 					disk.size = &n
 				} else {
 					disk.iops = &n
 				}
-			case "auto-expansion":
+			default: // auto-expansion
+				v = strings.ToLower(v)
 				if v != "true" && v != "false" {
-					return nil, usageError("give auto-expansion=true or auto-expansion=false", "%s: auto-expansion is true or false (got %q)", where, v)
+					return nil, usageError("give auto-expansion=true or auto-expansion=false", "%s: auto-expansion is true or false (got '%s')", where, v)
 				}
 				b := v == "true"
 				disk.autoExpansion = &b
-			default:
-				return nil, usageError("use type=, size=, iops= or auto-expansion=", "%s: unknown disk option %q", where, k)
 			}
 		}
 	}
@@ -1399,9 +1439,11 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	if err != nil {
 		return Mutation{}, err
 	}
-	if name == "" && e != nil && !e.Ephemeral {
+	// On a terminal, capellactl asks for what the flags leave open: everything when NAME is
+	// missing, and the type, size and the rest when NAME is given but nothing sizes the cluster.
+	if e != nil && !e.Ephemeral && (name == "" || !sizedByFlags(cmd) && !flagBool(cmd, "free-tier")) {
 		if _, tty := e.terminalIn(); tty {
-			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, suggestCIDR(fileCIDRs(ed)))
+			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, name, suggestCIDR(fileCIDRs(ed)))
 			if err != nil {
 				return Mutation{}, err
 			}
@@ -1507,9 +1549,10 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	}
 	cluster["cloudProvider"] = capellafile.Obj{"type": provider, "region": region, "cidr": cidr}
 	var summary string
+	var after []string
 	if free {
 		cluster["tier"] = "free"
-		summary = "free tier"
+		summary = "free tier, network " + cidr
 	} else {
 		if layout == nil {
 			nodes, cpu, ram := preset.NumOfNodes, preset.CPU, preset.RAM
@@ -1566,15 +1609,36 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 			cluster["enablePrivateDNSResolution"] = true
 		}
 		total := int64(0)
+		var parts []string
+		var warnings []string
+		offered, known := presets.ComputeSizes()[provider]
 		for _, g := range layout {
-			total += g.(capellafile.Obj)["numOfNodes"].(int64)
+			obj := g.(capellafile.Obj)
+			n := obj["numOfNodes"].(int64)
+			total += n
+			comp := obj["node"].(capellafile.Obj)["compute"].(capellafile.Obj)
+			cpu, ram := comp["cpu"].(int64), comp["ram"].(int64)
+			key := joinAny(obj["services"])
+			parts = append(parts, fmt.Sprintf("%s %d × %d/%d", key, n, cpu, ram))
+			if known && !offered.Offered(presets.Size{CPU: int(cpu), RAM: int(ram)}, preset.ConfigurationType == "singleNode") {
+				warnings = append(warnings, fmt.Sprintf("! serviceGroups[%s]: %d vCPU/%d GB is not a known %s size; Capella may reject it (see 'cbctl capella cluster options')",
+					key, cpu, ram, provider))
+			}
 		}
-		summary = fmt.Sprintf("%d group(s), %d node(s)", len(layout), total)
+		if len(layout) > 1 {
+			summary = fmt.Sprintf("%d groups · %d nodes (%s)", len(layout), total, strings.Join(parts, " · "))
+		} else {
+			comp := layout[0].(capellafile.Obj)["node"].(capellafile.Obj)["compute"].(capellafile.Obj)
+			summary = fmt.Sprintf("%d × %d vCPU/%d GB", total, comp["cpu"], comp["ram"])
+		}
+		summary += fmt.Sprintf(", network %s, support %s", cidr, supportPlan)
+		after = append(after, warnings...)
 	}
+	after = append([]string{fmt.Sprintf("New cluster %s in project %s: %s %s, %s", name, project, provider, region, summary)}, after...)
 	return Mutation{
 		Target:    "cluster/" + name,
 		Question:  fmt.Sprintf("Add %s to %s and deploy it now?", name, fileName(ed)),
-		AfterPlan: []string{fmt.Sprintf("New cluster %s in project %s: %s %s, %s, network %s", name, project, provider, region, summary, cidr)},
+		AfterPlan: after,
 		Edit: func(ed *capellafile.Editor) error {
 			_, pn, err := pickFileProject(cmd, ed)
 			if err != nil {
@@ -1584,6 +1648,52 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 			return nil
 		},
 	}, nil
+}
+
+// dataGroupDisk is the disk of cl's data group (the default of a new group's disk), or nil.
+func dataGroupDisk(ed *capellafile.Editor, cl *yaml.Node, provider string) *capellaapi.Disk {
+	dg, err := ed.Group(cl, "")
+	if err != nil {
+		return nil
+	}
+	src, err := ed.Decode(dg)
+	if err != nil {
+		return nil
+	}
+	node, _ := src["node"].(map[string]any)
+	d, _ := node["disk"].(map[string]any)
+	if d == nil {
+		return nil
+	}
+	num := func(k string) *int {
+		if v, ok := d[k].(int64); ok {
+			return intPtr(int(v))
+		}
+		return nil
+	}
+	t, _ := d["type"].(string)
+	if t == "" {
+		return makeDisk(provider, "", num("storage"), num("iops"), nil)
+	}
+	return &capellaapi.Disk{Type: t, Storage: num("storage"), IOPS: num("iops")}
+}
+
+// intOrNil is &n, or nil when n is 0 (not set).
+func intOrNil(n int) *int {
+	if n == 0 {
+		return nil
+	}
+	return &n
+}
+
+// joinAny joins a YAML list of services with commas.
+func joinAny(v any) string {
+	list, _ := v.([]any)
+	out := make([]string, len(list))
+	for i, s := range list {
+		out[i] = fmt.Sprint(s)
+	}
+	return strings.Join(out, ",")
 }
 
 // dataFirst puts the first group that runs data first, so the 3-27 node rule of the first group

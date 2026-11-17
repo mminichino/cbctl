@@ -317,10 +317,50 @@ func parseServices(text, where string) ([]string, error) {
 	}
 	for _, n := range names {
 		if !slices.Contains(clusterServices, n) {
-			return nil, usageError("use services from: "+strings.Join(clusterServices, ", "), "%s: unknown service %q", where, n)
+			hint := "; use " + strings.Join(clusterServices, ", ")
+			if close := closestService(n); close != "" {
+				hint = "; did you mean " + close + "?"
+			}
+			return nil, usageError("use services from: "+strings.Join(clusterServices, ", "), "%s: unknown service '%s'%s", where, n, hint)
 		}
 	}
 	return names, nil
+}
+
+// closestService is the known service a mistyped name most likely meant (one that starts with
+// it, or is at most two edits away), or "".
+func closestService(name string) string {
+	best, bestD := "", 3
+	for _, s := range clusterServices {
+		if strings.HasPrefix(s, name) {
+			return s
+		}
+		if d := editDistance(name, s); d < bestD && d < len(s) {
+			best, bestD = s, d
+		}
+	}
+	return best
+}
+
+// editDistance is the Levenshtein distance between a and b.
+func editDistance(a, b string) int {
+	prev := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		cur := make([]int, len(b)+1)
+		cur[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			cur[j] = min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost)
+		}
+		prev = cur
+	}
+	return prev[len(b)]
 }
 
 // selectGroups returns the indexes of the groups a command works on: all of them, the group

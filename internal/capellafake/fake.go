@@ -121,8 +121,10 @@ type Fake struct {
 	pageSize int // when > 0, caps perPage so tests can force multiple pages
 	failures []*failure
 	hooks    []*hook
-	lenient  bool // unknown routes are a plain 404 rather than a test failure
-	log      []Request
+	// failDeploy makes the next created cluster settle on deploymentFailed (FailDeployNext).
+	failDeploy bool
+	lenient    bool // unknown routes are a plain 404 rather than a test failure
+	log        []Request
 }
 
 // res is a versioned resource; ver is the number in its ETag.

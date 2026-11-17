@@ -221,10 +221,20 @@ func (f *Fake) newCluster(p *project, body Obj, free bool) *cluster {
 	if v := sub(body, "couchbaseServer"); v != nil && str(v, "version") != "" {
 		obj["couchbaseServer"] = clone(v)
 	}
+	// Create-only options Capella echoes back on GET.
+	for _, k := range []string{"zones", "cmekId", "enablePrivateDNSResolution"} {
+		if v, ok := body[k]; ok {
+			obj[k] = v
+		}
+	}
 	if sub(obj, "cloudProvider")["cidr"] == nil {
 		sub(obj, "cloudProvider")["cidr"] = "10.0.0.0/20"
 	}
 	cl := &cluster{res: res{obj: obj, ver: 1}, projectID: str(p.obj, "id"), free: free, target: "healthy"}
+	if f.failDeploy {
+		cl.target = "deploymentFailed"
+		f.failDeploy = false
+	}
 	p.clusters = append(p.clusters, cl)
 	return cl
 }

@@ -138,7 +138,19 @@ var (
 	presetMap   map[string]Preset
 	computeMap  map[string]Compute
 	diskMap     map[string]map[string]DiskType
+	diskOrder   map[string][]string
 )
+
+// mappingKeys returns the keys of a YAML mapping node in file order.
+func mappingKeys(n *yaml.Node) []string {
+	var out []string
+	if n != nil && n.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			out = append(out, n.Content[i].Value)
+		}
+	}
+	return out
+}
 
 // load parses the embedded files once. They are compiled in and covered by tests, so a parse
 // failure is a programmer error and panics.
@@ -157,6 +169,17 @@ func load() {
 		mustDecode("presets.yaml", presetsYAML, &presetMap)
 		mustDecode("compute.yaml", computeYAML, &computeMap)
 		mustDecode("disks.yaml", disksYAML, &diskMap)
+		var disks yaml.Node
+		if err := yaml.Unmarshal(disksYAML, &disks); err != nil {
+			panic(fmt.Sprintf("presets: parse disks.yaml: %v", err))
+		}
+		diskOrder = map[string][]string{}
+		if len(disks.Content) == 1 {
+			m := disks.Content[0]
+			for i := 0; i+1 < len(m.Content); i += 2 {
+				diskOrder[m.Content[i].Value] = mappingKeys(m.Content[i+1])
+			}
+		}
 	})
 }
 
@@ -195,6 +218,13 @@ func ComputeSizes() map[string]Compute {
 		out[k] = v
 	}
 	return out
+}
+
+// DiskTypeNames returns the disk types of provider in the order disks.yaml lists them (the
+// default type first).
+func DiskTypeNames(provider string) []string {
+	load()
+	return append([]string(nil), diskOrder[provider]...)
 }
 
 // DiskTypes returns the disk types each cloud provider offers, keyed provider then type name.

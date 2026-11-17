@@ -54,7 +54,7 @@ func runDirectClusterCreate(cmd *cobra.Command, args []string) error {
 				"the cluster name is required (no terminal for the wizard)")
 		}
 		w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
-		spec, err := w.run(cmd, suggestCIDR(usedList))
+		spec, err := w.run(cmd, "", suggestCIDR(usedList))
 		if err != nil {
 			return err
 		}

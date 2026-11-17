@@ -290,7 +290,7 @@ Capella commands live under `cbctl capella`:
 # Create a cluster (no capella.yaml: directly in Capella; with one: edits the file and applies)
 cbctl capella cluster create dev-01 --size dev --provider aws --region us-east-1
 cbctl capella cluster create prod-01 --group data:3x8/32 --group index,query:2x8/32
-cbctl capella cluster create            # on a terminal: a short wizard asks for name, provider, region, size, CIDR
+cbctl capella cluster create            # on a terminal: a wizard asks for name, provider, size or service groups (compute and disk pickers), region, CIDR
 
 # capellactl spellings that keep working
 cbctl capella bucket create my-cluster orders          # = bucket add (stderr note)
