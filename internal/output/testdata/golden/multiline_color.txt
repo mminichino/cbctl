@@ -1,0 +1,2 @@
+[1;31m[error][0m - first
+second

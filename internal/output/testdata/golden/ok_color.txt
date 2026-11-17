@@ -1,0 +1,1 @@
+[1;32m[ok][0m - Cluster created on 10.0.0.1
