@@ -248,7 +248,7 @@ Import JSON Lines into a keyspace.
 
 ### capellactl settings
 - Legacy env vars are honored with a one-time stderr warning when the cbctl one is unset: `BEARER_TOKEN`→`CAPELLA_API_KEY`, `ORG_ID`→`CAPELLA_ORG_ID`, `API_BASE_URL`→`CAPELLA_API_BASE_URL`, `CAPELLACTL_CONFIG|PROFILE|QUIET|HOME`→`CBCTL_*`. Both set and different: the cbctl one wins (warning).
-- With the default cbctl home (or `CAPELLACTL_HOME` set), a profile or keychain key cbctl lacks is read from capellactl's `profiles.yaml` / keychain service `capellactl` (warning). `configure migrate` copies them; keys are never printed.
+- With the default cbctl home (or `CAPELLACTL_HOME` set), a profile or keychain key cbctl lacks is read from capellactl's `profiles.yaml` / keychain service `capellactl` (warning). `configure migrate` copies them; keys are never printed. `--remove-legacy` edits capellactl's `profiles.yaml` in place (comments, key order and unknown keys stay); an unknown key in cbctl's own `profiles.yaml` is a warning, not an error.
 - Credentials dir: without `credentialsOutput`, `./.capellactl/credentials` is used while `./.cbctl/credentials` does not exist. Generating a password into a dir inside a git work tree that does not ignore it exits 4 before any write unless `--force-overwrite-secret`. `init`/`sync` append `.cbctl/` to `.gitignore` in a git work tree.
 - `sync` keeps `apiVersion: capellactl/v1`; new files are `cbctl/v1` unless `--api-version`.
 

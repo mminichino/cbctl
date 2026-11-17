@@ -238,7 +238,7 @@ cbctl capella doctor            # offline: list what is left from capellactl (--
 |---|---|---|
 | `BEARER_TOKEN`, `ORG_ID`, `API_BASE_URL` | `CAPELLA_API_KEY`, `CAPELLA_ORG_ID`, `CAPELLA_API_BASE_URL` | Used when the cbctl variable is unset; when both are set to different values the cbctl one wins. |
 | `CAPELLACTL_CONFIG`, `CAPELLACTL_PROFILE`, `CAPELLACTL_QUIET`, `CAPELLACTL_HOME` | `CBCTL_CONFIG`, `CBCTL_PROFILE`, `CBCTL_QUIET`, `CBCTL_HOME` | Same. |
-| `~/.config/capellactl/profiles.yaml` (`$XDG_CONFIG_HOME`, `%APPDATA%`, `CAPELLACTL_HOME`) | `~/.config/cbctl/profiles.yaml` | A profile cbctl does not have is read from capellactl's file. |
+| `~/.config/capellactl/profiles.yaml` (`$XDG_CONFIG_HOME`, `%APPDATA%`, `CAPELLACTL_HOME`) | `~/.config/cbctl/profiles.yaml` | A profile cbctl does not have is read from capellactl's file. `configure migrate --remove-legacy` deletes only the migrated profiles and keeps the rest of that file, comments included. |
 | Keychain service `capellactl` | Keychain service `cbctl` | A key cbctl's keychain lacks is read from capellactl's entry for the same profile. |
 | `./.capellactl/credentials` | `./.cbctl/credentials` | Without `credentialsOutput`, capellactl's directory is used while `.cbctl/credentials` does not exist. |
 | `apiVersion: capellactl/v1` | `apiVersion: cbctl/v1` | Both are accepted; `sync` keeps the file's version (`--api-version` changes it). |

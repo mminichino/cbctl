@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- All YAML now goes through the new `internal/yamlio` package (YAML <-> JSON, `json` tags only, strict
+  decoding with line numbers) on `go.yaml.in/yaml/v3` v3.0.6, replacing `gopkg.in/yaml.v3`. `capella.yaml`
+  is read and `capella sync` writes it exactly as before (`scripts/sync-byte-identity.sh` checks the output
+  against `v0.6.1`).
+
+### Fixed
+
+- `cbctl configure migrate --remove-legacy` keeps the comments, key order and unknown keys of capellactl's
+  `profiles.yaml` when it removes the migrated profiles.
+- An unknown key in cbctl's `profiles.yaml` is reported as one warning instead of being ignored silently.
+
 ## [0.6.1] - 2026-11-17
 
 ### Changed
