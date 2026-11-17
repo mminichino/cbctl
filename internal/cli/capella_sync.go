@@ -17,7 +17,6 @@ import (
 	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
-	"go.yaml.in/yaml/v3"
 )
 
 type syncFlags struct {
@@ -68,11 +67,10 @@ func readOldFile(path string) (text string, old capellafile.Obj, ok bool, err er
 	if err != nil {
 		return "", nil, false, err
 	}
-	var doc map[string]any
-	if yerr := yaml.Unmarshal(raw, &doc); yerr != nil || doc == nil {
+	old, yerr := capellafile.ParseObj(raw)
+	if yerr != nil || old == nil {
 		return string(raw), nil, false, nil
 	}
-	old, _ = capellafile.NormalizeNumbers(doc).(map[string]any)
 	_, hasProjects := old["projects"]
 	_, hasProject := old["project"]
 	return string(raw), old, hasProjects || hasProject, nil
@@ -766,8 +764,8 @@ func (s *syncer) refresh(oldText string, old capellafile.Obj) error {
 		}
 	}
 
-	var newDoc map[string]any
-	if err := yaml.Unmarshal([]byte(newText), &newDoc); err != nil {
+	newDoc, err := capellafile.ParseObj([]byte(newText))
+	if err != nil {
 		return fmt.Errorf("checking the new %s: %w", s.name, err)
 	}
 	before := importer.Comparable(importer.ToProjectsForm(old))

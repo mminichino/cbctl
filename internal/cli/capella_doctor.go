@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"go.yaml.in/yaml/v3"
 
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/secrets"
@@ -160,8 +159,8 @@ func rawString(path, key string) string {
 	if err != nil {
 		return ""
 	}
-	var doc map[string]any
-	if yaml.Unmarshal(raw, &doc) != nil {
+	doc, err := capellafile.ParseObj(raw)
+	if err != nil {
 		return ""
 	}
 	s, _ := doc[key].(string)

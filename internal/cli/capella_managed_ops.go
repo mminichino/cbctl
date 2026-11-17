@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/mminichino/cbctl/internal/resources"
+	"github.com/mminichino/cbctl/internal/yamlio"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.yaml.in/yaml/v3"
@@ -806,10 +808,14 @@ func filePrivileges(cmd *cobra.Command, args []string, ed *capellafile.Editor) (
 		return nil, notInFile("credential", args[1], fileName(ed))
 	}
 	var grants []struct {
-		Privileges []string `yaml:"privileges"`
+		Privileges []string `json:"privileges"`
 	}
 	if n := ed.Child(c, "access"); n != nil {
-		if err := n.Decode(&grants); err != nil {
+		js, err := yamlio.NodeToJSON(n)
+		if err == nil {
+			err = json.Unmarshal(js, &grants)
+		}
+		if err != nil {
 			return nil, Errorf(ExitConfigInvalid, "fix the access of the credential in "+fileName(ed), "reading the access of credential %s: %v", args[1], err)
 		}
 	}

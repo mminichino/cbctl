@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 
@@ -95,6 +96,18 @@ func toObj(n *yaml.Node) any {
 		return nil
 	}
 	return jsonToObj(js)
+}
+
+// ParseObj reads YAML text into a generic Obj through the yamlio JSON codec, with the number
+// rules of NormalizeNumbers. Empty text and a document that is not a mapping yield a nil Obj.
+// A syntax error is returned as the *yamlio.SyntaxError of the codec.
+func ParseObj(raw []byte) (Obj, error) {
+	js, err := yamlio.YAMLToJSON(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parsing YAML: %w", err)
+	}
+	m, _ := jsonToObj(js).(map[string]any)
+	return m, nil
 }
 
 // jsonToObj decodes JSON into Obj and []any values with the number rules of NormalizeNumbers.
