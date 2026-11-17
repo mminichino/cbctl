@@ -68,3 +68,26 @@ func TestJanitorDryRunFailOnLeftovers(t *testing.T) {
 		t.Fatalf("dry-run deleted something: %v %v", ps, err)
 	}
 }
+
+func TestJanitorBudgetAndFlags(t *testing.T) {
+	runCap(t, "--yes", "janitor", "--timeout-minutes", "0").mustFail(t, ExitConfigInvalid, "--timeout-minutes")
+	runCap(t, "--yes", "janitor", "--max-total-minutes", "-1").mustFail(t, ExitConfigInvalid, "--max-total-minutes")
+
+	f := newFake(t)
+	f.SettlePolls(0)
+	setClock(t, time.Now().UTC().Add(48*time.Hour))
+	a := f.SeedProject("cbctl-ci-a")
+	f.SeedCluster(a, "stuck", "healthy")
+	b := f.SeedProject("cbctl-ci-b")
+	f.SeedCluster(b, "stuck2", "healthy")
+	// Every cluster delete fails, so the first project uses the whole budget.
+	f.FailNext("DELETE", `/clusters/`, 409, 1000)
+
+	var r janitorResult
+	res := runCap(t, "-o", "json", "--yes", "janitor", "--max-total-minutes", "2")
+	res.mustFail(t, ExitError, "skipped")
+	res.jsonOut(t, &r)
+	if r.Failed != 1 || len(r.Skipped) != 1 {
+		t.Fatalf("result = %+v, want one failure and one skipped", r)
+	}
+}

@@ -31,60 +31,160 @@ func TestWorkflowsLint(t *testing.T) {
 		t.Fatalf("release.yml goreleaser job must need gate, got %#v", needs)
 	}
 
-	nightly := loadYAML(t, filepath.Join(wfDir, "nightly.yml"))
-	on, _ := nightly["on"].(map[string]any)
-	if on == nil {
-		on, _ = nightly["true"].(map[string]any) // yaml may parse on as true
-	}
-	// GitHub workflow "on" key can be parsed as boolean true by yaml.v3
-	var schedule any
-	if on != nil {
-		schedule = on["schedule"]
-	} else {
-		// re-read raw for "on:"
-		raw := readFile(t, filepath.Join(wfDir, "nightly.yml"))
-		if !strings.Contains(raw, `cron: "0 7 * * *"`) || !strings.Contains(raw, `cron: "0 9 * * 0"`) {
-			t.Fatalf("nightly.yml missing expected cron schedules")
-		}
-	}
-	if schedule != nil {
-		list, _ := schedule.([]any)
-		if len(list) < 2 {
-			t.Fatalf("nightly.yml expected 2 cron schedules, got %#v", schedule)
-		}
-	}
-	conc, _ := nightly["concurrency"].(map[string]any)
-	if conc["cancel-in-progress"] != false {
-		t.Fatalf("nightly.yml concurrency.cancel-in-progress want false, got %#v", conc["cancel-in-progress"])
-	}
-
-	ciRaw := readFile(t, filepath.Join(wfDir, "ci.yml"))
-	if !strings.Contains(ciRaw, "make test-integration-fake") {
-		t.Fatal("ci.yml must run make test-integration-fake")
-	}
-	if !strings.Contains(ciRaw, "make docs-check") {
-		t.Fatal("ci.yml must run make docs-check")
-	}
-
 	for _, name := range []string{"ci.yml", "release.yml"} {
 		raw := readFile(t, filepath.Join(wfDir, name))
 		if strings.Contains(raw, "CAPELLA_SANDBOX_") {
 			t.Fatalf("%s must not reference CAPELLA_SANDBOX_* secrets", name)
 		}
 	}
-	nightlyRaw := readFile(t, filepath.Join(wfDir, "nightly.yml"))
-	if !strings.Contains(nightlyRaw, "CAPELLA_SANDBOX_") {
-		t.Fatal("nightly.yml should reference CAPELLA_SANDBOX_* secrets")
+	ciRaw := readFile(t, filepath.Join(wfDir, "ci.yml"))
+	for _, want := range []string{"make test-integration-fake", "make docs-check"} {
+		if !strings.Contains(ciRaw, want) {
+			t.Fatalf("ci.yml must run %s", want)
+		}
 	}
-	// runner.* is only valid in step/job contexts that expand expressions for steps;
-	// using it in job-level env makes workflow_dispatch fail with HTTP 422 parse error.
-	if strings.Contains(nightlyRaw, "CBCTL_IT_SECRETS_DIR: ${{ runner.") {
-		t.Fatal("nightly.yml must not set CBCTL_IT_SECRETS_DIR from runner.* in job-level env")
+}
+
+// TestNightlyWorkflow pins the sandbox safety of nightly.yml (Phase 5).
+func TestNightlyWorkflow(t *testing.T) {
+	wfDir := filepath.Join(repoRoot(t), ".github", "workflows")
+	raw := readFile(t, filepath.Join(wfDir, "nightly.yml"))
+	wf := loadYAML(t, filepath.Join(wfDir, "nightly.yml"))
+
+	if crons := cronsOf(wf); len(crons) != 1 || crons[0] != "0 7 * * *" {
+		t.Errorf("nightly.yml crons = %v, want only the nightly (the janitor is janitor.yml)", crons)
 	}
-	if !strings.Contains(nightlyRaw, "CBCTL_IT_SECRETS_DIR=$RUNNER_TEMP/") &&
-		!strings.Contains(nightlyRaw, "CBCTL_IT_SECRETS_DIR=${RUNNER_TEMP}/") {
-		t.Fatal("nightly.yml should set CBCTL_IT_SECRETS_DIR from $RUNNER_TEMP in a step")
+	conc, _ := wf["concurrency"].(map[string]any)
+	if conc["group"] != "nightly-sandbox" || conc["cancel-in-progress"] != false {
+		t.Errorf("concurrency = %#v, want the constant group nightly-sandbox without cancel-in-progress", conc)
 	}
+	if perms, _ := wf["permissions"].(map[string]any); perms["contents"] != "read" || len(perms) != 1 {
+		t.Errorf("workflow permissions = %#v, want contents: read only", perms)
+	}
+
+	jobs, _ := wf["jobs"].(map[string]any)
+	dedupe, _ := jobs["dedupe"].(map[string]any)
+	if dedupe == nil {
+		t.Fatal("nightly.yml needs a dedupe job")
+	}
+	if !strings.Contains(stepRuns(dedupe), "cbdev ci dedupe") {
+		t.Error("the dedupe job must run cbdev ci dedupe")
+	}
+	if p, _ := dedupe["permissions"].(map[string]any); p["actions"] != "read" {
+		t.Errorf("dedupe permissions = %#v, want actions: read", p)
+	}
+	for name, j := range jobs {
+		if name == "dedupe" {
+			continue
+		}
+		job, _ := j.(map[string]any)
+		if !needsContains(job["needs"], "dedupe") || !strings.Contains(asString(job["if"]), "needs.dedupe.outputs.skip != 'true'") {
+			t.Errorf("job %s must need dedupe and skip when it says so", name)
+		}
+	}
+
+	it, _ := jobs["integration"].(map[string]any)
+	env, _ := it["env"].(map[string]any)
+	wantEnv := map[string]string{
+		"CAPELLA_API_KEY":          "${{ secrets.CAPELLA_SANDBOX_API_KEY }}", // D1
+		"CAPELLA_ORG_ID":           "${{ vars.CAPELLA_SANDBOX_ORG_ID }}",     // D4
+		"CBCTL_IT_ALLOWED_ORG_IDS": "${{ vars.CAPELLA_SANDBOX_ORG_ID }}",
+		"CBCTL_IT_REQUIRE_TARGET":  "1",
+		"CBCTL_IT_TARGET":          "sandbox",
+	}
+	for k, v := range wantEnv {
+		if asString(env[k]) != v {
+			t.Errorf("integration env %s = %v, want %s", k, env[k], v)
+		}
+	}
+	for _, bad := range []string{"secrets.CAPELLA_SANDBOX_ORG_ID", "|| true", "CBCTL_IT_SECRETS_DIR: ${{ runner."} {
+		if strings.Contains(raw, bad) {
+			t.Errorf("nightly.yml must not contain %q", bad)
+		}
+	}
+	runs := stepRuns(it)
+	for _, want := range []string{
+		"::error::secret CAPELLA_SANDBOX_API_KEY is empty", // preflight
+		"CBCTL_IT_LOG=$GITHUB_WORKSPACE/",                  // absolute artifact paths
+		"CBCTL_IT_REPORT=$GITHUB_WORKSPACE/",
+		"CBCTL_IT_SECRETS_DIR=$RUNNER_TEMP/",
+		`--prefix "cbctl-ci-${{ github.run_id }}-${{ github.run_attempt }}-"`, // run-only sweep
+		"--require-secrets",
+	} {
+		if !strings.Contains(runs, want) {
+			t.Errorf("integration steps must contain %q", want)
+		}
+	}
+	steps, _ := it["steps"].([]any)
+	for _, s := range steps {
+		step, _ := s.(map[string]any)
+		name := asString(step["name"])
+		if strings.HasPrefix(name, "Sweep") || strings.HasPrefix(name, "No secret") || strings.HasPrefix(name, "Upload") {
+			if asString(step["if"]) != "always()" {
+				t.Errorf("step %q must run if: always()", name)
+			}
+		}
+		if with, _ := step["with"].(map[string]any); with != nil && with["if-no-files-found"] != nil && with["if-no-files-found"] != "error" {
+			t.Errorf("step %q: if-no-files-found must be error", name)
+		}
+	}
+}
+
+// TestJanitorWorkflow pins janitor.yml: its own schedule and group, the D1/D4 env, the CI prefix.
+func TestJanitorWorkflow(t *testing.T) {
+	path := filepath.Join(repoRoot(t), ".github", "workflows", "janitor.yml")
+	wf := loadYAML(t, path)
+	if crons := cronsOf(wf); len(crons) != 1 || crons[0] != "0 9 * * 0" {
+		t.Errorf("janitor.yml crons = %v", crons)
+	}
+	conc, _ := wf["concurrency"].(map[string]any)
+	if conc["group"] != "sandbox-janitor" {
+		t.Errorf("janitor concurrency = %#v", conc)
+	}
+	jobs, _ := wf["jobs"].(map[string]any)
+	job, _ := jobs["janitor"].(map[string]any)
+	env, _ := job["env"].(map[string]any)
+	if asString(env["CAPELLA_API_KEY"]) != "${{ secrets.CAPELLA_SANDBOX_API_KEY }}" || asString(env["CAPELLA_ORG_ID"]) != "${{ vars.CAPELLA_SANDBOX_ORG_ID }}" {
+		t.Errorf("janitor env = %#v", env)
+	}
+	runs := stepRuns(job)
+	for _, want := range []string{"--prefix cbctl-ci-", "--older-than-hours 24", "--max-total-minutes", "::error::"} {
+		if !strings.Contains(runs, want) {
+			t.Errorf("janitor steps must contain %q", want)
+		}
+	}
+}
+
+// cronsOf returns the workflow's cron strings; yaml.v3 may read the "on" key as true.
+func cronsOf(wf map[string]any) []string {
+	on, _ := wf["on"].(map[string]any)
+	if on == nil {
+		on, _ = wf["true"].(map[string]any)
+	}
+	var out []string
+	list, _ := on["schedule"].([]any)
+	for _, s := range list {
+		m, _ := s.(map[string]any)
+		out = append(out, asString(m["cron"]))
+	}
+	return out
+}
+
+// stepRuns joins every step's run script of a job.
+func stepRuns(job map[string]any) string {
+	var b strings.Builder
+	steps, _ := job["steps"].([]any)
+	for _, s := range steps {
+		step, _ := s.(map[string]any)
+		b.WriteString(asString(step["run"]))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func asString(v any) string {
+	s, _ := v.(string)
+	return s
 }
 
 func TestNOTICEMentionsCapellactl(t *testing.T) {

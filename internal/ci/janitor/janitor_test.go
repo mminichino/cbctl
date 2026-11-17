@@ -169,3 +169,116 @@ func TestDeleteProjectTreeTimeout(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestDeleteProjectTree_PartialFailure(t *testing.T) {
+	f := capellafake.New(t)
+	f.SettlePolls(0)
+	clk := engine.NewFakeClock(now)
+	c := f.Client(capellaapi.WithClock(clk), capellaapi.WithMaxAttempts(1))
+
+	pid := f.SeedProject("cbctl-ci-partial")
+	bad := f.SeedCluster(pid, "c1", "healthy")
+	good := f.SeedCluster(pid, "c2", "healthy")
+	// The first cluster keeps failing past the timeout; the second must still be deleted and the
+	// project delete must still be tried.
+	f.FailNext("DELETE", `/clusters/`+bad, 500, 100)
+
+	steps, err := janitor.DeleteProjectTree(context.Background(), c, capellaapi.Project{ID: pid, Name: "cbctl-ci-partial"}, janitor.RetryEvery/2, clk)
+	if err == nil || !strings.Contains(err.Error(), "delete cluster c1") {
+		t.Fatalf("err = %v, want the c1 failure", err)
+	}
+	if !strings.Contains(strings.Join(steps, "\n"), "deleted cluster c2") {
+		t.Errorf("c2 was not deleted after c1 failed: %v", steps)
+	}
+	var triedGood, triedProject bool
+	for _, call := range f.Calls("DELETE", "*") {
+		triedGood = triedGood || strings.Contains(call.Path, good)
+		triedProject = triedProject || strings.HasSuffix(call.Path, "/projects/"+pid)
+	}
+	if !triedGood || !triedProject {
+		t.Errorf("deletes attempted: cluster c2=%v project=%v", triedGood, triedProject)
+	}
+}
+
+func TestDeleteProjectsNamed_Continues(t *testing.T) {
+	f := capellafake.New(t)
+	f.SettlePolls(0)
+	clk := engine.NewFakeClock(now)
+	c := f.Client(capellaapi.WithClock(clk), capellaapi.WithMaxAttempts(1))
+	p1 := f.SeedProject("cbctl-ci-dup")
+	stuck := f.SeedCluster(p1, "stuck", "healthy")
+	p2 := f.SeedProject("cbctl-ci-dup")
+	f.FailNext("DELETE", `/clusters/`+stuck, 500, 100)
+
+	_, err := janitor.DeleteProjectsNamed(context.Background(), c, "cbctl-ci-dup", janitor.RetryEvery/2, clk)
+	if err == nil {
+		t.Fatal("want the first project's failure")
+	}
+	ps, lerr := c.ListProjects(context.Background())
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	for _, p := range ps {
+		if p.ID == p2 {
+			t.Errorf("second project %s was not deleted after the first failed", p2)
+		}
+	}
+}
+
+func TestDeleteRun(t *testing.T) {
+	t.Run("refuses a bare or foreign prefix", func(t *testing.T) {
+		f := capellafake.New(t)
+		c := f.Client()
+		for _, p := range []string{"", "cbctl-ci-", "cbctl-ci", "prod-", "cbctl-ci-123"} {
+			if _, err := janitor.DeleteRun(context.Background(), c, p, time.Minute, engine.NewFakeClock(now)); !errors.Is(err, janitor.ErrBarePrefix) {
+				t.Errorf("DeleteRun(%q) err = %v, want ErrBarePrefix", p, err)
+			}
+		}
+		if n := len(f.Writes()); n != 0 {
+			t.Errorf("%d writes before the prefix check", n)
+		}
+	})
+	t.Run("deletes only this run, whatever the age", func(t *testing.T) {
+		f := capellafake.New(t)
+		f.SettlePolls(0)
+		clk := engine.NewFakeClock(now)
+		c := f.Client(capellaapi.WithClock(clk))
+		mine := f.SeedProject("cbctl-ci-42-1-shared")
+		f.SeedCluster(mine, "c", "healthy")
+		f.SeedProject("cbctl-ci-42-1-life")
+		other := f.SeedProject("cbctl-ci-43-1-shared")
+		prod := f.SeedProject("production")
+		sum, err := janitor.DeleteRun(context.Background(), c, "cbctl-ci-42-1-", time.Hour, clk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(sum.Deleted) != 2 || len(sum.Failed) != 0 {
+			t.Errorf("summary = %+v", sum)
+		}
+		ps, _ := c.ListProjects(context.Background())
+		left := map[string]bool{}
+		for _, p := range ps {
+			left[p.ID] = true
+		}
+		if !left[other] || !left[prod] || left[mine] {
+			t.Errorf("left = %v (other run and production must stay, this run must go)", left)
+		}
+	})
+}
+
+func TestCreatedAt_NoZoneIsUTC(t *testing.T) {
+	for _, stamp := range []string{"2026-10-19T10:00:00", "2026-10-19T10:00:00.5", "2026-10-19 10:00:00"} {
+		p := capellaapi.Project{Name: "cbctl-ci-z", Audit: &capellaapi.Audit{CreatedAt: stamp}}
+		// 26h before now in UTC: stale at 24h whatever the machine's zone.
+		if got := janitor.Stale([]capellaapi.Project{p}, janitor.Prefix, 24*time.Hour, now); len(got) != 1 {
+			t.Errorf("%q: not read as UTC", stamp)
+		}
+		if got := janitor.Stale([]capellaapi.Project{p}, janitor.Prefix, 27*time.Hour, now); len(got) != 0 {
+			t.Errorf("%q: read with a zone offset", stamp)
+		}
+	}
+	bad := []capellaapi.Project{{Name: "cbctl-ci-b", Audit: &capellaapi.Audit{CreatedAt: "yesterday"}}, {Name: "cbctl-ci-n"}, {Name: "prod"}}
+	if got := janitor.Unreadable(bad, janitor.Prefix); len(got) != 2 {
+		t.Errorf("Unreadable = %v, want the 2 prefixed projects", got)
+	}
+}

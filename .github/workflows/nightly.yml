@@ -1,40 +1,31 @@
 name: nightly
-# CAP-032: Capella sandbox integration every night, and a weekly janitor for leftovers.
-# Needs repository secrets CAPELLA_SANDBOX_API_KEY and CAPELLA_SANDBOX_ORG_ID.
+# CAP-032: Capella sandbox integration every night. The weekly janitor is janitor.yml.
+# Needs repository secret CAPELLA_SANDBOX_API_KEY and repository variable CAPELLA_SANDBOX_ORG_ID.
 # A release tag needs three consecutive green scheduled runs, the newest on the tagged commit
 # (cbdev ci release-gate).
 
 on:
   schedule:
-    - cron: "0 7 * * *"     # integration suite, every night at 07:00 UTC
-    - cron: "0 9 * * 0"     # janitor, Sundays at 09:00 UTC
+    - cron: "0 7 * * *"     # every night at 07:00 UTC
   workflow_dispatch:
-    inputs:
-      job:
-        type: choice
-        options: [integration, janitor]
-        default: integration
 
 permissions:
   contents: read
 
+# One sandbox run at a time; a second run waits rather than cancelling one mid-teardown.
 concurrency:
   group: nightly-sandbox
   cancel-in-progress: false
 
 jobs:
-  integration:
-    if: github.event.schedule == '0 7 * * *' || inputs.job == 'integration'
+  dedupe:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
-    env:
-      CAPELLA_SANDBOX_API_KEY: ${{ secrets.CAPELLA_SANDBOX_API_KEY }}
-      CAPELLA_SANDBOX_ORG_ID: ${{ secrets.CAPELLA_SANDBOX_ORG_ID }}
-      CBCTL_IT_TARGET: sandbox
-      CBCTL_IT_CLUSTERS: "1"
-      CBCTL_IT_LOG: integration.log
-      CBCTL_IT_REPORT: integration-report.json
-      # CBCTL_IT_SECRETS_DIR is set in a step: runner.* is not valid in job-level env.
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -45,27 +36,78 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Allow this runner on the shared cluster
+      # Fails open: an API error prints a warning and runs the suite.
+      - name: Skip a duplicate of another run on this commit
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: go run ./cmd/cbdev ci dedupe --workflow nightly.yml
+
+  integration:
+    needs: dedupe
+    if: needs.dedupe.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      # D1: the CLI and the suite read the standard names; the secret keeps its sandbox name.
+      CAPELLA_API_KEY: ${{ secrets.CAPELLA_SANDBOX_API_KEY }}
+      # D4: the organization ID is a repository variable and also the allowlist.
+      CAPELLA_ORG_ID: ${{ vars.CAPELLA_SANDBOX_ORG_ID }}
+      CBCTL_IT_ALLOWED_ORG_IDS: ${{ vars.CAPELLA_SANDBOX_ORG_ID }}
+      CBCTL_IT_REQUIRE_TARGET: "1"
+      CBCTL_IT_TARGET: sandbox
+      CBCTL_IT_CLUSTERS: "1"
+      # CBCTL_IT_LOG, CBCTL_IT_REPORT and CBCTL_IT_SECRETS_DIR are set in a step as absolute
+      # paths: github.workspace and runner.* are not valid in job-level env.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Preflight (credentials present)
         run: |
-          echo "CAPELLA_SANDBOX_CLIENT_CIDR=$(curl -fsS https://api.ipify.org)/32" >> "$GITHUB_ENV"
+          if [ -z "$CAPELLA_API_KEY" ]; then
+            echo "::error::secret CAPELLA_SANDBOX_API_KEY is empty"; exit 1
+          fi
+          if [ -z "$CAPELLA_ORG_ID" ]; then
+            echo "::error::variable CAPELLA_SANDBOX_ORG_ID is empty"; exit 1
+          fi
+
+      - name: Artifact paths and the runner's address
+        run: |
           mkdir -p "$RUNNER_TEMP/cbctl-it-secrets"
-          echo "CBCTL_IT_SECRETS_DIR=$RUNNER_TEMP/cbctl-it-secrets" >> "$GITHUB_ENV"
+          {
+            echo "CBCTL_IT_LOG=$GITHUB_WORKSPACE/integration.log"
+            echo "CBCTL_IT_REPORT=$GITHUB_WORKSPACE/integration-report.json"
+            echo "CBCTL_IT_SECRETS_DIR=$RUNNER_TEMP/cbctl-it-secrets"
+            echo "CAPELLA_SANDBOX_CLIENT_CIDR=$(curl -fsS https://api.ipify.org)/32"
+          } >> "$GITHUB_ENV"
 
       - name: Integration suite (teardown runs whatever happens)
-        run: |
-          if [ ! -f internal/integration/harness.go ]; then
-            echo "skip: internal/integration/harness.go not present yet"
-            exit 0
-          fi
-          go test -tags=integration -timeout 290m -v ./internal/integration/...
+        run: go test -tags=integration -timeout 290m -v ./internal/integration/...
+
+      # The suite sweeps its run prefix on a timeout or signal; this covers a job that was
+      # killed before it could. The prefix is this run's only: never other runs' projects.
+      - name: Sweep this run's projects
+        if: always()
+        timeout-minutes: 30
+        run: >-
+          go run ./cmd/cbctl capella janitor
+          --prefix "cbctl-ci-${{ github.run_id }}-${{ github.run_attempt }}-"
+          --older-than-hours 0 --max-total-minutes 25 --yes
 
       - name: No secret in the logs
         if: always()
         run: |
-          go run ./cmd/cbdev ci scan-secrets integration.log integration-report.json \
-            --env CAPELLA_SANDBOX_API_KEY \
-            --secrets-dir "${CBCTL_IT_SECRETS_DIR}" || true
-          # report-only until the suite always writes the log paths; still exercise the scanner
+          go run ./cmd/cbdev ci scan-secrets "$CBCTL_IT_LOG" "$CBCTL_IT_REPORT" \
+            --env CAPELLA_API_KEY \
+            --secrets-dir "$CBCTL_IT_SECRETS_DIR" \
+            --require-secrets 1
 
       - name: Upload artifacts
         if: always()
@@ -75,24 +117,4 @@ jobs:
           path: |
             integration.log
             integration-report.json
-          if-no-files-found: warn
-
-  janitor:
-    if: github.event.schedule == '0 9 * * 0' || inputs.job == 'janitor'
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    env:
-      CAPELLA_SANDBOX_API_KEY: ${{ secrets.CAPELLA_SANDBOX_API_KEY }}
-      CAPELLA_SANDBOX_ORG_ID: ${{ secrets.CAPELLA_SANDBOX_ORG_ID }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-
-      - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Delete cbctl-ci-* projects older than 24 hours
-        run: go run ./cmd/cbctl capella janitor --older-than-hours 24 --fail-on-leftovers --yes
+          if-no-files-found: error

@@ -111,7 +111,7 @@ cbctl capella bucket backup create <cluster> <bucket>
 cbctl capella bucket backup delete <cluster> <backup-id> -y
 cbctl capella bucket backup restore <cluster> <backup-id> [--to-cluster C] [--services data,query] [--include-data B.S.C,...] [--replace-ttl none|all|expired] [--force-updates] -y
 cbctl capella bucket backup export <cluster> <backup-id> [--export-id ID]
-cbctl capella janitor --prefix P [--yes]   # hidden; test cleanup only, deletes projects starting with P and their clusters
+cbctl capella janitor --prefix P [--older-than-hours H] [--max-total-minutes M] [--dry-run] [--fail-on-leftovers] [--yes]   # hidden; test cleanup only, deletes projects starting with P and their clusters
 
 # Keyspace
 cbctl keyspace create <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
@@ -242,7 +242,7 @@ Import JSON Lines into a keyspace.
 - `cluster power --off`, `protect --off`, `delete`, `group remove`, `schedule delete`, `backup delete|restore` and `bucket backup delete|restore` need `-y` without a terminal (exit 4). `cluster delete` is refused while deletion protection is on (exit 4); a missing cluster is a no-op.
 - `cluster clone` copies size, services, buckets/scopes/collections; never documents, schedule, CMEK or private DNS. `--with-credentials` prints each new password once on stdout. The clone CIDR defaults to a free `10.x.y.0/24`; an overlapping `--cidr` exits 3.
 - `cluster schedule`, `cluster backup` and `bucket backup` are for provisioned clusters; free tier exits 4. A missing schedule on `show` is informational (bucket backup, exit 0) or exit 4 (cluster schedule).
-- `capella janitor` is hidden and for live-test cleanup only; `--prefix` needs at least 3 characters.
+- `capella janitor` is hidden and for live-test cleanup only; `--prefix` needs at least 4 characters and must end in `-`. It continues past a failed project (exit 1), keeps projects with an unreadable creation time, and `--max-total-minutes` reports projects it did not reach as skipped (exit 1).
 - Declarative workflow: passwords in capella.yaml are only `${VAR}` / `${file:PATH}` references. `plan`/`drift --detailed-exitcode` and `sync --dry-run` exit 2 when there is a difference (not an error); a missing or invalid file exits 3; a plan with blocked (`!`) changes exits 4. A second `apply` of an unchanged file makes no writes and prints "No changes. Capella matches capella.yaml." `apply` pins created ids into the file (previous version in `.bak`). `--direct` and `--no-apply` are mutually exclusive.
 
 ### capellactl settings

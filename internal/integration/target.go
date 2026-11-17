@@ -3,8 +3,12 @@
 package integration
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -40,6 +44,7 @@ type Target struct {
 	Clusters   bool // CBCTL_IT_CLUSTERS effective value
 	Home       string
 	SecretsDir string
+	Prefix     string // validated project-name prefix (CBCTL_TEST_PREFIX or Prefix)
 
 	mu     sync.Mutex
 	report []ReportEntry
@@ -58,7 +63,8 @@ var (
 
 	sandboxOnce    sync.Once
 	sandboxTarget  *Target
-	sandboxInitErr string
+	sandboxInitErr string // no credentials: skip (or fail when required)
+	sandboxFatal   string // a guard refused the organization: always fail
 
 	logOnce sync.Once
 	logPath string
@@ -70,7 +76,29 @@ var (
 	sharedSandbox     *Shared
 	sharedSandboxErr  string
 	sharedSandboxTG   *Target
+	// sharedProjectName is recorded before the shared apply starts, so teardown finds a
+	// project that apply created before it failed.
+	sharedProjectName string
+
+	requiredButMissing bool
+	suiteTargetRef     *Target // the target the suite used, for SweepRun
 )
+
+// noteRequiredButMissing records that a test needed a target the environment did not give.
+func noteRequiredButMissing() {
+	suiteMu.Lock()
+	requiredButMissing = true
+	suiteMu.Unlock()
+}
+
+// SuiteRequiredButUnused reports whether CBCTL_IT_REQUIRE_TARGET=1 was set and the suite ran
+// without a target (every test skipped), or a test found its target missing. TestMain then
+// exits 1: a nightly whose credentials vanished must not be green.
+func SuiteRequiredButUnused() bool {
+	suiteMu.Lock()
+	defer suiteMu.Unlock()
+	return suitePolicy().RequireTarget && (suiteKind == "" || requiredButMissing)
+}
 
 // TargetFromEnv selects the Capella backend from CBCTL_IT_TARGET / sandbox env vars.
 // It skips the calling test when neither fake nor sandbox credentials are available.
@@ -78,12 +106,20 @@ func TargetFromEnv(t *testing.T) *Target {
 	t.Helper()
 	kind := resolveKind(t)
 	if kind == "" {
-		t.Skip(skipMsg)
+		suitePolicy().SkipOrFail(t, skipMsg)
 	}
+	prefix, err := ValidatePrefix(os.Getenv("CBCTL_TEST_PREFIX"), suitePolicy().InCI)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	var tg *Target
 	if kind == "sandbox" {
-		return sandboxFromEnv(t)
+		tg = sandboxFromEnv(t)
+	} else {
+		tg = fakeFromEnv(t)
 	}
-	return fakeFromEnv(t)
+	tg.Prefix = prefix
+	return tg
 }
 
 func resolveKind(t *testing.T) string {
@@ -158,6 +194,14 @@ func sandboxFromEnv(t *testing.T) *Target {
 			t.Log("using CAPELLA_API_KEY as sandbox credentials")
 		}
 		redact.Register(key)
+		policy := suitePolicy()
+		if err := policy.CheckOrg(org); err != nil {
+			sandboxFatal = err.Error()
+			return
+		}
+		if len(policy.AllowedOrgs) == 0 {
+			t.Log("CBCTL_IT_ALLOWED_ORG_IDS is not set; any organization is allowed outside CI")
+		}
 		home, err := os.MkdirTemp("", "cbctl-it-home-*")
 		if err != nil {
 			sandboxInitErr = err.Error()
@@ -188,10 +232,20 @@ func sandboxFromEnv(t *testing.T) *Target {
 		if base := os.Getenv("CAPELLA_API_BASE_URL"); base != "" {
 			sandboxTarget.env["CAPELLA_API_BASE_URL"] = base
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if err := policy.VerifyOrgReachable(ctx, sandboxTarget.Client()); err != nil {
+			sandboxFatal = err.Error()
+			sandboxTarget = nil
+			return
+		}
 		noteSuite(sandboxTarget)
 	})
+	if sandboxFatal != "" {
+		t.Fatalf("sandbox guard: %s", sandboxFatal)
+	}
 	if sandboxInitErr != "" {
-		t.Skip(sandboxInitErr)
+		suitePolicy().SkipOrFail(t, sandboxInitErr)
 	}
 	applyProcessEnv(t, sandboxTarget)
 	return sandboxTarget
@@ -212,12 +266,13 @@ func noteSuite(tg *Target) {
 	defer suiteMu.Unlock()
 	suiteKind = tg.Kind
 	suiteRun = tg.Run
+	suiteTargetRef = tg
 }
 
 func suiteLogPath() string {
 	logOnce.Do(func() {
 		if p := os.Getenv("CBCTL_IT_LOG"); p != "" {
-			logPath = p
+			logPath = resolveArtifactPath(p, os.Getenv)
 		} else {
 			dir, err := os.MkdirTemp("", "cbctl-it-log-*")
 			if err != nil {
@@ -235,7 +290,7 @@ func suiteSecretsDir(t *testing.T) string {
 	t.Helper()
 	secretsOnce.Do(func() {
 		if p := os.Getenv("CBCTL_IT_SECRETS_DIR"); p != "" {
-			secretsDir = p
+			secretsDir = resolveArtifactPath(p, os.Getenv)
 			_ = os.MkdirAll(secretsDir, 0o700)
 			return
 		}
@@ -277,18 +332,80 @@ func clustersEnabled(t *testing.T) bool {
 
 // ProjectName returns a run-unique project name: <prefix><run>-<purpose>.
 func (tg *Target) ProjectName(purpose string) string {
-	return projectPrefix() + tg.Run + "-" + purpose
+	return tg.RunPrefix() + purpose
 }
 
-func projectPrefix() string {
-	p := os.Getenv("CBCTL_TEST_PREFIX")
+// RunPrefix is the prefix of every project this run creates: <prefix><run>-. A sweep by it
+// can only ever reach this run's projects.
+func (tg *Target) RunPrefix() string {
+	p := tg.Prefix
 	if p == "" {
-		return Prefix
+		p = Prefix
 	}
-	if !strings.HasSuffix(p, "-") {
-		p += "-"
+	return p + tg.Run + "-"
+}
+
+// ErrNoModuleRoot is returned when no go.mod is found above the working directory.
+var ErrNoModuleRoot = errors.New("no go.mod above the working directory")
+
+// resolveArtifactPath makes a relative CBCTL_IT_* path absolute against $GITHUB_WORKSPACE, or
+// else the module root, so "integration.log" lands where the upload step looks (go test runs
+// in the package directory, not the repository root).
+func resolveArtifactPath(p string, env func(string) string) string {
+	if p == "" || filepath.IsAbs(p) {
+		return p
+	}
+	if ws := env("GITHUB_WORKSPACE"); ws != "" {
+		return filepath.Join(ws, p)
+	}
+	if wd, err := os.Getwd(); err == nil {
+		if root, err := findModuleRoot(wd); err == nil {
+			return filepath.Join(root, p)
+		}
 	}
 	return p
+}
+
+// findModuleRoot walks up from start to the directory holding go.mod.
+func findModuleRoot(start string) (string, error) {
+	dir := start
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", ErrNoModuleRoot
+		}
+		dir = parent
+	}
+}
+
+// suiteReportPath is CBCTL_IT_REPORT resolved like the log path ("" when unset).
+func suiteReportPath() string { return resolveArtifactPath(os.Getenv("CBCTL_IT_REPORT"), os.Getenv) }
+
+// SuiteReportPath is suiteReportPath for TestMain.
+func SuiteReportPath() string { return suiteReportPath() }
+
+// CredentialsDir returns a per-purpose directory for generated passwords under SecretsDir, so
+// the secret scanner finds every password the run created.
+func (tg *Target) CredentialsDir(purpose string) string {
+	dir := filepath.Join(tg.SecretsDir, tg.Run+"-"+purpose)
+	_ = os.MkdirAll(dir, 0o700)
+	return dir
+}
+
+// RecordSuppliedSecret writes a password the test supplied (not generated) into SecretsDir as
+// {"password": ...} with mode 0600, so the log scanner checks for it too.
+func RecordSuppliedSecret(tg *Target, name, value string) error {
+	if err := os.MkdirAll(tg.SecretsDir, 0o700); err != nil {
+		return err
+	}
+	body, err := json.Marshal(map[string]string{"password": value})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(tg.SecretsDir, "supplied-"+name+".json"), append(body, '\n'), 0o600)
 }
 
 // RequireClusters skips on sandbox when cluster-creating scenarios are disabled.

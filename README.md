@@ -351,7 +351,7 @@ These commands use the Capella Management API v4 (`--token`/`CAPELLA_API_KEY`, `
 
 Deleting a bucket, scope or collection is refused (exit 4) while the cluster has deletion protection on.
 
-Commands that start a cluster operation (`scale`, `update`, `power`, `delete`, `clone`, `group add|remove`, backups) wait until it finishes, print progress dots on stderr, and take `--no-wait` to return as soon as Capella accepts the request. Ctrl-C stops waiting (exit 130) but does not cancel the operation in Capella. A hidden `cbctl capella janitor --prefix P [--yes]` deletes every project whose name starts with `P` together with its clusters; it exists to clean up after live tests.
+Commands that start a cluster operation (`scale`, `update`, `power`, `delete`, `clone`, `group add|remove`, backups) wait until it finishes, print progress dots on stderr, and take `--no-wait` to return as soon as Capella accepts the request. Ctrl-C stops waiting (exit 130) but does not cancel the operation in Capella. A hidden `cbctl capella janitor --prefix P [--older-than-hours H] [--max-total-minutes M] [--dry-run] [--yes]` deletes every project whose name starts with `P` (and is older than `H` hours, default 24) together with its clusters; it exists to clean up after live tests.
 
 ```bash
 cbctl capella project create demo
@@ -372,7 +372,7 @@ make build              # bin/cbctl
 make test-unit          # with -race (./internal/...)
 make test-integration-fake   # Capella integration suite against the in-memory fake
 make test-integration   # Capella integration suite against a sandbox org (CAPELLA_API_KEY, CAPELLA_ORG_ID; CBCTL_IT_CLUSTERS=1 adds billable clusters)
-make janitor PREFIX=cbctl-ci-   # delete leftover test projects (prefix of at least 3 characters)
+make janitor PREFIX=cbctl-ci-   # delete leftover test projects (prefix of at least 4 characters, ending in -)
 make vet
 make lint               # golangci-lint v2.15.0 (config: .golangci.yml)
 make check              # everything CI runs, including lint
@@ -380,4 +380,4 @@ make check              # everything CI runs, including lint
 
 CI (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main` and `mm--capellactl-port`. Workflow actions are pinned by commit SHA; Dependabot (`.github/dependabot.yml`) proposes weekly bumps.
 
-Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (3 characters or more) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).
+Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (4 characters or more, ending in `-`) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

@@ -234,6 +234,9 @@ func SharedProject(t *testing.T, tg *Target) *Shared {
 	}
 	sharedSandboxOnce.Do(func() {
 		sharedSandboxTG = tg
+		suiteMu.Lock()
+		sharedProjectName = tg.ProjectName("shared")
+		suiteMu.Unlock()
 		s, err := tryApplyShared(tg)
 		if err != nil {
 			sharedSandboxErr = err.Error()

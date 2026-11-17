@@ -19,6 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   26× release-1.5.0 CAP stories, API snapshots), `internal/docgen/port` rewrite engine,
   `cbdev docs port`, and stub Capella guides under `docs/capella/`.
 
+- Sandbox integration safety: an organization allowlist (`CBCTL_IT_ALLOWED_ORG_IDS`) and a reachability
+  preflight, `CBCTL_IT_REQUIRE_TARGET=1` (a missing target fails the run), a validated
+  `CBCTL_TEST_PREFIX`, a watchdog and SIGINT/SIGTERM sweep of the run's projects, and artifact paths
+  resolved against the workspace.
+- `cbdev ci dedupe` and a `dedupe` job in the nightly; `cbdev ci scan-secrets --require-secrets N
+  --allow-missing`.
+- `cbctl capella janitor --max-total-minutes`; the janitor continues past a failed cluster or project
+  and lists projects whose creation time it cannot read. `.github/workflows/janitor.yml` runs it weekly.
+
 ### Changed
 
 - Capella failures use structured exit codes (0/1/2/3/4/5/130) with action hints.

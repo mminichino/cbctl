@@ -48,11 +48,15 @@ func Stale(projects []capellaapi.Project, prefix string, olderThan time.Duration
 	return out
 }
 
-// DeleteProjectTree deletes one project and everything in it. For each cluster
-// it turns deletion protection off when set, deletes (free-tier via
-// DeleteFreeCluster; others via DeleteCluster with retainSnapshotBackups=false)
-// retrying every RetryEvery until timeout, then WaitForCluster(OpDelete), then
-// deletes the project with the same retry. Returns ordered step descriptions.
+// DeleteProjectTree deletes one project and everything in it. For each cluster it turns
+// deletion protection off when set and deletes it (free tier via DeleteFreeCluster, others via
+// DeleteCluster without keeping snapshot backups), retrying every RetryEvery until timeout. It
+// waits for the deletes, then deletes the project with the same retry.
+//
+// It is best effort: a cluster that cannot be deleted does not stop the others, and the project
+// delete is still tried once. Every failure is returned, joined. A resource that is already
+// gone (404) counts as deleted, so a sweep racing a test's own cleanup is harmless. The steps
+// are returned in order.
 func DeleteProjectTree(ctx context.Context, c *capellaapi.Client, p capellaapi.Project, timeout time.Duration, clk engine.Clock) ([]string, error) {
 	if clk == nil {
 		clk = engine.RealClock{}
@@ -65,48 +69,72 @@ func DeleteProjectTree(ctx context.Context, c *capellaapi.Client, p capellaapi.P
 		}
 		return done, fmt.Errorf("listing clusters in project %s: %w", p.Name, err)
 	}
+	var errs []error
+	deleting := make([]bool, len(clusters))
 	for i := range clusters {
 		cl := &clusters[i]
-		if cl.DeletionProtection != nil && *cl.DeletionProtection {
-			if err := c.SetDeletionProtection(ctx, p.ID, cl.ID, false); err != nil {
-				return done, fmt.Errorf("turning off deletion protection of %s: %w", cl.Name, err)
-			}
-			done = append(done, "deletion protection off for "+cl.Name)
-		}
+		protOff := false
 		del := func() error {
+			// Re-checked on every attempt: a test may turn protection back on mid-sweep.
+			if cl.DeletionProtection != nil && *cl.DeletionProtection && !protOff {
+				if err := c.SetDeletionProtection(ctx, p.ID, cl.ID, false); err != nil && !errors.Is(err, capellaapi.ErrNotFound) {
+					return fmt.Errorf("turning off deletion protection: %w", err)
+				}
+				protOff = true
+				done = append(done, "deletion protection off for "+cl.Name)
+			}
 			if isFree(cl) {
 				return c.DeleteFreeCluster(ctx, p.ID, cl.ID)
 			}
 			return c.DeleteCluster(ctx, p.ID, cl.ID, false)
 		}
 		if err := retry(ctx, clk, timeout, "delete cluster "+cl.Name, del); err != nil {
-			return done, err
+			errs = append(errs, err)
+			if ctx.Err() != nil {
+				return done, errors.Join(errs...)
+			}
+			continue
 		}
+		deleting[i] = true
 	}
 	for i := range clusters {
+		if !deleting[i] {
+			continue
+		}
 		cl := &clusters[i]
 		getter := clusterGetter(c, cl)
 		if _, err := engine.WaitForCluster(ctx, getter, p.ID, cl.ID, engine.OpDelete, timeout, clk, cl.Name, engine.WaitHooks{}); err != nil {
-			return done, fmt.Errorf("waiting for cluster %s delete: %w", cl.Name, err)
+			errs = append(errs, fmt.Errorf("waiting for cluster %s delete: %w", cl.Name, err))
+			continue
 		}
 		done = append(done, "deleted cluster "+cl.Name)
 	}
-	if err := retry(ctx, clk, timeout, "delete project "+p.Name, func() error {
-		return c.DeleteProject(ctx, p.ID)
-	}); err != nil {
+	deleteProject := func() error { return c.DeleteProject(ctx, p.ID) }
+	if len(errs) > 0 {
+		// Clusters are left, so Capella will refuse; try once so the error names the project.
+		if err := deleteProject(); err != nil && !errors.Is(err, capellaapi.ErrNotFound) {
+			errs = append(errs, fmt.Errorf("delete project %s: %w", p.Name, err))
+		} else {
+			done = append(done, "deleted project "+p.Name)
+		}
+		return done, errors.Join(errs...)
+	}
+	if err := retry(ctx, clk, timeout, "delete project "+p.Name, deleteProject); err != nil {
 		return done, err
 	}
 	done = append(done, "deleted project "+p.Name)
 	return done, nil
 }
 
-// DeleteProjectsNamed deletes every project whose name equals name exactly.
+// DeleteProjectsNamed deletes every project whose name equals name exactly. It goes on after a
+// failed project and returns every failure, joined.
 func DeleteProjectsNamed(ctx context.Context, c *capellaapi.Client, name string, timeout time.Duration, clk engine.Clock) ([]string, error) {
 	projects, err := c.ListProjects(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("listing projects: %w", err)
 	}
 	var done []string
+	var errs []error
 	for _, p := range projects {
 		if p.Name != name {
 			continue
@@ -114,30 +142,84 @@ func DeleteProjectsNamed(ctx context.Context, c *capellaapi.Client, name string,
 		steps, err := DeleteProjectTree(ctx, c, p, timeout, clk)
 		done = append(done, steps...)
 		if err != nil {
-			return done, err
+			errs = append(errs, err)
 		}
 	}
-	return done, nil
+	return done, errors.Join(errs...)
 }
 
+// ErrBarePrefix is returned by DeleteRun for a prefix that could reach other runs' projects.
+var ErrBarePrefix = errors.New("a run sweep needs a run-specific prefix, longer than " + Prefix)
+
+// Summary is the outcome of DeleteRun: exact project names, in order, and the step log.
+type Summary struct {
+	Deleted []string `json:"deleted"`
+	Failed  []string `json:"failed"`
+	Steps   []string `json:"steps"`
+}
+
+// DeleteRun deletes every project whose name starts with runPrefix, whatever its age. It is the
+// sweep a test run makes of its own leftovers (after a timeout, a signal or a failed cleanup),
+// so it refuses a prefix that is not longer than Prefix: it can never be organization-wide.
+func DeleteRun(ctx context.Context, c *capellaapi.Client, runPrefix string, timeout time.Duration, clk engine.Clock) (Summary, error) {
+	var sum Summary
+	if !strings.HasPrefix(runPrefix, Prefix) || len(runPrefix) <= len(Prefix) || !strings.HasSuffix(runPrefix, "-") {
+		return sum, fmt.Errorf("%w (got %q)", ErrBarePrefix, runPrefix)
+	}
+	projects, err := c.ListProjects(ctx)
+	if err != nil {
+		return sum, fmt.Errorf("listing projects: %w", err)
+	}
+	var errs []error
+	for _, p := range projects {
+		if !strings.HasPrefix(p.Name, runPrefix) {
+			continue
+		}
+		steps, err := DeleteProjectTree(ctx, c, p, timeout, clk)
+		sum.Steps = append(sum.Steps, steps...)
+		if err != nil {
+			sum.Failed = append(sum.Failed, p.Name)
+			errs = append(errs, err)
+			continue
+		}
+		sum.Deleted = append(sum.Deleted, p.Name)
+	}
+	return sum, errors.Join(errs...)
+}
+
+// Unreadable returns the projects starting with prefix whose audit.createdAt cannot be read.
+// Stale keeps them (they may belong to a run in progress); the janitor lists them so they are
+// not silently left forever.
+func Unreadable(projects []capellaapi.Project, prefix string) []capellaapi.Project {
+	var out []capellaapi.Project
+	for _, p := range projects {
+		if !strings.HasPrefix(p.Name, prefix) {
+			continue
+		}
+		if _, ok := createdAt(p); !ok {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// noZoneLayouts are the timestamp forms without a zone; Capella means UTC by them.
+var noZoneLayouts = []string{"2006-01-02T15:04:05.999999999", "2006-01-02T15:04:05", "2006-01-02 15:04:05"}
+
 func createdAt(p capellaapi.Project) (time.Time, bool) {
-	if p.Audit == nil || p.Audit.CreatedAt == "" {
+	if p.Audit == nil || strings.TrimSpace(p.Audit.CreatedAt) == "" {
 		return time.Time{}, false
 	}
-	raw := p.Audit.CreatedAt
-	raw = strings.ReplaceAll(raw, "Z", "+00:00")
-	raw = fracTrim.ReplaceAllString(raw, "$1")
-	t, err := time.Parse(time.RFC3339Nano, raw)
-	if err != nil {
-		t, err = time.Parse(time.RFC3339, raw)
+	raw := fracTrim.ReplaceAllString(strings.TrimSpace(p.Audit.CreatedAt), "$1")
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t.UTC(), true
 	}
-	if err != nil {
-		return time.Time{}, false
+	for _, layout := range noZoneLayouts {
+		if t, err := time.ParseInLocation(layout, raw, time.UTC); err == nil {
+			return t, true
+		}
 	}
-	if t.Location() == time.Local && !strings.ContainsAny(p.Audit.CreatedAt, "Z+-") {
-		t = t.UTC()
-	}
-	return t.UTC(), true
+	return time.Time{}, false
 }
 
 func isFree(c *capellaapi.Cluster) bool {

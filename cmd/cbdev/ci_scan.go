@@ -5,20 +5,22 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/ci/secretscan"
 )
 
 func cmdCIScanSecrets(args []string, stdout, stderr io.Writer) int {
-	files, envs, secretsDirs, valueFiles, err := parseScanArgs(args)
+	o, err := parseScanArgs(args)
+	files, envs, secretsDirs, valueFiles := o.files, o.envs, o.dirs, o.values
 	if err != nil {
 		fmt.Fprintf(stderr, "cbdev ci scan-secrets: %v\n", err)
 		return 2
 	}
 	if len(files) == 0 {
 		fmt.Fprintln(stderr, "cbdev ci scan-secrets: missing FILE")
-		fmt.Fprintln(stderr, "usage: cbdev ci scan-secrets FILE… [--env NAME]… [--secrets-dir DIR]… [--value-file FILE]…")
+		fmt.Fprintln(stderr, scanUsage)
 		return 2
 	}
 
@@ -57,6 +59,12 @@ func cmdCIScanSecrets(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "scan-log-secrets: no secret values to check for")
 		return 2
 	}
+	if len(secrets) < o.requireSecrets {
+		// Fewer secrets than the run created means the scan would miss some: a secrets dir that
+		// was not written, or an env var that went empty.
+		fmt.Fprintf(stderr, "scan-log-secrets: only %d secret value(s) to check; --require-secrets %d\n", len(secrets), o.requireSecrets)
+		return 2
+	}
 
 	texts := map[string]string{}
 	var missing []string
@@ -70,8 +78,11 @@ func cmdCIScanSecrets(args []string, stdout, stderr io.Writer) int {
 		texts[f] = strings.ToValidUTF8(string(raw), "\uFFFD")
 	}
 	if len(missing) > 0 {
-		fmt.Fprintf(stderr, "scan-log-secrets: no such file: %s\n", joinComma(missing))
-		return 2
+		if !o.allowMissing || len(texts) == 0 {
+			fmt.Fprintf(stderr, "scan-log-secrets: no such file: %s\n", joinComma(missing))
+			return 2
+		}
+		fmt.Fprintf(stderr, "scan-log-secrets: skipping missing file(s): %s\n", joinComma(missing))
 	}
 
 	hits := secretscan.Scan(texts, secrets)
@@ -86,38 +97,62 @@ func cmdCIScanSecrets(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+const scanUsage = "usage: cbdev ci scan-secrets FILE… [--env NAME]… [--secrets-dir DIR]… [--value-file FILE]… [--require-secrets N] [--allow-missing]"
+
+// scanOptions are the parsed scan-secrets arguments.
+type scanOptions struct {
+	files, envs, dirs, values []string
+	requireSecrets            int  // at least this many secret values, else exit 2
+	allowMissing              bool // missing FILEs are skipped (at least one must exist)
+}
+
 // parseScanArgs accepts flags interleaved with file operands (as the Python script does).
-func parseScanArgs(args []string) (files, envs, dirs, values []string, err error) {
+func parseScanArgs(args []string) (scanOptions, error) {
+	var o scanOptions
+	next := func(i *int, flag, what string) (string, error) {
+		if *i+1 >= len(args) {
+			return "", fmt.Errorf("%s needs a %s", flag, what)
+		}
+		*i++
+		return args[*i], nil
+	}
 	for i := 0; i < len(args); i++ {
-		a := args[i]
-		switch {
-		case a == "-h" || a == "--help":
-			return nil, nil, nil, nil, fmt.Errorf("usage: cbdev ci scan-secrets FILE… [--env NAME]… [--secrets-dir DIR]… [--value-file FILE]…")
-		case a == "--env" || a == "-env":
-			if i+1 >= len(args) {
-				return nil, nil, nil, nil, fmt.Errorf("--env needs a NAME")
+		a := strings.TrimPrefix(args[i], "-")
+		if !strings.HasPrefix(args[i], "-") {
+			o.files = append(o.files, args[i])
+			continue
+		}
+		a = strings.TrimPrefix(a, "-")
+		var err error
+		var v string
+		switch a {
+		case "h", "help":
+			return o, fmt.Errorf("%s", scanUsage)
+		case "env":
+			v, err = next(&i, "--env", "NAME")
+			o.envs = append(o.envs, v)
+		case "secrets-dir":
+			v, err = next(&i, "--secrets-dir", "DIR")
+			o.dirs = append(o.dirs, v)
+		case "value-file":
+			v, err = next(&i, "--value-file", "FILE")
+			o.values = append(o.values, v)
+		case "require-secrets":
+			if v, err = next(&i, "--require-secrets", "number"); err == nil {
+				if o.requireSecrets, err = strconv.Atoi(v); err != nil || o.requireSecrets < 0 {
+					err = fmt.Errorf("--require-secrets needs a number >= 0 (got %q)", v)
+				}
 			}
-			i++
-			envs = append(envs, args[i])
-		case a == "--secrets-dir" || a == "-secrets-dir":
-			if i+1 >= len(args) {
-				return nil, nil, nil, nil, fmt.Errorf("--secrets-dir needs a DIR")
-			}
-			i++
-			dirs = append(dirs, args[i])
-		case a == "--value-file" || a == "-value-file":
-			if i+1 >= len(args) {
-				return nil, nil, nil, nil, fmt.Errorf("--value-file needs a FILE")
-			}
-			i++
-			values = append(values, args[i])
-		case strings.HasPrefix(a, "-"):
-			return nil, nil, nil, nil, fmt.Errorf("unknown flag %s", a)
+		case "allow-missing":
+			o.allowMissing = true
 		default:
-			files = append(files, a)
+			return o, fmt.Errorf("unknown flag %s", args[i])
+		}
+		if err != nil {
+			return o, err
 		}
 	}
-	return files, envs, dirs, values, nil
+	return o, nil
 }
 
 func joinComma(ss []string) string {

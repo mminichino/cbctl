@@ -34,10 +34,10 @@ test-capella-live:
 	go test -tags=integration -timeout 90m -run Capella ./internal/integration -v
 
 # Delete leftover live-test projects (CAP-032 AC3). PREFIX must end with '-' (default cbctl-ci-).
-# Age filtering lands with the Phase-4 janitor CLI flags; until then pass an explicit prefix.
+# Delete leftover test projects: PREFIX (default cbctl-ci-), older than HOURS (default 24).
 janitor: build
-	@prefix="$(or $(PREFIX),cbctl-ci-)"; \
-	./bin/cbctl capella janitor --prefix "$$prefix" --yes
+	@prefix="$(or $(PREFIX),cbctl-ci-)"; hours="$(or $(HOURS),24)"; \
+	./bin/cbctl capella janitor --prefix "$$prefix" --older-than-hours "$$hours" --yes
 
 test: test-unit
 

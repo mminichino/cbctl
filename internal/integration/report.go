@@ -3,10 +3,13 @@
 package integration
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/mminichino/cbctl/internal/ci/janitor"
 )
 
 // WriteReport writes {"target","run","projects":[...]} to path.
@@ -72,18 +75,22 @@ func summaryLines(kind, run string, projects []ReportEntry) []string {
 	return lines
 }
 
-// FinishShared tears down the sandbox shared project if it was created.
+// FinishShared tears down the sandbox shared project. It runs when the apply that creates it
+// failed too: a half-applied project still has to go.
 func FinishShared() {
-	if sharedSandbox == nil || sharedSandboxTG == nil {
+	suiteMu.Lock()
+	name, tg := sharedProjectName, sharedSandboxTG
+	suiteMu.Unlock()
+	if name == "" || tg == nil {
 		return
 	}
-	steps, err := sharedSandboxTG.DeleteNamed(sharedSandbox.Project)
-	entry := ReportEntry{Project: sharedSandbox.Project}
+	steps, err := tg.DeleteNamed(name)
+	entry := ReportEntry{Project: name}
+	if sharedSandboxErr != "" {
+		entry.Failure = truncate(sharedSandboxErr, 300)
+	}
 	if err != nil {
-		entry.Teardown = fmt.Sprintf("FAILED: %v", err)
-		if len(entry.Teardown) > 300 {
-			entry.Teardown = entry.Teardown[:300]
-		}
+		entry.Teardown = truncate(fmt.Sprintf("FAILED: %v", err), 300)
 		markTeardownFailed()
 	} else if len(steps) == 0 {
 		entry.Teardown = "ok: nothing left to delete"
@@ -93,4 +100,34 @@ func FinishShared() {
 	suiteMu.Lock()
 	suiteReport = append(suiteReport, entry)
 	suiteMu.Unlock()
+}
+
+// SweepRun deletes every sandbox project this run created (by its run prefix), whatever its
+// state. TestMain calls it after a watchdog timeout or a signal, when per-test cleanups may
+// not have run. It does nothing on the fake or when no sandbox target was used.
+func SweepRun(ctx context.Context) error {
+	suiteMu.Lock()
+	tg := suiteTargetRef
+	suiteMu.Unlock()
+	if tg == nil || tg.Kind != "sandbox" {
+		return nil
+	}
+	sum, err := janitor.DeleteRun(ctx, tg.Client(), tg.RunPrefix(), tg.Timeout, tg.Clock)
+	for _, name := range sum.Deleted {
+		suiteMu.Lock()
+		suiteReport = append(suiteReport, ReportEntry{Project: name, Teardown: "ok: swept after interruption"})
+		suiteMu.Unlock()
+	}
+	if err != nil {
+		markTeardownFailed()
+		return fmt.Errorf("sweeping run %s: %w", tg.RunPrefix(), err)
+	}
+	return nil
+}
+
+func truncate(s string, n int) string {
+	if len(s) > n {
+		return s[:n]
+	}
+	return s
 }
