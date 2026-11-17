@@ -331,6 +331,15 @@ func walk(dec *json.Decoder, path, name string, out *[]pair) error {
 // ttyCheck reports whether r is an interactive terminal. Tests replace it.
 var ttyCheck = terminalCheck
 
+// prompterFor returns the Prompter injected through Deps, or nil to read the terminal directly.
+// It is consulted only after the terminal check, so "no terminal, no --yes" stays ExitBlocked.
+func prompterFor(rt *runtime) Prompter {
+	if rt == nil || rt.cmd == nil {
+		return nil
+	}
+	return depsFromCmd(rt.cmd).Prompter
+}
+
 // confirm asks question on stderr and reads the answer from stdin. --yes answers true without
 // asking. With no terminal attached and no --yes it fails with ExitBlocked rather than guessing.
 func confirm(rt *runtime, question string) (bool, error) {
@@ -340,6 +349,9 @@ func confirm(rt *runtime, question string) (bool, error) {
 	in, errOut := stdinFrom(rt.cmd), stderrFrom(rt.cmd)
 	if !ttyCheck(in) {
 		return false, Errorf(ExitBlocked, "re-run with --yes", "confirmation required but no terminal is attached")
+	}
+	if p := prompterFor(rt); p != nil {
+		return p.Confirm(question, false)
 	}
 	fmt.Fprintf(errOut, "%s [y/N]: ", question)
 	line, err := bufio.NewReader(in).ReadString('\n')

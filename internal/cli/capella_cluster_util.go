@@ -554,6 +554,9 @@ func confirmTyped(rt *runtime, question, want string) (bool, error) {
 	if !ttyCheck(in) {
 		return false, blockedError("re-run with --yes", "confirmation required but no terminal is attached")
 	}
+	if p := prompterFor(rt); p != nil {
+		return p.Typed(fmt.Sprintf("%s (%s)", question, want), want)
+	}
 	fmt.Fprintf(errOut, "%s (%s): ", question, want)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {

@@ -68,6 +68,17 @@ func (f *Fake) SeedBucket(clusterID, name string, fields ...Field) string {
 	extra := Obj{}
 	applyFields(extra, fields)
 	b := cl.addBucket(name, extra)
+	// addBucket ignores stats (a create body cannot set them); a seed may, to model stored data.
+	if stats, ok := extra["stats"].(map[string]any); ok {
+		merged := Obj{}
+		for k, v := range b.obj["stats"].(Obj) {
+			merged[k] = v
+		}
+		for k, v := range stats {
+			merged[k] = v
+		}
+		b.obj["stats"] = merged
+	}
 	return str(b.obj, "id")
 }
 

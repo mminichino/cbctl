@@ -300,6 +300,13 @@ func confirmTypedFunc(rt *runtime, prompt, notes string, check func(typed string
 	if notes != "" {
 		fmt.Fprintln(out, notes)
 	}
+	if p := prompterFor(rt); p != nil {
+		typed, err := p.Ask(prompt, "")
+		if err != nil {
+			return false, err
+		}
+		return check(strings.TrimSpace(typed)), nil
+	}
 	fmt.Fprintf(out, "%s: ", prompt)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {
