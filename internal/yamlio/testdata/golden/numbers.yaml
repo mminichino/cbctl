@@ -1,0 +1,15 @@
+int: 3
+negative: -7
+float: 1.5
+whole-float: 2.0
+exponent: 1e3
+hex: 0x10
+octal: 0o17
+underscore: 1_000
+big-int: 12345678901234567890
+huge-int: 123456789012345678901234567890
+max-int64: 9223372036854775807
+beyond-2-53: 9007199254740993
+nan: .nan
+inf: -.inf
+quoted: "3"

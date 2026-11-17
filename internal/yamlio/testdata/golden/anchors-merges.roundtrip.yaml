@@ -1,0 +1,16 @@
+defaults:
+  cpu: 4
+  ram: 16
+  tier: base
+small:
+  ram: 8
+  cpu: 4
+  tier: base
+sizes:
+  - cpu: 4
+    ram: 16
+    tier: base
+  - tier: custom
+    cpu: 4
+    ram: 16
+    extra: yes-please

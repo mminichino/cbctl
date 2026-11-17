@@ -1,0 +1,9 @@
+# first
+a: 1
+---
+# only a comment
+---
+b:
+  - 2
+  - 3
+---
