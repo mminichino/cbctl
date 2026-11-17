@@ -95,7 +95,7 @@ cbctl capella cluster group list <cluster>
 cbctl capella cluster group add <cluster> --services S [--nodes 2-24] [--cpu N] [--ram GB] [--disk-type T] [--disk-size GB] [--disk-iops N]
 cbctl capella cluster group remove <cluster> <services> [--allow-service-removal] [--skip-capacity-check] -y
 cbctl capella cluster schedule show|pause|resume|delete <cluster>   # pause [--power-on]
-cbctl capella cluster schedule set <cluster> [--timezone TZ] [--weekdays W] [--weekend W] [--monday ... --sunday W]   # W = on | off | HH:MM-HH:MM
+cbctl capella cluster schedule set <cluster> [--timezone TZ] [--weekdays W] [--weekend W] [--monday ... --sunday W]   # W = on | off | HH:MM-HH:MM (24:00 = midnight); all days on exits 3 (delete the schedule instead)
 cbctl capella cluster backup schedule show|options|delete <cluster>
 cbctl capella cluster backup schedule set <cluster> [--every H] [--retain 30d] [--start HH:MM] [--copy-to REGION]... [--no-copies]
 cbctl capella cluster backup list [<cluster>] | regions <cluster> | restores <cluster>

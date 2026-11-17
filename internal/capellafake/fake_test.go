@@ -545,7 +545,7 @@ func TestOnOffSchedule(t *testing.T) {
 	if _, _, err := c.GetSchedule(ctx, p, cl); !errors.Is(err, capellaapi.ErrNotFound) {
 		t.Fatalf("no schedule: err = %v, want ErrNotFound", err)
 	}
-	sched := capellaapi.Object{"timezone": "UTC", "days": []any{capellaapi.Object{"day": "monday", "state": "on"}}}
+	sched := capellaapi.Object{"timezone": "UTC", "days": []any{capellaapi.Object{"day": "monday", "state": "off"}}}
 	if err := c.CreateSchedule(ctx, p, cl, sched); err != nil {
 		t.Fatal(err)
 	}
@@ -804,33 +804,46 @@ func TestRequestLogRecordsIfMatch(t *testing.T) {
 	}
 }
 
-// TestScheduleBoundariesLikeCapella: the live API refuses a custom day whose from is not before
-// its to (to 0:00 = end of day), including the whole day 0:00-0:00, and a patch version on create.
+// TestScheduleBoundariesLikeCapella mirrors the live probe (nightly run 44141806450): to is
+// literal, hour 24 and minutes other than 0/30 are refused, "from 08:00, no to" runs until
+// midnight, "from 0:00, no to" and a week on every day get 500. A patch version is refused on
+// create.
 func TestScheduleBoundariesLikeCapella(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	_, c, p, cl := fixture(t)
 	hm := func(h, m int) capellaapi.Object { return capellaapi.Object{"hour": h, "minute": m} }
 	week := func(from, to capellaapi.Object) capellaapi.Object {
-		days := []any{capellaapi.Object{"day": "monday", "state": "custom", "from": from, "to": to}}
+		monday := capellaapi.Object{"day": "monday", "state": "custom", "from": from}
+		if to != nil {
+			monday["to"] = to
+		}
+		days := []any{monday}
 		for _, d := range []string{"tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"} {
 			days = append(days, capellaapi.Object{"day": d, "state": "on"})
 		}
 		return capellaapi.Object{"timezone": "UTC", "days": days}
 	}
+	allOn := capellaapi.Object{"timezone": "UTC", "days": []any{capellaapi.Object{"day": "monday", "state": "on"}}}
 	for _, tc := range []struct {
-		name     string
-		from, to capellaapi.Object
-		ok       bool
+		name string
+		body capellaapi.Object
+		want string // "" = accepted, else a part of the error
 	}{
-		{"whole day 0:00-0:00", hm(0, 0), hm(0, 0), false},
-		{"from after to", hm(18, 0), hm(8, 0), false},
-		{"from equals to", hm(8, 0), hm(8, 0), false},
-		{"until end of day", hm(8, 0), hm(0, 0), true},
-		{"working hours", hm(8, 0), hm(18, 30), true},
+		{"whole day 0:00 to 0:00", week(hm(0, 0), hm(0, 0)), "Monday has a 'from' time boundary"},
+		{"08:00 to 0:00 (to is literal)", week(hm(8, 0), hm(0, 0)), "Monday has a 'from' time boundary"},
+		{"from after to", week(hm(18, 0), hm(8, 0)), "Monday has a 'from' time boundary"},
+		{"from equals to", week(hm(8, 0), hm(8, 0)), "Monday has a 'from' time boundary"},
+		{"hour 24", week(hm(8, 0), hm(24, 0)), "invalid hour value of '24'"},
+		{"minute 59", week(hm(8, 0), hm(23, 59)), "invalid minute value of '59'"},
+		{"from 0:00, no to", week(hm(0, 0), nil), "500"},
+		{"on every day", allOn, "500"},
+		{"from 08:00, no to (until midnight)", week(hm(8, 0), nil), ""},
+		{"08:00 to 23:30", week(hm(8, 0), hm(23, 30)), ""},
+		{"working hours", week(hm(8, 0), hm(18, 30)), ""},
 	} {
-		err := c.CreateSchedule(ctx, p, cl, week(tc.from, tc.to))
-		if tc.ok {
+		err := c.CreateSchedule(ctx, p, cl, tc.body)
+		if tc.want == "" {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.name, err)
 			}
@@ -839,8 +852,8 @@ func TestScheduleBoundariesLikeCapella(t *testing.T) {
 			}
 			continue
 		}
-		if !errors.Is(err, capellaapi.ErrValidation) || !strings.Contains(err.Error(), "Monday has a 'from' time boundary") {
-			t.Fatalf("%s: err = %v, want a 422 like Capella's", tc.name, err)
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("%s: err = %v, want %q like Capella's", tc.name, err, tc.want)
 		}
 	}
 

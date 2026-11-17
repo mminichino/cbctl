@@ -22,7 +22,7 @@ func hm(text string) Obj {
 	h, m, _ := strings.Cut(text, ":")
 	hour, _ := strconv.Atoi(h)
 	minute, _ := strconv.Atoi(m)
-	return Obj{"hour": int64(hour % 24), "minute": int64(minute)} // 24:00 (end of day) is sent as 0:00
+	return Obj{"hour": int64(hour), "minute": int64(minute)} // 24:00 never gets here (ExpandDay)
 }
 
 // DayValue is the friendly value of one day of a hibernation mapping: the per-day key, else
@@ -48,9 +48,10 @@ func minutesOf(text string) int {
 	return hour*60 + minute
 }
 
-// ExpandDay is one day in the API form: on, off or custom with from and to. A whole-day window
-// is sent as on: Capella refuses the custom form of it (from 0:00 to 0:00) as "from later than
-// to", and both mean the cluster stays on all day.
+// ExpandDay is one day in the API form: on, off or custom with from and to. Capella reads to
+// literally (0:00 is midnight at the start of the day, hour 24 is refused), so a window to the end
+// of the day (HH:MM-24:00) is sent with no to, which Capella keeps as "until midnight". A
+// whole-day window is sent as on. (Live probe, nightly run 44141806450.)
 func ExpandDay(day, value string) Obj {
 	if value == "on" || value == "off" {
 		return Obj{"day": day, "state": value}
@@ -59,6 +60,9 @@ func ExpandDay(day, value string) Obj {
 		return Obj{"day": day, "state": "on"}
 	}
 	start, end, _ := strings.Cut(value, "-")
+	if minutesOf(end) == 24*60 {
+		return Obj{"day": day, "state": "custom", "from": hm(start)}
+	}
 	return Obj{"day": day, "state": "custom", "from": hm(start), "to": hm(end)}
 }
 

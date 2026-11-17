@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 	_ "time/tzdata" // schedule timezones must resolve on machines without a tz database
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +30,8 @@ func numberOf(v any) int {
 		return int(n)
 	case int:
 		return n
+	case int64: // bodies built by resources.ExpandDay
+		return int(n)
 	}
 	return 0
 }
@@ -51,22 +55,8 @@ func scheduleDayEntries(body capellaapi.Object) map[string]map[string]any {
 	return out
 }
 
-func fmtClock(v any, end bool) string {
-	h, m := clockParts(v)
-	if end && h == 0 && m == 0 {
-		return "24:00"
-	}
-	return fmt.Sprintf("%02d:%02d", h, m)
-}
-
 // dayText renders one API day as "on", "off" or "08:00–18:00".
-func dayText(e map[string]any) string {
-	state, _ := e["state"].(string)
-	if state == "on" || state == "off" {
-		return state
-	}
-	return fmtClock(e["from"], false) + "–" + fmtClock(e["to"], true)
-}
+func dayText(e map[string]any) string { return resources.DayText(e) }
 
 // dayValues maps each day to its friendly text; days the body omits count as "on".
 func dayValues(body capellaapi.Object) map[string]string {
@@ -242,12 +232,8 @@ func parseWindow(day, text string) (map[string]any, error) {
 	if n[0] > 23 || end > 24*60 || end <= start {
 		return bad("the window must start before it ends, within one day")
 	}
-	if start == 0 && end == 24*60 {
-		return map[string]any{"day": day, "state": "on"}, nil // Capella refuses custom 0:00-0:00
-	}
-	return map[string]any{"day": day, "state": "custom",
-		"from": map[string]any{"hour": n[0], "minute": n[1]},
-		"to":   map[string]any{"hour": n[2] % 24, "minute": n[3]}}, nil
+	// One encoding for the CLI and apply (end of day = no "to", whole day = on).
+	return resources.ExpandDay(day, fmt.Sprintf("%02d:%02d-%02d:%02d", n[0], n[1], n[2], n[3])), nil
 }
 
 // ---- commands ---------------------------------------------------------------------------------
@@ -431,6 +417,10 @@ func (rt *runtime) runScheduleSet(t *clusterTarget, tz, weekdays, weekend string
 	}
 	body := capellaapi.Object{"timezone": zone, "days": entries}
 	res := scheduleResult{Cluster: t.Cluster.Name, Summary: weekSummary(body)}
+	if !slices.ContainsFunc(entries, func(e any) bool { return e.(map[string]any)["state"] != "on" }) {
+		return usageError(fmt.Sprintf("set at least one day to off or a window, or run 'cbctl capella cluster schedule delete %s' to keep it always on", t.Cluster.Name),
+			"the schedule never turns %s off; Capella refuses a week that is on every day", t.Cluster.Name)
+	}
 
 	if isNew {
 		if err := rt.Client.CreateSchedule(rt.Ctx, t.Project.ID, t.Cluster.ID, body); err != nil {

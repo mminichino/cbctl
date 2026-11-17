@@ -11,14 +11,17 @@ import (
 	"github.com/mminichino/cbctl/internal/integration"
 )
 
-// lifecycleExtra is a whole environment. The schedule is always on (00:00-24:00, weekend on), so
-// it never turns the cluster off while the suite runs.
-const lifecycleExtra = `
+// lifecycleExtra is a whole environment. The schedule is on every day but QuietDay, which ends at
+// 23:30 (Capella refuses a week that is on every day), so it never turns the cluster off while the
+// suite runs. The 00:00-24:00 weekdays exercise the whole-day window.
+func lifecycleExtra() string {
+	return `
     deletionProtection: true
     hibernation:
       timezone: US/Pacific
       weekdays: "00:00-24:00"
       weekend: "on"
+      ` + integration.QuietDay() + `: "00:00-23:30"
     allowedCidrs:
       - cidr: 203.0.113.10/32
         comment: cbctl nightly
@@ -38,6 +41,7 @@ const lifecycleExtra = `
                 - name: orders
 credentialsOutput: ./.cbctl/credentials
 `
+}
 
 // lifecycleEdits change a bucket, a CIDR comment and the schedule's time zone.
 var lifecycleEdits = [][2]string{
@@ -59,7 +63,7 @@ func TestLifecycle_CAP032_AC1(t *testing.T) {
 	dir := t.TempDir()
 	cfg := filepath.Join(dir, "capella.yaml")
 	cluster := "life1-" + tg.Run
-	body := integration.SingleNodeConfig(project, cluster, integration.UniqueCIDR(tg.Run, 'l'), lifecycleExtra)
+	body := integration.SingleNodeConfig(project, cluster, integration.UniqueCIDR(tg.Run, 'l'), lifecycleExtra())
 	if err := os.WriteFile(cfg, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}

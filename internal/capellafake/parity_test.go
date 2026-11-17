@@ -96,7 +96,7 @@ var (
 		"days": []any{
 			map[string]any{"day": "monday", "state": "on"}, map[string]any{"day": "tuesday", "state": "on"},
 			map[string]any{"day": "wednesday", "state": "on"}, map[string]any{"day": "thursday", "state": "on"},
-			map[string]any{"day": "friday", "state": "on"}, map[string]any{"day": "saturday", "state": "on"},
+			map[string]any{"day": "friday", "state": "on"}, map[string]any{"day": "saturday", "state": "off"},
 			map[string]any{"day": "sunday", "state": "on"},
 		},
 	}

@@ -85,9 +85,10 @@ func (c *rctx) createSchedule() {
 	c.noContent()
 }
 
-// validSchedule refuses what the live API refuses: a custom day whose from is not before its to,
-// where a to of 0:00 means the end of the day. From 0:00 to 0:00 (the whole day) is refused too,
-// as Capella does (422 "Monday has a 'from' time boundary that is later than the 'to'").
+// validSchedule refuses what the live API refuses (probe, nightly run 44141806450): an hour
+// outside 0-23 or a minute other than 0 or 30; a custom day whose from is not before its to,
+// where to is literal (0:00 is the start of the day, so 08:00 to 0:00 is refused); a custom day
+// from 0:00 with no to (Capella answers 500). A day with no to runs until midnight.
 func (c *rctx) validSchedule(body Obj) bool {
 	days, _ := body["days"].([]any)
 	for _, d := range days {
@@ -95,21 +96,47 @@ func (c *rctx) validSchedule(body Obj) bool {
 		if day["state"] != "custom" {
 			continue
 		}
-		from, to := sub(day, "from"), sub(day, "to")
-		start := intOf(from["hour"])*60 + intOf(from["minute"])
-		end := intOf(to["hour"])*60 + intOf(to["minute"])
-		if end == 0 && start != 0 {
-			end = 24 * 60
+		name, _ := day["day"].(string)
+		if name != "" {
+			name = strings.ToUpper(name[:1]) + name[1:]
 		}
-		if start >= end {
-			name, _ := day["day"].(string)
-			if name != "" {
-				name = strings.ToUpper(name[:1]) + name[1:]
+		from, to := sub(day, "from"), sub(day, "to")
+		for _, b := range []Obj{from, to} {
+			if b == nil {
+				continue
 			}
+			if h := intOf(b["hour"]); h < 0 || h > 23 {
+				c.err(http.StatusUnprocessableEntity, fmt.Sprintf("%s in the schedule has an 'on' time boundary with an invalid hour value of '%d'. The valid hour values are from 0 to 23 inclusive.", name, h))
+				return false
+			}
+			if m := intOf(b["minute"]); m != 0 && m != 30 {
+				c.err(http.StatusUnprocessableEntity, fmt.Sprintf("%s in the schedule has an 'on' time boundary with an invalid minute value of '%d'. The valid minute values are 0 and 30.", name, m))
+				return false
+			}
+		}
+		start := intOf(from["hour"])*60 + intOf(from["minute"])
+		if to == nil {
+			if start == 0 {
+				c.err(http.StatusInternalServerError, "An internal server error occurred.")
+				return false
+			}
+			continue
+		}
+		if start >= intOf(to["hour"])*60+intOf(to["minute"]) {
 			c.err(http.StatusUnprocessableEntity,
 				fmt.Sprintf("%s has a 'from' time boundary that is later than the 'to' time boundary.", name))
 			return false
 		}
+	}
+	allOn := len(days) > 0
+	for _, d := range days {
+		if day, _ := d.(map[string]any); day["state"] != "on" {
+			allOn = false
+		}
+	}
+	if allOn { // a schedule that never turns the cluster off: Capella answers 500
+		c.err(http.StatusInternalServerError, "An internal server error occurred.")
+		return false
 	}
 	return true
 }

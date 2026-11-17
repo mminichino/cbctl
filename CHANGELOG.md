@@ -141,9 +141,12 @@ capellactl is no longer supported. See [Migration](#migration).
 - No progress dots with `TERM=dumb` (as with `CI` set or off a terminal).
 - Every error has a next step, including wrapped Server command errors; config actions name a
   command instead of a field to type into `capella.yaml`.
-- An on/off schedule window of `00:00-24:00` is sent as `on`. Capella refuses the custom form of
-  it (from 0:00 to 0:00) with 422 "from later than to". capellactl had the same bug. An existing
-  custom whole day reads as `on`, so it shows no diff.
+- On/off schedule windows are encoded as live Capella accepts them (probe: nightly run
+  44141806450). Capella reads `to` literally (0:00 is the start of the day) and refuses hour 24, so
+  `HH:MM-24:00` is sent with no `to`, which Capella keeps as "until midnight". `00:00-24:00` is
+  sent as `on`. capellactl sent `to: 0:00` for both, and Capella refused that with 422. A week that
+  is on every day is refused before any call: `schedule set` exits 3 and `validate` reports it,
+  because Capella answers 500. Delete the schedule to keep a cluster always on.
 - `cluster clone` (direct and managed) and `apply` create clusters with the release line
   (`8.0`) of a recorded version. Capella reports the patch it runs (`8.0.3`) but refuses a patch
   version on create. A recorded `8.0.3` still matches a cluster now on `8.0.4`, so `plan` is
