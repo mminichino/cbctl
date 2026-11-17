@@ -8,3 +8,6 @@
 *.ico binary
 *.zip binary
 *.gz binary
+
+# Must stay CRLF: the yamlio golden test checks line numbers and conversion of CRLF input.
+internal/yamlio/testdata/golden/crlf.yaml -text
