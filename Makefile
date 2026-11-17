@@ -2,7 +2,7 @@
 
 .PHONY: build test test-unit test-race test-integration test-integration-fake test-capella-live
 .PHONY: janitor vet fmt-check tidy-check tidy cover-engine docs docs-check index index-check
-.PHONY: coverage coverage-check ac-coverage links-check lint check release-snapshot
+.PHONY: coverage coverage-check ac-coverage port-table port-footer port-gaps links-check lint check release-snapshot
 
 build:
 	go build -o bin/cbctl ./cmd/cbctl
@@ -89,6 +89,21 @@ coverage-check:
 ac-coverage:
 	go run ./cmd/cbdev docs ac-coverage --docs docs/backlog/release-1.5.0
 
+# capellactl test parity. PORT_MIN ratchets up as gaps close; the merge-to-main bar is 100.
+PORT_MIN ?= 51.5
+PORT_ARGS = --port-table internal/cli/testdata/port-map.tsv \
+	--source-list internal/cli/testdata/capellactl-tests.txt \
+	--footer internal/cli/testdata/scenario-port.md
+
+port-table:
+	go run ./cmd/cbdev docs ac-coverage $(PORT_ARGS) --min-covered $(PORT_MIN)
+
+port-footer:
+	go run ./cmd/cbdev docs ac-coverage $(PORT_ARGS) --write-footer
+
+port-gaps:
+	go run ./cmd/cbdev docs ac-coverage $(PORT_ARGS) --gaps
+
 links-check:
 	go run ./cmd/cbdev docs links --check
 
@@ -102,7 +117,7 @@ lint:
 	fi
 	golangci-lint run ./...
 
-check: vet fmt-check lint test-unit test-integration-fake cover-engine docs-check ac-coverage tidy-check
+check: vet fmt-check lint test-unit test-integration-fake cover-engine docs-check ac-coverage port-table tidy-check
 
 release-snapshot:
 	goreleaser release --snapshot --clean

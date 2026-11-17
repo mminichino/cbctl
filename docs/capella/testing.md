@@ -130,3 +130,13 @@ API coverage reports, the backlog index), that links and anchors resolve, and th
 document is mapped (`docs/capella/doc-map.yaml`). `go test ./internal/docs` checks that every
 `cbctl` command shown in the README, the agent rules, these guides and the `guide` topics names a
 real command with real flags.
+
+## capellactl test parity
+
+Every capellactl test (878 at `6389d5a`) has a row in `internal/cli/testdata/port-map.tsv`: the Go
+test that covers it, or `partial`, `missing` or `n/a` with the evidence or the reason. `make
+port-table` checks the map against the generated test list (`capellactl-tests.txt`) and the Go tests
+in the tree. It fails when a capellactl test has no row, a cited Go test does not exist, an n/a row
+has no reason, the counts in `scenario-port.md` are stale, or the covered + n/a share drops below
+`PORT_MIN` in the `Makefile`. When you cover a gap, change its row to `covered` with the Go test
+name, run `make port-footer` and raise `PORT_MIN`. `make port-gaps` lists what is still open.

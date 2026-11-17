@@ -13,6 +13,7 @@ import (
 
 func cmdDocsACCoverage(args []string, stdout, stderr io.Writer) int {
 	opts := accoverage.Options{}
+	var pc portCheck
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		switch {
@@ -30,24 +31,56 @@ func cmdDocsACCoverage(args []string, stdout, stderr io.Writer) int {
 			opts.Strict = true
 		case a == "--all":
 			opts.All = true
-		case a == "--port-table":
-			// optional: requires capellactl checkout; skipped when absent
-			fmt.Fprintln(stderr, "cbdev docs ac-coverage: --port-table not implemented yet (skipped)")
-			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-				i++
+		case a == "--port-table" && i+1 < len(args):
+			i++
+			pc.mapFile = args[i]
+		case a == "--source-list" && i+1 < len(args):
+			i++
+			pc.sourceList = args[i]
+		case a == "--min-covered" && i+1 < len(args):
+			i++
+			v, err := parsePercent(args[i])
+			if err != nil {
+				fmt.Fprintf(stderr, "cbdev docs ac-coverage: %v\n", err)
+				return 2
 			}
+			pc.minCovered = v
+		case a == "--footer" && i+1 < len(args):
+			i++
+			pc.footer = args[i]
+		case a == "--write-footer":
+			pc.write = true
+		case a == "--gaps":
+			pc.gaps = true
 		case a == "-h" || a == "--help":
-			fmt.Fprint(stdout, "usage: cbdev docs ac-coverage [--docs DIR]… [--tests DIR] [--strict] [--all]\n")
+			fmt.Fprint(stdout, "usage: cbdev docs ac-coverage [--docs DIR]… [--tests DIR] [--strict] [--all]\n"+
+				"       [--port-table MAP --source-list FILE [--min-covered PCT] [--footer DOC [--write-footer]] [--gaps]]\n")
 			return 0
 		default:
 			fmt.Fprintf(stderr, "cbdev docs ac-coverage: unknown argument %q\n", a)
 			return 2
 		}
 	}
+	if (pc.mapFile == "") != (pc.sourceList == "") || (pc.footer != "" || pc.write || pc.gaps) && pc.mapFile == "" {
+		fmt.Fprintln(stderr, "cbdev docs ac-coverage: --port-table and --source-list go together (and --footer, --write-footer and --gaps need them)")
+		return 2
+	}
+	if pc.write && pc.footer == "" {
+		fmt.Fprintln(stderr, "cbdev docs ac-coverage: --write-footer needs --footer DOC")
+		return 2
+	}
 	root, err := findRepoRoot()
 	if err != nil {
 		fmt.Fprintf(stderr, "cbdev docs ac-coverage: %v\n", err)
 		return 1
+	}
+	if pc.mapFile != "" && len(opts.Docs) == 0 {
+		// Port table only.
+		return pc.run(root, stdout, stderr)
+	}
+	portCode := 0
+	if pc.mapFile != "" {
+		portCode = pc.run(root, stdout, stderr)
 	}
 	// Make relative docs paths absolute from repo root when needed.
 	for i, d := range opts.Docs {
@@ -69,7 +102,7 @@ func cmdDocsACCoverage(args []string, stdout, stderr io.Writer) int {
 	if !res.OK {
 		return 1
 	}
-	return 0
+	return portCode
 }
 
 func cmdDocsReference(args []string, stdout, stderr io.Writer) int {
