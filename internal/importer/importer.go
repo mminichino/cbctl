@@ -14,7 +14,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
-	"go.yaml.in/yaml/v3"
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // Notice is a warning with its next step.
@@ -401,7 +401,7 @@ func BuildProject(ctx context.Context, client *capellaapi.Client, project capell
 				uname := str(u, "name")
 				if IsAdvanced(u) {
 					key := markerSeq.next("block")
-					block, _ := yaml.Marshal([]any{Obj{"name": uname, "userRoles": u["userRoles"]}})
+					block, _ := yamlio.Marshal([]any{Obj{"name": uname, "userRoles": u["userRoles"]}})
 					res.Comments[key] = fmt.Sprintf("%s is an advanced credential (userRoles). cbctl manages basic\ncredentials only, so it is listed here for reference.\n%s",
 						uname, strings.TrimRight(string(block), "\n"))
 					creds = append(creds, Obj{key: ""})
@@ -427,7 +427,7 @@ func BuildProject(ctx context.Context, client *capellaapi.Client, project capell
 						}
 					}
 					key := markerSeq.next("block")
-					block, _ := yaml.Marshal([]any{Obj{"name": uname, "access": []any{}}})
+					block, _ := yamlio.Marshal([]any{Obj{"name": uname, "access": []any{}}})
 					res.Comments[key] = fmt.Sprintf("%s has no access in Capella, so it is listed here for reference. To give it access:\n  cbctl capella credential create %s %s --privileges read --bucket BUCKET --password-env VAR\n%s",
 						uname, name, uname, strings.TrimRight(string(block), "\n"))
 					creds = append(creds, Obj{key: ""})
