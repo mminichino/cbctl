@@ -8,7 +8,7 @@ import (
 	"sort"
 	"sync"
 
-	"go.yaml.in/yaml/v3"
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // LegacyEnv maps each capellactl environment variable to the cbctl variable that replaces it.
@@ -165,9 +165,9 @@ func LoadLegacyProfiles(dir string) (map[string]Profile, []string, error) {
 		return nil, nil, &LegacyProfileError{Path: path, Err: err}
 	}
 	var doc struct {
-		Profiles map[string]map[string]any `yaml:"profiles"`
+		Profiles map[string]map[string]any `json:"profiles"`
 	}
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
+	if err := yamlio.Unmarshal(raw, &doc, yamlio.WithSource(filepath.Base(path)), yamlio.WithUseNumber()); err != nil {
 		return nil, nil, &LegacyProfileError{Path: path, Err: err}
 	}
 	out := map[string]Profile{}

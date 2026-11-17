@@ -7,20 +7,20 @@ import (
 	"runtime"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // Profile holds non-secret Capella settings for a named profile.
 type Profile struct {
-	OrganizationID string `yaml:"organizationId,omitempty" json:"organizationId,omitempty"`
+	OrganizationID string `json:"organizationId,omitempty"`
 	// OrganizationName is informational (shown by configure list); the ID is what requests use.
-	OrganizationName string `yaml:"organizationName,omitempty" json:"organizationName,omitempty"`
-	APIBaseURL       string `yaml:"apiBaseUrl,omitempty" json:"apiBaseUrl,omitempty"`
-	ConfigFile       string `yaml:"configFile,omitempty" json:"configFile,omitempty"`
+	OrganizationName string `json:"organizationName,omitempty"`
+	APIBaseURL       string `json:"apiBaseUrl,omitempty"`
+	ConfigFile       string `json:"configFile,omitempty"`
 }
 
 type profilesFile struct {
-	Profiles map[string]Profile `yaml:"profiles"`
+	Profiles map[string]Profile `json:"profiles"`
 }
 
 // ProfileStore reads and writes profiles.yaml under HomeDir.
@@ -54,25 +54,41 @@ func HomeDir(env func(string) string) string {
 
 // Load returns profiles from disk. A missing file yields an empty map.
 func (s ProfileStore) Load() (map[string]Profile, error) {
+	profiles, _, err := s.LoadWithWarnings()
+	return profiles, err
+}
+
+// LoadWithWarnings is Load that also reports keys this version does not know. They are not an
+// error: a file written by a newer cbctl must still load in an older one, so decoding is
+// lenient and the extras are only named in one warning.
+func (s ProfileStore) LoadWithWarnings() (map[string]Profile, []string, error) {
 	path := s.Path
 	if path == "" {
-		return nil, fmt.Errorf("profile store path is empty")
+		return nil, nil, fmt.Errorf("profile store path is empty")
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return map[string]Profile{}, nil
+			return map[string]Profile{}, nil, nil
 		}
-		return nil, fmt.Errorf("read profiles %s: %w", path, err)
+		return nil, nil, fmt.Errorf("read profiles %s: %w", path, err)
 	}
 	var file profilesFile
-	if err := yaml.Unmarshal(raw, &file); err != nil {
-		return nil, fmt.Errorf("parse profiles %s: %w", path, err)
+	if err := yamlio.Unmarshal(raw, &file, yamlio.WithSource(filepath.Base(path))); err != nil {
+		return nil, nil, fmt.Errorf("parse profiles %s: %w", path, err)
+	}
+	var warnings []string
+	if extra, err := yamlio.UnknownFields(raw, &file, yamlio.WithSource(filepath.Base(path))); err == nil && len(extra) > 0 {
+		keys := make([]string, len(extra))
+		for i, e := range extra {
+			keys[i] = yamlio.DottedPath(e.Pointer)
+		}
+		warnings = append(warnings, fmt.Sprintf("%s: unknown key(s) ignored: %s", path, strings.Join(keys, ", ")))
 	}
 	if file.Profiles == nil {
-		return map[string]Profile{}, nil
+		return map[string]Profile{}, warnings, nil
 	}
-	return file.Profiles, nil
+	return file.Profiles, warnings, nil
 }
 
 // Save writes profiles atomically with directory mode 0700 and file mode 0600.
@@ -89,7 +105,7 @@ func (s ProfileStore) Save(profiles map[string]Profile) error {
 	if profiles == nil {
 		profiles = map[string]Profile{}
 	}
-	raw, err := yaml.Marshal(profilesFile{Profiles: profiles})
+	raw, err := yamlio.Marshal(profilesFile{Profiles: profiles})
 	if err != nil {
 		return fmt.Errorf("marshal profiles: %w", err)
 	}

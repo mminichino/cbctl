@@ -8,9 +8,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"go.yaml.in/yaml/v3"
-
 	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // MigrateOptions says what MigrateLegacy copies from capellactl into cbctl.
@@ -214,16 +213,19 @@ func deleteLegacyProfiles(dir string, names []string) error {
 	if err != nil {
 		return err
 	}
-	var doc map[string]any
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
+	// The file is edited as a node tree, not decoded and written back, so that comments, key
+	// order and keys cbctl does not know survive in capellactl's file.
+	doc, err := yamlio.ParseNode(raw, yamlio.WithSource(filepath.Base(path)))
+	if err != nil {
 		return err
 	}
-	profiles, _ := doc["profiles"].(map[string]any)
-	for _, n := range names {
-		delete(profiles, n)
+	if doc == nil {
+		return nil
 	}
-	doc["profiles"] = profiles
-	out, err := yaml.Marshal(doc)
+	if yamlio.DeleteMappingKeys(doc, "profiles", names) == 0 {
+		return nil
+	}
+	out, err := yamlio.EncodeNode(doc)
 	if err != nil {
 		return err
 	}

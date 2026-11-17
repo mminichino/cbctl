@@ -651,3 +651,31 @@ func TestSanitizeAPIKey_Variants(t *testing.T) {
 		}
 	}
 }
+
+func TestMigrateLegacy_RemoveLegacyKeepsComments(t *testing.T) {
+	const withComments = "# capellactl profiles - hand edited\nextra: kept # keep me\nprofiles:\n  # the dev org\n  dev:\n    organizationId: org-dev\n  # the ops org\n  ops:\n    organizationId: org-ops # ops id\n"
+	from, to := legacyHomeWith(t, withComments), t.TempDir()
+	lk := settings.NewMemKeyring()
+	_ = lk.Set("dev", "legacy-key-dev1")
+	rep, err := settings.MigrateLegacy(context.Background(), settings.MigrateOptions{FromDir: from, ToDir: to,
+		Profiles: []string{"dev"}, Keyring: settings.NewMemKeyring(), LegacyKeyring: lk, RemoveLegacy: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(rep.Removed, ",") != "dev" {
+		t.Fatalf("report = %+v", rep)
+	}
+	raw, err := os.ReadFile(settings.ProfilesPath(from))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+	for _, want := range []string{"# capellactl profiles - hand edited", "extra: kept # keep me", "# the ops org", "organizationId: org-ops # ops id"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("comment %q lost:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "org-dev") {
+		t.Errorf("dev profile not removed:\n%s", got)
+	}
+}
