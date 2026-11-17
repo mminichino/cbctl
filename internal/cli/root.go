@@ -20,6 +20,9 @@ import (
 // versionString is the --version text shared by every root command built in this process.
 var versionString string
 
+// LicenceLine is the second line of --version: cbctl's licence and copyright (see LICENSE and NOTICE).
+const LicenceLine = "Licensed under Apache-2.0 · Copyright Couchbase, Inc. and contributors"
+
 // rootCmd is the process-wide root command used by Execute and by tests that predate NewRootCmd.
 var rootCmd = buildRootCmd()
 
@@ -54,6 +57,8 @@ func buildRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	// The second line carries the licence, as capellactl's --version did; the first is unchanged.
+	root.SetVersionTemplate("{{.Name}} version {{.Version}}\n" + LicenceLine + "\n")
 	root.AddCommand(newClusterCmd())
 	root.AddCommand(newBucketCmd())
 	root.AddCommand(newScopeCmd())

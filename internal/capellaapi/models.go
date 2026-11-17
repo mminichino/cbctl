@@ -233,11 +233,13 @@ type Credential struct {
 	Audit  *Audit        `json:"audit,omitempty"`
 }
 
-// CreateCredentialRequest is the POST /users body.
+// CreateCredentialRequest is the POST /users body. CredentialType is "basic" when empty
+// (CreateCredential fills it in, as capellactl sent it).
 type CreateCredentialRequest struct {
-	Name     string        `json:"name"`
-	Password string        `json:"password"`
-	Access   []AccessEntry `json:"access"`
+	Name           string        `json:"name"`
+	CredentialType string        `json:"credentialType,omitempty"`
+	Password       string        `json:"password"`
+	Access         []AccessEntry `json:"access"`
 }
 
 // CreateCredentialResponse is the response to a credential create. Password is only set when

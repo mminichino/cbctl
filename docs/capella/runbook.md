@@ -683,7 +683,7 @@ cbctl capella drift --detailed-exitcode                  # exit 2 when Capella w
 cbctl capella guide ci                                    # GitHub Actions and GitLab CI examples
 ```
 
-Without a terminal, every command that changes something refuses (exit 1) unless `--auto-approve`/`-y` is given; there is no environment variable for approval. A question that needs an answer exits 3 and names the flag to pass.
+Without a terminal, every command that changes something refuses (exit 4) unless `--auto-approve`/`-y` is given; there is no environment variable for approval. A question that needs an answer exits 3 and names the flag to pass.
 
 ## Help
 

@@ -642,6 +642,13 @@ func (c *rctx) errCode(status, code int, msg string) {
 
 func (c *rctx) notFound(what string) { c.err(http.StatusNotFound, what+" not found") }
 
+// codeAlreadyExists is the Capella error code for a duplicate child resource (bucket, scope,
+// collection, credential, allowed CIDR).
+const codeAlreadyExists = 1010
+
+// exists answers 409 for a duplicate child resource with Capella's "already exists" code.
+func (c *rctx) exists(msg string) { c.errCode(http.StatusConflict, codeAlreadyExists, msg) }
+
 // json parses the request body once. An empty body is an empty object; a malformed one is
 // answered with 400 and false is returned.
 func (c *rctx) json() (Obj, bool) {
