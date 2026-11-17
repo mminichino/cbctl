@@ -2,6 +2,7 @@ package capellafile
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -106,6 +107,9 @@ func ToNode(v any, key string) *yaml.Node {
 	switch t := v.(type) {
 	case *yaml.Node:
 		return t
+	case json.RawMessage:
+		// JSON from the codec: decode it, so that the canonical key order below applies.
+		return ToNode(jsonToObj(t), key)
 	case Obj:
 		n := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 		scalarsOnly := true

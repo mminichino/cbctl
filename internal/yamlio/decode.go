@@ -184,7 +184,7 @@ func parseOne(y []byte, o *options) (*yaml.Node, error) {
 		}
 		if first != nil {
 			return nil, &SyntaxError{Source: o.source, Line: doc.Line, Column: doc.Column,
-				Msg: "the input holds several YAML documents; expected one (use a Decoder for streams)"}
+				Msg: "the input holds several YAML documents; expected one"}
 		}
 		first = &doc
 	}

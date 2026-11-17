@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v3"
+
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // Editor makes comment-preserving edits to a config file.
@@ -84,10 +86,14 @@ func OpenEditor(path string) (*Editor, error) {
 		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 	e := &Editor{Path: path, Original: string(b)}
-	var doc yaml.Node
-	if err := yaml.Unmarshal([]byte(strings.TrimPrefix(stripTemplates(e.Original), "\ufeff")), &doc); err != nil {
+	parsed, err := yamlio.ParseNode([]byte(stripTemplates(e.Original)), yamlio.WithSource(filepath.Base(path)))
+	if err != nil {
 		issue := yamlIssue(err, filepath.Base(path))
 		return nil, NewConfigError(filepath.Base(path), []Issue{issue})
+	}
+	var doc yaml.Node
+	if parsed != nil {
+		doc = *parsed
 	}
 	if hasAnchorsOrAliases(&doc) {
 		return nil, &AnchorError{File: filepath.Base(path)}
@@ -665,10 +671,10 @@ func (e *Editor) RemoveBy(node *yaml.Node, listKey, field, value string) bool {
 
 // Decode returns node as plain JSON-compatible data (integral numbers as int64).
 func (e *Editor) Decode(node *yaml.Node) (Obj, error) {
-	var raw map[string]any
-	if err := node.Decode(&raw); err != nil {
+	js, err := yamlio.NodeToJSON(node)
+	if err != nil {
 		return nil, err
 	}
-	out, _ := NormalizeNumbers(raw).(map[string]any)
+	out, _ := jsonToObj(js).(Obj)
 	return out, nil
 }
