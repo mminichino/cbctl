@@ -169,6 +169,8 @@ capellactl is no longer supported. See [Migration](#migration).
   "already allowed", as they did with 409. The fake now answers a duplicate CIDR with that 422.
   Only allowed CIDRs are replaced. Every other kind is updated in place, so no other kind had
   this problem.
+- Managed `cluster delete` of a name missing from `capella.yaml` falls through to Capella, so a
+  failed clone that rolled back the file can still be torn down.
 
 ### Deprecated
 
