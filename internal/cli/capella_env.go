@@ -12,6 +12,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/redact"
 	"github.com/mminichino/cbctl/internal/resources"
@@ -104,7 +105,7 @@ func loadConfig(cmd *cobra.Command, mode WarningMode) (*capellafile.Config, cape
 		if len(notices) == 1 {
 			word = "warning"
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "[warning] - %d %s; run 'cbctl capella validate' to see them\n", len(notices), word)
+		writeLabeled(cmd.ErrOrStderr(), output.KindWarning, "%d %s; run 'cbctl capella validate' to see them", len(notices), word)
 	}
 	return cfg, disc, nil
 }
@@ -128,10 +129,7 @@ func displayPathWith(p string, cmd *cobra.Command) string {
 
 // printNotice writes "[warning] - what" and its "  → action" line.
 func printNotice(w io.Writer, what, action string) {
-	fmt.Fprintf(w, "[warning] - %s\n", redact.String(what))
-	if action != "" {
-		fmt.Fprintf(w, "  → %s\n", redact.String(action))
-	}
+	writeNotice(w, what, action)
 }
 
 // newEnvRuntime builds the runtime for a declarative command: it finds and loads capella.yaml
@@ -151,48 +149,6 @@ func newEnvRuntime(cmd *cobra.Command, af *apiFlags, mode WarningMode) (*envRunt
 	return e, nil
 }
 
-// progressWriter prints engine progress on stderr. State lines end with a newline; the dots of a
-// long wait are only drawn on a terminal.
-type progressWriter struct {
-	w     io.Writer
-	quiet bool
-	tty   bool
-	open  bool
-}
-
-func (p *progressWriter) line(s string) {
-	if p.quiet {
-		return
-	}
-	p.close()
-	fmt.Fprintln(p.w, redact.String(s))
-}
-
-func (p *progressWriter) inline(text string, start bool) {
-	if p.quiet {
-		return
-	}
-	if start {
-		p.close()
-		fmt.Fprint(p.w, redact.String(text))
-		p.open = true
-		if !p.tty {
-			p.close()
-		}
-		return
-	}
-	if p.tty && p.open {
-		fmt.Fprint(p.w, text)
-	}
-}
-
-func (p *progressWriter) close() {
-	if p.open {
-		fmt.Fprintln(p.w)
-		p.open = false
-	}
-}
-
 // newRunContext connects the runtime's client, clock and output to the engine.
 func newRunContext(rt *runtime, cfg *capellafile.Config) *plan.RunContext {
 	rc := plan.NewRunContext(rt.Client, cfg)
@@ -200,9 +156,9 @@ func newRunContext(rt *runtime, cfg *capellafile.Config) *plan.RunContext {
 	rc.Timeout = rt.Timeout
 	rc.NoWait = rt.NoWait
 	rc.Env = envFrom(rt.cmd)
-	pw := &progressWriter{w: rt.errOut(), quiet: rt.Quiet, tty: ttyCheck(rt.errOut()) && progressAllowed(rc.Env)}
-	rc.Progress = pw.line
-	rc.ProgressInline = pw.inline
+	pw := output.NewProgress(rt.errOut(), rt.Quiet, ttyCheck(rt.errOut()) && output.ProgressAllowed(rc.Env))
+	rc.Progress = pw.Line
+	rc.ProgressInline = pw.Inline
 	rc.Warn = func(what, action string) { printNotice(rt.errOut(), what, action) }
 	rc.Prompt = &typedPrompter{rt: rt}
 	return rc

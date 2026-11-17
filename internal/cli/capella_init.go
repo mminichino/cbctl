@@ -17,6 +17,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/importer"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
@@ -444,7 +445,7 @@ func (w *initIO) ask(prompt, def string, choices []string) (string, error) {
 			v = def
 		}
 		if len(choices) > 0 && !slices.Contains(choices, v) {
-			fmt.Fprintf(w.out, "[error] - %s is not one of %s\n", v, strings.Join(choices, ", "))
+			writeLabeled(w.out, output.KindError, "%s is not one of %s", v, strings.Join(choices, ", "))
 			continue
 		}
 		return v, nil
@@ -467,7 +468,7 @@ func (w *initIO) yesNo(prompt string, def bool) (bool, error) {
 		case "n", "no":
 			return false, nil
 		}
-		fmt.Fprintln(w.out, "[error] - answer y or n")
+		writeLabeled(w.out, output.KindError, "answer y or n")
 	}
 }
 
@@ -782,7 +783,7 @@ func askIndex(w *initIO, prompt string, n, def int) (int, error) {
 		if convErr == nil && i >= 1 && i <= n {
 			return i, nil
 		}
-		fmt.Fprintf(w.out, "[error] - enter a number from 1 to %d\n", n)
+		writeLabeled(w.out, output.KindError, "enter a number from 1 to %d", n)
 	}
 }
 
@@ -912,7 +913,8 @@ func initInterview(w *initIO, a *initAnswers, freeName func(string) []string, re
 			if len(problems) == 0 {
 				return nil
 			}
-			fmt.Fprintf(w.out, "[error] - %s\n  → Please answer again.\n", strings.Join(problems, "\n"))
+			writeLabeled(w.out, output.KindError, "%s", strings.Join(problems, "\n"))
+			writeAction(w.out, "Please answer again.")
 			def = v
 		}
 	}

@@ -38,9 +38,9 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 	root.SetErr(d.Stderr)
 	ctx = contextWithDeps(ctx, d)
 
-	prevOut, prevErr := logging.Outputs()
-	logging.SetOutputs(d.Stdout, d.Stderr)
-	defer logging.SetOutputs(prevOut, prevErr)
+	// The invocation's Printer carries the writers, the color decision and the glyph policy for
+	// the logging shim, printError, printNotice and the wizard.
+	defer logging.SetPrinter(logging.SetPrinter(newPrinter(d)))
 
 	prevErrWriter := errWriter
 	SetErrorWriter(d.Stderr)
@@ -75,6 +75,7 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 	}()
 
 	err := interruptedError(ctx, classifyCobraError(root.ExecuteContext(ctx)))
+	applyParsedColor(root, d)
 	return int(HandleError(err))
 }
 
@@ -104,6 +105,9 @@ func normalizeDeps(d Deps) Deps {
 	}
 	if d.IsTTY == nil {
 		d.IsTTY = def.IsTTY
+	}
+	if d.IsTerminal == nil {
+		d.IsTerminal = def.IsTerminal
 	}
 	if d.Cwd == nil {
 		d.Cwd = def.Cwd

@@ -8,6 +8,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -26,6 +27,10 @@ type Deps struct {
 	Stdout, Stderr io.Writer
 	// IsTTY reports whether r is an interactive terminal (default: term.IsTerminal on *os.File).
 	IsTTY func(io.Reader) bool
+	// IsTerminal reports whether an output stream (or any reader) is an interactive terminal. It
+	// feeds the per-stream color decision, so a test can make stdout a terminal and stderr a
+	// pipe. Default: a terminal check on *os.File, so a buffer is never a terminal.
+	IsTerminal func(any) bool
 	// Cwd returns the working directory (default os.Getwd).
 	Cwd func() (string, error)
 	// Home is the settings home directory; empty means settings.HomeDir(Env).
@@ -79,10 +84,11 @@ func DefaultDeps() Deps {
 			f, ok := r.(*os.File)
 			return ok && term.IsTerminal(int(f.Fd()))
 		},
-		Cwd:     os.Getwd,
-		Home:    settings.HomeDir(env),
-		Keyring: settings.OSKeyring{},
-		Clock:   engine.RealClock{},
+		IsTerminal: output.IsTerminal,
+		Cwd:        os.Getwd,
+		Home:       settings.HomeDir(env),
+		Keyring:    settings.OSKeyring{},
+		Clock:      engine.RealClock{},
 
 		envShimmed: true,
 	}
