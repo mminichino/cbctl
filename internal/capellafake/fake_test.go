@@ -801,3 +801,54 @@ func TestRequestLogRecordsIfMatch(t *testing.T) {
 		t.Fatalf("PUT not logged with If-Match/status/body: %+v", f.RequestLog())
 	}
 }
+
+// TestScheduleBoundariesLikeCapella: the live API refuses a custom day whose from is not before
+// its to (to 0:00 = end of day), including the whole day 0:00-0:00, and a patch version on create.
+func TestScheduleBoundariesLikeCapella(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	_, c, p, cl := fixture(t)
+	hm := func(h, m int) capellaapi.Object { return capellaapi.Object{"hour": h, "minute": m} }
+	week := func(from, to capellaapi.Object) capellaapi.Object {
+		days := []any{capellaapi.Object{"day": "monday", "state": "custom", "from": from, "to": to}}
+		for _, d := range []string{"tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"} {
+			days = append(days, capellaapi.Object{"day": d, "state": "on"})
+		}
+		return capellaapi.Object{"timezone": "UTC", "days": days}
+	}
+	for _, tc := range []struct {
+		name     string
+		from, to capellaapi.Object
+		ok       bool
+	}{
+		{"whole day 0:00-0:00", hm(0, 0), hm(0, 0), false},
+		{"from after to", hm(18, 0), hm(8, 0), false},
+		{"from equals to", hm(8, 0), hm(8, 0), false},
+		{"until end of day", hm(8, 0), hm(0, 0), true},
+		{"working hours", hm(8, 0), hm(18, 30), true},
+	} {
+		err := c.CreateSchedule(ctx, p, cl, week(tc.from, tc.to))
+		if tc.ok {
+			if err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if err := c.DeleteSchedule(ctx, p, cl); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		if !errors.Is(err, capellaapi.ErrValidation) || !strings.Contains(err.Error(), "Monday has a 'from' time boundary") {
+			t.Fatalf("%s: err = %v, want a 422 like Capella's", tc.name, err)
+		}
+	}
+
+	req := clusterReq("patch")
+	req.CouchbaseServer = &capellaapi.CouchbaseServer{Version: "8.0.3"}
+	if _, err := c.CreateCluster(ctx, p, req); !errors.Is(err, capellaapi.ErrValidation) || !strings.Contains(err.Error(), "'8.0.3' is not supported") {
+		t.Fatalf("patch version: err = %v, want a 422", err)
+	}
+	req.CouchbaseServer.Version = "8.0"
+	if _, err := c.CreateCluster(ctx, p, req); err != nil {
+		t.Fatalf("release line: %v", err)
+	}
+}

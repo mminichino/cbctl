@@ -1,7 +1,9 @@
 package capellafake
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mminichino/cbctl/internal/engine"
@@ -373,6 +375,11 @@ func (c *rctx) createCluster() {
 		return
 	case len(list(body, "serviceGroups")) == 0:
 		c.err(http.StatusUnprocessableEntity, "at least one service group is required")
+		return
+	case strings.Count(str(sub(body, "couchbaseServer"), "version"), ".") > 1:
+		// Capella takes a release line (8.0) on create, not the patch it reports (8.0.3).
+		c.err(http.StatusUnprocessableEntity, fmt.Sprintf("The Couchbase Server version '%s' is not supported.",
+			str(sub(body, "couchbaseServer"), "version")))
 		return
 	}
 	cl := c.f.newCluster(p, body, false)

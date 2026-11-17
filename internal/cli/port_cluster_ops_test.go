@@ -123,10 +123,11 @@ func TestClusterClone_CAP049_ServerVersionLatest(t *testing.T) {
 	if v, ok := clonePost(t, s)["couchbaseServer"]; ok {
 		t.Errorf("clone POST has couchbaseServer %v", v)
 	}
-	// Without the flag the source's version is kept.
+	// Without the flag the source's release line is kept: Capella reports 7.6.2 but refuses a
+	// patch version on create (422 "The Couchbase Server version '8.0.3' is not supported").
 	s2, _ := cloneScenario(t)
 	mustScenario(t, s2.Run(cloneArgs...), "clone")
-	if v := clonePost(t, s2)["couchbaseServer"]; !jsonEqual(v, map[string]any{"version": "7.6.2"}) {
-		t.Errorf("clone POST couchbaseServer = %v, want the source's 7.6.2", v)
+	if v := clonePost(t, s2)["couchbaseServer"]; !jsonEqual(v, map[string]any{"version": "7.6"}) {
+		t.Errorf("clone POST couchbaseServer = %v, want the source's release line 7.6", v)
 	}
 }

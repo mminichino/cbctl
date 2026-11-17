@@ -242,6 +242,9 @@ func parseWindow(day, text string) (map[string]any, error) {
 	if n[0] > 23 || end > 24*60 || end <= start {
 		return bad("the window must start before it ends, within one day")
 	}
+	if start == 0 && end == 24*60 {
+		return map[string]any{"day": day, "state": "on"}, nil // Capella refuses custom 0:00-0:00
+	}
 	return map[string]any{"day": day, "state": "custom",
 		"from": map[string]any{"hour": n[0], "minute": n[1]},
 		"to":   map[string]any{"hour": n[2] % 24, "minute": n[3]}}, nil

@@ -29,10 +29,34 @@ func hm(text string) Obj {
 // weekdays or weekend, else "on".
 func DayValue(hib Obj, day string) string { return capellafile.DayValue(hib, day) }
 
-// ExpandDay is one day in the API form: on, off or custom with from and to.
+// WholeDay reports whether an HH:MM-HH:MM window covers the whole day (00:00-24:00).
+func WholeDay(window string) bool {
+	start, end, ok := strings.Cut(strings.TrimSpace(window), "-")
+	if !ok {
+		return false
+	}
+	return minutesOf(start) == 0 && minutesOf(end) == 24*60
+}
+
+func minutesOf(text string) int {
+	h, m, ok := strings.Cut(strings.TrimSpace(text), ":")
+	hour, errH := strconv.Atoi(h)
+	minute, errM := strconv.Atoi(m)
+	if !ok || errH != nil || errM != nil {
+		return -1
+	}
+	return hour*60 + minute
+}
+
+// ExpandDay is one day in the API form: on, off or custom with from and to. A whole-day window
+// is sent as on: Capella refuses the custom form of it (from 0:00 to 0:00) as "from later than
+// to", and both mean the cluster stays on all day.
 func ExpandDay(day, value string) Obj {
 	if value == "on" || value == "off" {
 		return Obj{"day": day, "state": value}
+	}
+	if WholeDay(value) {
+		return Obj{"day": day, "state": "on"}
 	}
 	start, end, _ := strings.Cut(value, "-")
 	return Obj{"day": day, "state": "custom", "from": hm(start), "to": hm(end)}
@@ -61,7 +85,11 @@ func DayText(entry Obj) string {
 	if s := entry["state"]; s == "on" || s == "off" {
 		return fmt.Sprint(s)
 	}
-	return fmtHM(objOf(entry["from"]), false) + "–" + fmtHM(objOf(entry["to"]), true)
+	text := fmtHM(objOf(entry["from"]), false) + "–" + fmtHM(objOf(entry["to"]), true)
+	if text == "00:00–24:00" {
+		return "on"
+	}
+	return text
 }
 
 // ByDay maps each day of an API body to its text.

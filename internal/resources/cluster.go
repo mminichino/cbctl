@@ -137,11 +137,24 @@ func CreateGroupLines(d Obj) []string {
 	return lines
 }
 
+// versionMatches compares release lines: create takes only major.minor and Capella moves a
+// cluster to new patches itself, so a recorded 7.6.2 matches a cluster on 7.6.3.
 func versionMatches(desired, observed string) bool {
 	if desired == "" {
 		return true
 	}
-	return observed != "" && (observed == desired || strings.HasPrefix(observed, desired+"."))
+	want := ReleaseLine(desired)
+	return observed != "" && (observed == want || strings.HasPrefix(observed, want+"."))
+}
+
+// ReleaseLine is the major.minor of a Couchbase Server version ("8.0.3" → "8.0"). Capella reports
+// the patch it runs but create takes only a release line, so a copied version is cut to it.
+func ReleaseLine(version string) string {
+	parts := strings.SplitN(version, ".", 3)
+	if len(parts) < 2 {
+		return version
+	}
+	return parts[0] + "." + parts[1]
 }
 
 // FixedSizeDisk reports whether the disk type has a size and IOPS fixed by the type. Azure premium
@@ -690,6 +703,9 @@ func (r *clusterRec) Apply(ctx context.Context, rc *plan.RunContext, a *plan.Act
 			groups = append(groups, APIGroup(g, provider))
 		}
 		body["serviceGroups"] = groups
+		if v := strOf(objOf(d["couchbaseServer"]), "version"); v != "" {
+			body["couchbaseServer"] = Obj{"version": ReleaseLine(v)} // sync and create record 8.0.3
+		}
 		id, err := api.postID(ctx, api.clusters(pid), body)
 		if err != nil {
 			return err

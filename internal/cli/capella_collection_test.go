@@ -192,7 +192,7 @@ func TestCollectionUpdate(t *testing.T) {
 		ctx := context.Background()
 		id, err := fx.Client.CreateCluster(ctx, fx.ProjectID, capellaapi.CreateClusterRequest{
 			Name: "old", CloudProvider: capellaapi.CloudProvider{Type: "aws", Region: "us-east-1"},
-			CouchbaseServer: &capellaapi.CouchbaseServer{Version: "7.2.4"},
+			CouchbaseServer: &capellaapi.CouchbaseServer{Version: "7.2"},
 			ServiceGroups:   []capellaapi.ServiceGroupRequest{{NumOfNodes: 3, Services: []string{"data"}}},
 		})
 		if err != nil {

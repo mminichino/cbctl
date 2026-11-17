@@ -1,8 +1,10 @@
 package capellafake
 
 import (
+	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -72,12 +74,44 @@ func (c *rctx) createSchedule() {
 	if !ok {
 		return
 	}
+	if !c.validSchedule(body) {
+		return
+	}
 	if cl.schedule != nil {
 		c.err(http.StatusConflict, "the cluster already has an on/off schedule")
 		return
 	}
 	cl.schedule, cl.scheduleVer, cl.schedulePaused = clone(body), 1, false
 	c.noContent()
+}
+
+// validSchedule refuses what the live API refuses: a custom day whose from is not before its to,
+// where a to of 0:00 means the end of the day. From 0:00 to 0:00 (the whole day) is refused too,
+// as Capella does (422 "Monday has a 'from' time boundary that is later than the 'to'").
+func (c *rctx) validSchedule(body Obj) bool {
+	days, _ := body["days"].([]any)
+	for _, d := range days {
+		day, _ := d.(map[string]any)
+		if day["state"] != "custom" {
+			continue
+		}
+		from, to := sub(day, "from"), sub(day, "to")
+		start := intOf(from["hour"])*60 + intOf(from["minute"])
+		end := intOf(to["hour"])*60 + intOf(to["minute"])
+		if end == 0 && start != 0 {
+			end = 24 * 60
+		}
+		if start >= end {
+			name, _ := day["day"].(string)
+			if name != "" {
+				name = strings.ToUpper(name[:1]) + name[1:]
+			}
+			c.err(http.StatusUnprocessableEntity,
+				fmt.Sprintf("%s has a 'from' time boundary that is later than the 'to' time boundary.", name))
+			return false
+		}
+	}
+	return true
 }
 
 func (c *rctx) updateSchedule() {
@@ -87,6 +121,9 @@ func (c *rctx) updateSchedule() {
 	}
 	body, ok := c.json()
 	if !ok {
+		return
+	}
+	if !c.validSchedule(body) {
 		return
 	}
 	if cl.schedule == nil {

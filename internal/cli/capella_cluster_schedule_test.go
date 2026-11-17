@@ -38,7 +38,7 @@ func TestParseWindow(t *testing.T) {
 		{"on", "on", ""},
 		{"OFF", "off", ""},
 		{"08:00-18:30", "custom", ""},
-		{"00:00-24:00", "custom", ""},
+		{"00:00-24:00", "on", ""},
 		{"8:00-18:00", "custom", ""},
 		{"08:15-18:00", "", "minutes must be 00 or 30"},
 		{"18:00-08:00", "", "must start before it ends"},
@@ -64,9 +64,12 @@ func TestParseWindow(t *testing.T) {
 			}
 		})
 	}
-	e, _ := parseWindow("friday", "00:00-24:00")
+	e, _ := parseWindow("friday", "08:00-24:00")
 	if to := e["to"].(map[string]any); to["hour"] != 0 || to["minute"] != 0 {
 		t.Fatalf("24:00 should be sent as 00:00, got %v", to)
+	}
+	if e, _ := parseWindow("friday", "00:00-24:00"); len(e) != 2 || e["state"] != "on" {
+		t.Fatalf("a whole-day window should be sent as on (Capella refuses custom 0:00-0:00), got %v", e)
 	}
 }
 
@@ -144,6 +147,22 @@ func TestClusterSchedule(t *testing.T) {
 	runCap(t, "cluster", "schedule", "delete", "c1").mustFail(t, ExitBlocked, "no terminal")
 	runCap(t, "--yes", "cluster", "schedule", "delete", "c1").mustOK(t).wantStdout(t, "deleted the on/off schedule of c1")
 	runCap(t, "cluster", "schedule", "show", "c1").mustFail(t, ExitBlocked, "no on/off schedule")
+}
+
+// TestClusterScheduleWholeDay is the nightly failure of 2026-11-17: Capella refuses a custom day
+// from 0:00 to 0:00 with 422, so a 00:00-24:00 window must be sent as on, and set again must be a
+// no-op.
+func TestClusterScheduleWholeDay(t *testing.T) {
+	f := newFake(t)
+	seedCluster(f, "alpha", "c1")
+	var r scheduleResult
+	runCap(t, "-o", "json", "cluster", "schedule", "set", "c1", "--timezone", "US/Pacific", "--weekdays", "00:00-24:00",
+		"--weekend", "on").mustOK(t).jsonOut(t, &r)
+	if r.Status != "created" || r.Summary != "US/Pacific · Mon–Sun on" {
+		t.Fatalf("result = %+v", r)
+	}
+	runCap(t, "cluster", "schedule", "set", "c1", "--timezone", "US/Pacific", "--weekdays", "00:00-24:00",
+		"--weekend", "on").mustOK(t).wantStdout(t, "already matches")
 }
 
 func TestClusterSchedulePausePowerOn(t *testing.T) {

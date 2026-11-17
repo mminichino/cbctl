@@ -10,6 +10,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/spf13/cobra"
 )
@@ -229,7 +230,7 @@ func buildCloneRequest(src *capellaapi.Cluster, name, region, cidr, description,
 	if version != "latest" {
 		v := version
 		if v == "" && src.CouchbaseServer != nil {
-			v = src.CouchbaseServer.Version
+			v = resources.ReleaseLine(src.CouchbaseServer.Version)
 		}
 		if v != "" {
 			req.CouchbaseServer = &capellaapi.CouchbaseServer{Version: v}

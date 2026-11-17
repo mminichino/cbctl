@@ -2141,8 +2141,10 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 			case v != "":
 				clone["couchbaseServer"] = capellafile.Obj{"version": v}
 			default:
-				if cs, ok := obj["couchbaseServer"]; ok {
-					clone["couchbaseServer"] = cs
+				cs, _ := obj["couchbaseServer"].(map[string]any)
+				if v, _ := cs["version"].(string); v != "" {
+					// create takes a release line; the source's entry may record the patch it runs
+					clone["couchbaseServer"] = capellafile.Obj{"version": resources.ReleaseLine(v)}
 				}
 			}
 			if !flagBool(cmd, "no-data-model") {
