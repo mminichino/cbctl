@@ -100,16 +100,16 @@ func TestAPICoverage_Release15PlansEveryOperationLeftOutOf10(t *testing.T) {
 }
 
 // TestAPICoverage_DatabaseCredentialsSection: the 1.0.0 report has the Database credentials
-// section with its five operations, each mapped to its cbctl credential command. (Their status
-// follows docs/backlog/release-1.0.0/stories.yaml, where CAP-027/028/029/046 are not yet flipped.)
+// section with its five operations done, each mapped to its cbctl credential command
+// (capellactl test_api_coverage_database_credentials_done).
 func TestAPICoverage_DatabaseCredentialsSection(t *testing.T) {
 	text := readReport(t, "release-1.0.0/API-COVERAGE.md")
-	if !regexp.MustCompile(`### Database credentials — 5 ops \(`).MatchString(text) {
-		t.Fatal("no 'Database credentials — 5 ops' section")
+	if !strings.Contains(text, "### Database credentials — 5 ops (5 ✅)") {
+		t.Fatal("no 'Database credentials — 5 ops (5 ✅)' section")
 	}
 	for _, verb := range []string{"list", "get", "create", "update", "delete"} {
-		if !strings.Contains(text, "| `cbctl capella credential "+verb+"` |") {
-			t.Errorf("no row for cbctl capella credential %s", verb)
+		if !strings.Contains(text, "| `cbctl capella credential "+verb+"` | ✅ Done |") {
+			t.Errorf("cbctl capella credential %s is not Done", verb)
 		}
 	}
 }
