@@ -58,7 +58,7 @@ The bucket is always ensured.`,
 			if err := s.CreateCollection(bucket, scope, collection); err != nil {
 				return failure("Failed to create keyspace", err)
 			}
-			logging.Info("Keyspace %q created", args[0])
+			logging.Success("Keyspace %q created", args[0])
 			return nil
 		},
 	}

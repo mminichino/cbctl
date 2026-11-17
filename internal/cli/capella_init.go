@@ -17,6 +17,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/importer"
+	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/mminichino/cbctl/internal/settings"
@@ -636,11 +637,11 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 		out.Object(map[string]any{"file": path, "written": true, "valid": true})
 		return nil
 	}
-	out.Line("✔ Wrote %s (validated)", displayPath(path))
+	logging.Success("Wrote %s (validated)", displayPath(path))
 	if a.credential != "" {
-		out.Line("Next: export %s=…   then   cbctl capella plan", a.passwordEnvName())
+		logging.Info("Next: export %s=...   then   cbctl capella plan", a.passwordEnvName())
 	} else {
-		out.Line("Next: cbctl capella plan")
+		logging.Info("Next: cbctl capella plan")
 	}
 	return nil
 }

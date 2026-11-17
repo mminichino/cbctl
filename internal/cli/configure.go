@@ -272,9 +272,9 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		}
 		return enc.Encode(doc)
 	}
-	logging.Info("Saved profile %q (organization %s %s)", profile, orgName, orgID)
+	logging.Success("Saved profile %q (organization %s %s)", profile, orgName, orgID)
 	if keyStored {
-		logging.Info("API key stored in the OS keychain")
+		logging.Success("API key stored in the OS keychain")
 	} else {
 		logging.Warning("no OS keychain available; set CAPELLA_API_KEY in your environment instead (the key was not saved)")
 	}
@@ -456,7 +456,7 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 	if _, ok := profiles[profile]; !ok {
 		// A keychain entry left without its profile is still removed.
 		if _, err := kr.Get(profile); err == nil && kr.Delete(profile) == nil {
-			logging.Info("Removed the keychain entry of profile %q", profile)
+			logging.Success("Removed the keychain entry of profile %q", profile)
 			return nil
 		}
 		logging.Info("profile %q: nothing to remove", profile)
@@ -480,10 +480,10 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 		return err
 	}
 	if hadKey {
-		logging.Info("Removed profile %q (keychain entry deleted)", profile)
+		logging.Success("Removed profile %q (keychain entry deleted)", profile)
 		return nil
 	}
-	logging.Info("Removed profile %q", profile)
+	logging.Success("Removed profile %q", profile)
 	return nil
 }
 

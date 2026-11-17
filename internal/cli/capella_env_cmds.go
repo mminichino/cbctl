@@ -9,6 +9,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
@@ -51,7 +52,7 @@ func runValidate(cmd *cobra.Command, _ []string) error {
 		out.Object(map[string]any{"valid": true, "file": cfg.Path, "counts": cfg.Counts()})
 		return nil
 	}
-	out.Line("%s", cfg.Summary())
+	logging.Success("%s", cfg.Summary())
 	return nil
 }
 
@@ -217,7 +218,7 @@ func applyPlan(e *envRuntime, p *plan.Plan, o applyOptions) error {
 		e.note("%s", line)
 	}
 	if !e.JSON {
-		e.note("Apply complete in %s.", plan.FormatDuration(e.Clock.Monotonic()-started))
+		e.noteOK("Apply complete in %s.", plan.FormatDuration(e.Clock.Monotonic()-started))
 	}
 	return nil
 }
@@ -249,7 +250,7 @@ func (e *envRuntime) printNoChanges(p *plan.Plan) {
 			e.Out.Line("    %s", label)
 		}
 	}
-	e.Out.Line("No changes. Capella matches capella.yaml.")
+	logging.Info("No changes. Capella matches capella.yaml.")
 }
 
 // confirmApply asks before applying; cancelled reports a "no" answer.
@@ -714,7 +715,7 @@ func runDestroy(e *envRuntime, discard bool) error {
 	if e.JSON {
 		e.Out.Object(map[string]any{"plan": plan.RenderPlanJSON(deletes)["plan"], "result": result.ToJSON()})
 	}
-	e.note("Destroy complete in %s. capella.yaml still describes the environment: run 'cbctl capella apply' to build it again.",
+	e.noteOK("Destroy complete in %s. capella.yaml still describes the environment: run 'cbctl capella apply' to build it again.",
 		plan.FormatDuration(e.Clock.Monotonic()-started))
 	return nil
 }

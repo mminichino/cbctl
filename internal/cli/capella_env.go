@@ -14,7 +14,6 @@ import (
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
-	"github.com/mminichino/cbctl/internal/redact"
 	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
@@ -215,12 +214,22 @@ func projectsLabel(cfg *capellafile.Config) string {
 	return "projects " + strings.Join(names, ", ")
 }
 
-// note prints a one-line note on stderr unless --quiet.
+// note prints a one-line "[info]" note on stderr unless --quiet.
 func (rt *runtime) note(format string, a ...any) {
+	rt.labeled(output.KindInfo, format, a...)
+}
+
+// noteOK prints a one-line "[ok]" result on stderr unless --quiet. Workflow results stay on
+// stderr, where their notes always were, so stdout keeps only the plan and the summary table.
+func (rt *runtime) noteOK(format string, a ...any) {
+	rt.labeled(output.KindOK, format, a...)
+}
+
+func (rt *runtime) labeled(kind, format string, a ...any) {
 	if rt.Quiet {
 		return
 	}
-	fmt.Fprintln(rt.errOut(), redact.String(fmt.Sprintf(format, a...)))
+	writeLabeled(rt.errOut(), kind, format, a...)
 }
 
 // ---- confirmations ---------------------------------------------------------------------------
