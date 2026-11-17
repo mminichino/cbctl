@@ -208,8 +208,8 @@ func TestGate_CAP032_AC5_ReleaseWorkflowRunsTheGate(t *testing.T) {
 	if !strings.Contains(run, `--commit "${GITHUB_SHA}"`) && !strings.Contains(run, "--commit ${{ github.sha }}") {
 		t.Errorf("release gate does not check the release commit: %s", run)
 	}
-	if !strings.Contains(run, "--report-only") {
-		t.Errorf("release gate must be report-only until three nightlies exist: %s", run)
+	if strings.Contains(run, "--report-only") {
+		t.Errorf("release gate must block (Phase 7): drop --report-only: %s", run)
 	}
 	if env, _ := step["env"].(map[string]any); asString(env["GH_TOKEN"]) != "${{ github.token }}" {
 		t.Errorf("release gate GH_TOKEN = %v, want ${{ github.token }}", env["GH_TOKEN"])

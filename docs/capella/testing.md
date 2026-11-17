@@ -8,6 +8,7 @@ run offline in seconds; the sandbox suite runs nightly in CI against a real Cape
 | Unit and CLI | `make test` (`go test -race ./internal/...`) | the in-memory fake (`internal/capellafake`) | every change |
 | Full local gate | `make check` | nothing | before every push |
 | Integration, fake | `make test-integration-fake` | the fake, through the built commands | every push (CI) |
+| Integration, Server | `make test-server-it` | a Couchbase Server container (Docker) | every push (CI `cover` job) |
 | Integration, sandbox | `make test-integration` | a Capella sandbox organization | nightly (CI) |
 
 ## The fake
@@ -104,6 +105,40 @@ A second run waits for the first (`concurrency: nightly-sandbox`, never cancelle
 GitHub keeps only one pending run per group, so a dispatch can replace a waiting scheduled run;
 that night then has no scheduled run and the release gate's streak restarts. Re-dispatching a
 failed night is an attempt of the same run and is not skipped.
+
+### Release gate
+
+A `v*` tag runs `.github/workflows/release.yml`. Its `gate` job (`cbdev ci release-gate`) blocks
+the release unless the last three nights each have a green scheduled nightly, on consecutive UTC
+dates, the newest on the tagged commit. A night counts only when its `integration` job actually
+ran: a run whose integration job was skipped by `dedupe` is ignored (and its night breaks the
+streak). A re-run on the same day replaces that day's earlier attempt. If the run or job list
+cannot be read (an API error or rate limit), the gate fails; it never passes on missing evidence.
+`--report-only` prints the verdict without blocking, for local diagnosis:
+
+```sh
+go run ./cmd/cbdev ci release-gate --commit "$(git rev-parse HEAD)" --report-only
+```
+
+## Coverage gate
+
+`make cover-gate` writes one `-coverpkg=./internal/...` profile from the unit suite and one from
+the Server Docker flow (`make cover-server`, which needs Docker), merges them and checks every
+package against its tier in `internal/ci/covergate/tiers.json`:
+
+| Tier | Packages | Minimum |
+|---|---|---|
+| core | `plan`, `engine`, `resources`, `config/capellafile`, `capellaapi`, `presets` | 90% |
+| security | `redact`, `secrets`, `settings` | 90% |
+| cli | `cli` | 85% |
+| importer | `importer` | 80% |
+| testinfra | `capellafake`, `clitest` | 85% |
+| tooling | `ci/...`, `docgen/...` (combined) | 70% |
+| server-legacy | `rest`, `server`, `capella` | 60% |
+
+A package in the table that no profile contains is reported `MISSING` and fails the gate, so a
+rename cannot drop it silently. Packages no tier claims are listed as untiered. CI runs the gate
+in the `cover` job and uploads the profiles.
 
 ## Cleaning up
 

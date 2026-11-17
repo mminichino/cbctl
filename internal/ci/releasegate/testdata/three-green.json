@@ -1,31 +1,70 @@
 {
   "workflow_runs": [
     {
+      "id": 2007,
       "status": "completed",
       "conclusion": "success",
       "event": "schedule",
       "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "html_url": "https://github.com/o/r/actions/runs/20",
+      "html_url": "https://github.com/o/r/actions/runs/2007",
       "created_at": "2026-10-20T07:00:00Z",
-      "run_started_at": "2026-10-20T07:03:00Z"
+      "run_started_at": "2026-10-20T07:03:00Z",
+      "jobs": [
+        {
+          "name": "dedupe",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
     },
     {
+      "id": 1907,
       "status": "completed",
       "conclusion": "success",
       "event": "schedule",
       "head_sha": "cccccccccccccccccccccccccccccccccccccccc",
-      "html_url": "https://github.com/o/r/actions/runs/19",
+      "html_url": "https://github.com/o/r/actions/runs/1907",
       "created_at": "2026-10-19T07:00:00Z",
-      "run_started_at": "2026-10-19T07:03:00Z"
+      "run_started_at": "2026-10-19T07:03:00Z",
+      "jobs": [
+        {
+          "name": "dedupe",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
     },
     {
+      "id": 1807,
       "status": "completed",
       "conclusion": "success",
       "event": "schedule",
       "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "html_url": "https://github.com/o/r/actions/runs/18",
+      "html_url": "https://github.com/o/r/actions/runs/1807",
       "created_at": "2026-10-18T07:00:00Z",
-      "run_started_at": "2026-10-18T07:03:00Z"
+      "run_started_at": "2026-10-18T07:03:00Z",
+      "jobs": [
+        {
+          "name": "dedupe",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "integration",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
     }
   ]
 }

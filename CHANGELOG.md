@@ -24,7 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Capella init wizard polish and live §13.4 declarative cluster flow (gated by `CBCTL_LIVE_CLUSTER=1`).
 - Hermetic `cli.Run` / `cli.Deps` entry for in-process tests; fake Inventory route parity test.
 - Phase 4 scaffolding: `cmd/cbdev`, CI libraries (`secretscan`, `releasegate`, `janitor`), `clitest`,
-  nightly/release gates (landing progressively).
+  nightly/release gates.
+- Tiered coverage gate (`make cover-gate`, `cbdev ci cover-gate --tiers default --profile P...`):
+  merges `-coverpkg=./internal/...` profiles from the unit suite and the Server Docker flow and
+  checks each package against its tier in `internal/ci/covergate/tiers.json`; a missing package
+  fails. Replaces `cover-engine` in CI (`cover` job).
+- The release gate blocks: `release.yml` no longer passes `--report-only`. A night counts only
+  when its `integration` job ran (deduped runs are ignored), one run per UTC day (newest attempt),
+  and an API error fails the gate. The workflow defaults to `contents: read`; goreleaser has
+  `contents: write` and a 30-minute timeout. `--repo` defaults to the `origin` remote.
 - Phase 4 docs/backlog port: `docs/backlog/` (SOURCE, 1.0.0 `stories.yaml` + architecture,
   26× release-1.5.0 CAP stories, API snapshots), `internal/docgen/port` rewrite engine,
   `cbdev docs port`, and stub Capella guides under `docs/capella/`.
@@ -47,6 +55,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The Server Docker integration test (`TestServerCLIFlow`) needs `-tags=integration,server`
+  (`make test-server-it`) and fails rather than skips without Docker when
+  `CBCTL_IT_REQUIRE_DOCKER=1`.
 - Capella failures use structured exit codes (0/1/2/3/4/5/130) with action hints.
 - Every usage mistake exits 3: an unknown or ambiguous subcommand (it used to print help and exit
   0), a bad flag or choice, a missing required flag, a wrong argument count.
