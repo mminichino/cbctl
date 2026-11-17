@@ -94,8 +94,9 @@ func TestRunIsHermetic(t *testing.T) {
 	}
 }
 
-// TestHermeticGrep fails when listed packages introduce new direct process globals outside the
-// allow-list. This is a soft gate: allow known legacy files while Phase 4 finishes the migration.
+// TestHermeticGrep fails when listed packages read process globals (environment, stdio, working
+// directory) or the wall clock directly instead of through Deps / engine.Clock. Each exception is
+// one package/file + needle pair with the reason it is allowed; anything else fails hard.
 func TestHermeticGrep(t *testing.T) {
 	root := filepath.Join("..", "..")
 	pkgs := []string{
@@ -106,14 +107,30 @@ func TestHermeticGrep(t *testing.T) {
 		"internal/resources",
 		"internal/importer",
 		"internal/secrets",
+		"internal/capella",
+		"internal/capellaapi",
+		"internal/rest",
+		"internal/redact",
 	}
 	forbidden := []string{"os.Getenv", "os.LookupEnv", "os.Setenv", "os.Stdin", "os.Stdout", "os.Stderr", "os.Getwd", "time.Now()", "time.Sleep("}
-	// Process-entry and the settings process-env adapter may touch os.Getenv/Stdin/etc.
-	// Capella + Server CLI paths are Deps-wired; LoadDotEnv no longer calls Setenv itself.
-	allow := map[string]bool{
-		"deps.go": true, "run.go": true, "root.go": true,
-		"osenv.go": true, // settings.ProcessEnv / ApplyEnv / ProcessGetwd
+	type exception struct{ file, needle string }
+	allow := map[exception]string{}
+	allowAll := func(file, reason string) {
+		for _, n := range forbidden {
+			allow[exception{file, n}] = reason
+		}
 	}
+	// Process entry: the only place the real environment and stdio are wired into Deps.
+	allowAll("internal/cli/deps.go", "process entry builds Deps from the real process")
+	allowAll("internal/cli/run.go", "process entry")
+	allowAll("internal/cli/root.go", "process entry")
+	allowAll("internal/settings/osenv.go", "settings.ProcessEnv / ApplyEnv / ProcessGetwd adapter")
+	allow[exception{"internal/redact/tty.go", "os.Getenv"}] = "NO_COLOR decides the mask glyph; injectable via unicodeMask"
+	allow[exception{"internal/redact/tty.go", "os.Stdout"}] = "terminal check decides the mask glyph; injectable via unicodeMask"
+	allow[exception{"internal/capella/random.go", "time.Now()"}] = "seeds the random-name generator; not a wait"
+	allow[exception{"internal/capellaapi/client.go", "time.Now()"}] = "seeds retry jitter and times requests for debug logs; waits use the injected clock"
+
+	used := map[exception]bool{}
 	for _, pkg := range pkgs {
 		dir := filepath.Join(root, pkg)
 		entries, err := os.ReadDir(dir)
@@ -125,19 +142,28 @@ func TestHermeticGrep(t *testing.T) {
 			if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
 				continue
 			}
-			if allow[name] {
-				continue
-			}
 			body, err := os.ReadFile(filepath.Join(dir, name))
 			if err != nil {
 				t.Fatal(err)
 			}
 			text := string(body)
 			for _, needle := range forbidden {
-				if strings.Contains(text, needle) {
-					t.Errorf("%s/%s contains %s (migrate to Deps/Clock or add to hermetic allow-list)", pkg, name, needle)
+				if !strings.Contains(text, needle) {
+					continue
 				}
+				key := exception{pkg + "/" + name, needle}
+				if _, ok := allow[key]; ok {
+					used[key] = true
+					continue
+				}
+				t.Errorf("%s/%s contains %s (use Deps / engine.Clock, or add a file+needle exception with a reason)", pkg, name, needle)
 			}
+		}
+	}
+	// A stale single-needle exception would silently allow a future regression in that file.
+	for key, reason := range allow {
+		if !used[key] && !strings.HasPrefix(reason, "process entry") && !strings.HasPrefix(reason, "settings.") {
+			t.Errorf("hermetic exception %s %q is no longer needed (%s); remove it", key.file, key.needle, reason)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/mminichino/cbctl/internal/engine"
 )
 
 // Endpoint is a Couchbase management/query REST target.
@@ -57,6 +60,18 @@ func (e Endpoint) queryURL(path string) string {
 type Client struct {
 	HTTP    *http.Client
 	Timeout time.Duration
+	// Clock paces the wait and retry loops; nil uses engine.RealClock (tests inject a fake).
+	Clock engine.Clock
+}
+
+// sleep pauses between polls on the client's clock.
+func (c *Client) sleep(d time.Duration) {
+	clk := c.Clock
+	if clk == nil {
+		clk = engine.RealClock{}
+	}
+	// The Server REST API has no context yet; Background never cancels, so the error is always nil.
+	_ = clk.Sleep(context.Background(), d)
 }
 
 // NewClient returns a REST client that skips TLS verification (Server default).

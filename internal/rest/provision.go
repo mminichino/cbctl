@@ -3,7 +3,6 @@ package rest
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 // ProvisionOptions configures per-node cluster bootstrap, join, and rebalance.
@@ -296,7 +295,7 @@ func (c *Client) WaitForNodeInCluster(endpoint Endpoint, username, password, nod
 		} else {
 			last = fmt.Errorf("node %s not in cluster yet", nodeHost)
 		}
-		time.Sleep(pollInterval)
+		c.sleep(pollInterval)
 	}
 	return fmt.Errorf("waiting for node %s: %w", nodeHost, last)
 }

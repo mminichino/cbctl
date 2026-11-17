@@ -11,20 +11,53 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/mminichino/cbctl/internal/ci/covergate"
 )
 
 var coverRE = regexp.MustCompile(`coverage: ([0-9.]+)% of statements`)
 
+// profileList collects repeated --profile flags.
+type profileList []string
+
+func (p *profileList) String() string { return strings.Join(*p, ",") }
+
+func (p *profileList) Set(v string) error {
+	if v == "" {
+		return fmt.Errorf("empty profile path")
+	}
+	*p = append(*p, v)
+	return nil
+}
+
+// cmdCICoverGate has two modes:
+//
+//	cover-gate --tiers [FILE] --profile P [--profile P2 ...]   tiered gate over merged profiles
+//	cover-gate --min N PKG...                                  one floor, go test -cover per PKG
 func cmdCICoverGate(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("ci cover-gate", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	min := fs.Float64("min", 0, "minimum coverage percent required")
+	min := fs.Float64("min", 0, "minimum coverage percent required (per-package mode)")
+	tiers := fs.String("tiers", "", "tier table JSON (\"default\" = "+covergate.TiersFile+")")
+	var profiles profileList
+	fs.Var(&profiles, "profile", "coverage profile written with -coverpkg=./internal/... (repeatable; tiered mode)")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *tiers != "" {
+		if *min != 0 || fs.NArg() > 0 {
+			fmt.Fprintln(stderr, "cbdev ci cover-gate: --tiers takes --profile only, not --min or PKG")
+			return 2
+		}
+		return coverTiers(*tiers, profiles, stdout, stderr)
+	}
+	if len(profiles) > 0 {
+		fmt.Fprintln(stderr, "cbdev ci cover-gate: --profile needs --tiers")
 		return 2
 	}
 	pkgs := fs.Args()
 	if *min <= 0 {
-		fmt.Fprintln(stderr, "cbdev ci cover-gate: --min N is required (N > 0)")
+		fmt.Fprintln(stderr, "cbdev ci cover-gate: --min N is required (N > 0), or use --tiers")
 		return 2
 	}
 	if len(pkgs) == 0 {
@@ -71,6 +104,41 @@ func cmdCICoverGate(args []string, stdout, stderr io.Writer) int {
 	}
 	if failed {
 		fmt.Fprintf(stderr, "cover-gate: one or more packages below %.0f%%\n", *min)
+		return 1
+	}
+	return 0
+}
+
+func coverTiers(tiersPath string, profiles []string, stdout, stderr io.Writer) int {
+	if len(profiles) == 0 {
+		fmt.Fprintln(stderr, "cbdev ci cover-gate: --tiers needs at least one --profile")
+		return 2
+	}
+	var (
+		cfg covergate.Config
+		err error
+	)
+	if tiersPath == "default" {
+		cfg, err = covergate.DefaultConfig()
+	} else {
+		cfg, err = covergate.LoadConfig(tiersPath)
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "cbdev ci cover-gate: %v\n", err)
+		return 2
+	}
+	prof, err := covergate.LoadProfiles(profiles)
+	if err != nil {
+		fmt.Fprintf(stderr, "cbdev ci cover-gate: %v\n", err)
+		return 2
+	}
+	rep := covergate.Evaluate(cfg, prof.Totals())
+	if err := covergate.Write(stdout, rep); err != nil {
+		fmt.Fprintf(stderr, "cbdev ci cover-gate: writing report: %v\n", err)
+		return 1
+	}
+	if rep.Failed() {
+		fmt.Fprintln(stderr, "cover-gate: one or more tier packages are below their minimum or missing")
 		return 1
 	}
 	return 0

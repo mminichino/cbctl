@@ -1,4 +1,8 @@
-//go:build integration
+//go:build integration && server
+
+// The Server Docker flow is built only with -tags=integration,server (make test-server-it):
+// it needs Docker and a Couchbase Server image, so it stays out of the Capella fake and
+// sandbox suites and runs in its own CI job (P-TST-18, ci-sandbox-findings §server-it).
 
 package integration_test
 
@@ -31,6 +35,10 @@ func TestServerCLIFlow(t *testing.T) {
 		t.Skip("CBCTL_IT_TARGET=fake: Server Docker flow is separate from Capella integration")
 	}
 	if !dockerAvailable() {
+		// In the server-it CI job a silent skip would hide the coverage this test provides.
+		if os.Getenv("CBCTL_IT_REQUIRE_DOCKER") == "1" {
+			t.Fatal("docker is not available and CBCTL_IT_REQUIRE_DOCKER=1")
+		}
 		t.Skip("docker is not available; skipping Server container integration")
 	}
 	ctx := context.Background()

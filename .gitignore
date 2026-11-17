@@ -38,5 +38,6 @@ go.work.sum
 /dist/
 /cbctl
 coverage.out
+/.cover/
 .DS_Store
 vendor/
