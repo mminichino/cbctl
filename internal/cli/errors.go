@@ -130,6 +130,14 @@ func HandleError(err error) ExitCode {
 		return ExitBlocked
 	}
 	if errors.Is(err, context.Canceled) {
+		// A command that reported its own interruption (what completed, how to resume) keeps its
+		// message; anything else that noticed the cancellation just ends the line.
+		var cliErr *CLIError
+		if errors.As(err, &cliErr) && cliErr.Code == ExitInterrupted && cliErr.Message != "" {
+			printError(cliErr.Message)
+			printAction(cliErr.Action)
+			return ExitInterrupted
+		}
 		fmt.Fprintln(errorOut())
 		return ExitInterrupted
 	}

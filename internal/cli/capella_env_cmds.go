@@ -632,12 +632,18 @@ func runDestroy(e *envRuntime, discard bool) error {
 		}
 	}
 	if result.Failed != nil || result.Interrupted {
-		if result.Interrupted && result.Failed == nil {
-			return Errorf(ExitInterrupted, "Run 'cbctl capella destroy' again; what is already deleted is skipped.", "Interrupted")
+		const again = "Run 'cbctl capella destroy' again; what is already deleted is skipped."
+		if result.Interrupted {
+			detail := "Interrupted"
+			if result.Failed != nil && result.Failed.Err != "" {
+				detail = fmt.Sprintf("%s %s: %s", result.Failed.Kind, result.Failed.Key, result.Failed.Err)
+			}
+			return Errorf(ExitInterrupted, again, "%s", detail)
 		}
 		code := ExitError
 		var wt *engine.WaitTimeout
-		if errors.As(result.Err, &wt) {
+		var st *engine.StatusTimeout
+		if errors.As(result.Err, &wt) || errors.As(result.Err, &st) {
 			code = ExitTimeout
 		}
 		return &CLIError{Code: code, Err: result.Err,

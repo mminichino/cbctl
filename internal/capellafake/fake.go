@@ -113,6 +113,7 @@ type Fake struct {
 	settle   int // polls a transitional state lasts
 	pageSize int // when > 0, caps perPage so tests can force multiple pages
 	failures []*failure
+	hooks    []*hook
 	log      []Request
 }
 
@@ -502,6 +503,7 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 		c.err(http.StatusUnauthorized, "invalid or missing API key")
 		return
 	}
+	f.runHooks(r.Method, r.URL.Path)
 	for _, fl := range f.failures {
 		if fl.left <= 0 || !faultMatches(fl, r.Method, r.URL.Path) {
 			continue

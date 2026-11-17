@@ -78,9 +78,15 @@ func (s *Scenario) Run(args ...string) Result {
 // RunWith invokes the CLI with the given stdin contents.
 func (s *Scenario) RunWith(stdin string, args ...string) Result {
 	s.T.Helper()
+	return s.RunContext(context.Background(), stdin, args...)
+}
+
+// RunContext invokes the CLI with ctx, so a test can cancel it mid-command (Ctrl-C).
+func (s *Scenario) RunContext(ctx context.Context, stdin string, args ...string) Result {
+	s.T.Helper()
 	var stdout, stderr bytes.Buffer
 	d := s.deps(&stdout, &stderr, strings.NewReader(stdin))
-	code := cli.Run(context.Background(), args, d)
+	code := cli.Run(ctx, args, d)
 	return Result{Code: code, Stdout: stdout.String(), Stderr: stderr.String()}
 }
 
