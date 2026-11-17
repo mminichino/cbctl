@@ -150,6 +150,9 @@ capellactl is no longer supported. See [Migration](#migration).
   clean.
 - The test fake rejects both of these request bodies as the live API does, so the offline suite
   catches them.
+- Managed `cluster clone` picks its default network from every project's clusters in Capella,
+  not only from `capella.yaml`, as `cluster create` already did. Capella refuses a range that is
+  "not unique within this organization", and the fake now does too.
 
 ### Deprecated
 

@@ -214,6 +214,23 @@ func withFixedDisks(groups []any) []any {
 }
 
 // newCluster adds a cluster in "deploying" that becomes healthy after the settle polls.
+// cidrTaken reports whether a cluster of any project in the organization already has the network:
+// Capella refuses a create with "CIDR ... is not unique within this organization". Deleted
+// clusters leave the project and give theirs back.
+func (f *Fake) cidrTaken(cidr string) bool {
+	if cidr == "" {
+		return false
+	}
+	for _, p := range f.projects {
+		for _, cl := range p.clusters {
+			if str(sub(cl.obj, "cloudProvider"), "cidr") == cidr {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (f *Fake) newCluster(p *project, body Obj, free bool) *cluster {
 	id := uuid.NewString()
 	groups := withFixedDisks(list(body, "serviceGroups"))
@@ -380,6 +397,10 @@ func (c *rctx) createCluster() {
 		// Capella takes a release line (8.0) on create, not the patch it reports (8.0.3).
 		c.err(http.StatusUnprocessableEntity, fmt.Sprintf("The Couchbase Server version '%s' is not supported.",
 			str(sub(body, "couchbaseServer"), "version")))
+		return
+	case c.f.cidrTaken(str(sub(body, "cloudProvider"), "cidr")):
+		c.err(http.StatusUnprocessableEntity, fmt.Sprintf("Unable to process request for cluster deployment. The provided CIDR of %s is not unique within this organization.",
+			str(sub(body, "cloudProvider"), "cidr")))
 		return
 	}
 	cl := c.f.newCluster(p, body, false)

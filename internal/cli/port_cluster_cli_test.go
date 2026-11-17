@@ -376,14 +376,15 @@ func TestClusterCreate_CAP038_AC15_OverlapTypedIsReasked(t *testing.T) {
 }
 
 // TestClusterCreate_CAP038_AC15_OtherProjectWarns: overlap with a cluster in another project only
-// warns.
+// warns. (An identical range is refused by Capella org-wide, so the ranges here overlap without
+// being equal.)
 func TestClusterCreate_CAP038_AC15_OtherProjectWarns(t *testing.T) {
 	s := uiMade(t)
 	other := s.Fake.SeedProject("non-prod")
 	s.Fake.SeedCluster(other, "np-01", "healthy",
-		capellafake.WithField("cloudProvider", map[string]any{"type": "aws", "region": "us-east-1", "cidr": "10.20.0.0/24"}))
+		capellafake.WithField("cloudProvider", map[string]any{"type": "aws", "region": "us-east-1", "cidr": "10.20.0.0/23"}))
 	r := mustScenario(t, s.Run("capella", "--yes", "cluster", "create", "test-01", "--cidr", "10.20.0.0/24"), "create")
-	wantContains(t, r.Stderr, "10.20.0.0/24 overlaps the network of cluster np-01 (10.20.0.0/24) in project non-prod",
+	wantContains(t, r.Stderr, "10.20.0.0/24 overlaps the network of cluster np-01 (10.20.0.0/23) in project non-prod",
 		"none needed unless you will connect the two networks")
 	wantContains(t, clusterEntryText(t, s, "test-01"), "cidr: 10.20.0.0/24")
 }

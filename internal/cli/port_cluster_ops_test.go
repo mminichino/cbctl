@@ -70,6 +70,24 @@ func clonePost(t *testing.T, s *clitest.Scenario) map[string]any {
 
 var cloneArgs = []string{"capella", "--yes", "cluster", "clone", "envclu", "envclu-w", "--region", "us-west-2"}
 
+// TestClusterClone_CAP049_CIDRFreeInOrganization is the nightly failure of 2026-11-17: the managed
+// clone picked its network from capella.yaml alone, and Capella refused it as "not unique within
+// this organization" because a cluster of another project had it.
+func TestClusterClone_CAP049_CIDRFreeInOrganization(t *testing.T) {
+	first, _ := cloneScenario(t)
+	mustScenario(t, first.Run(cloneArgs...), "clone")
+	picked := clonePost(t, first)["cloudProvider"].(map[string]any)["cidr"]
+
+	s, _ := cloneScenario(t)
+	other := s.Fake.SeedProject("elsewhere")
+	s.Fake.SeedCluster(other, "taken", "healthy",
+		capellafake.WithField("cloudProvider", map[string]any{"type": "aws", "region": "us-east-1", "cidr": picked}))
+	mustScenario(t, s.Run(cloneArgs...), "clone")
+	if got := clonePost(t, s)["cloudProvider"].(map[string]any)["cidr"]; got == picked || got == nil {
+		t.Fatalf("clone CIDR = %v, want a range other than %v (used by project elsewhere)", got, picked)
+	}
+}
+
 // TestClusterClone_CAP049_AC3_RegionBoundValuesReset: zones and the schedule stay behind; the
 // clone gets its own CIDR and no schedule is written.
 func TestClusterClone_CAP049_AC3_RegionBoundValuesReset(t *testing.T) {

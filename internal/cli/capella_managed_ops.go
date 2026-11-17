@@ -2110,7 +2110,21 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 			}
 			cidr := strings.TrimSpace(flagString(cmd, "cidr"))
 			if cidr == "" {
-				cidr = suggestCIDR(fileCIDRs(ed))
+				// Capella wants the network unique in the organization, not only in the file:
+				// avoid the live clusters of every project too, as cluster create does.
+				used := fileCIDRs(ed)
+				if e != nil && !e.Ephemeral {
+					targetName := ""
+					if v := ed.Child(target, "name"); v != nil {
+						targetName = v.Value
+					}
+					networks, err := readCapellaNetworks(e, ed, targetName)
+					if err != nil {
+						return err
+					}
+					used = networks.used(used)
+				}
+				cidr = suggestCIDR(used)
 			}
 			clone := capellafile.Obj{"name": name}
 			srcRegion := ""

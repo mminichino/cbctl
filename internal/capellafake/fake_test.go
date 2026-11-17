@@ -163,8 +163,10 @@ func TestClusterLifecycle(t *testing.T) {
 	// Capella allows two clusters with the same name in a project (in a separate project here so
 	// the lifecycle below sees one cluster).
 	p2, _ := c.CreateProject(ctx, "dups", "")
-	a, errA := c.CreateCluster(ctx, p2, clusterReq("same"))
-	b, errB := c.CreateCluster(ctx, p2, clusterReq("same"))
+	reqA, reqB := clusterReq("same"), clusterReq("same")
+	reqA.CloudProvider.CIDR, reqB.CloudProvider.CIDR = "10.2.0.0/24", "10.3.0.0/24" // unique in the org
+	a, errA := c.CreateCluster(ctx, p2, reqA)
+	b, errB := c.CreateCluster(ctx, p2, reqB)
 	if errA != nil || errB != nil || a == b {
 		t.Fatalf("duplicate cluster name: ids %q %q, errs %v %v; want two clusters", a, b, errA, errB)
 	}
