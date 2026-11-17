@@ -613,10 +613,18 @@ func TestLoadEdgeCases(t *testing.T) {
 		for i := 0; i < 1500; i++ {
 			fmt.Fprintf(&sb, "      - name: b%d\n        memoryAllocationInMb: 100\n        scopes:\n          - name: s\n            collections:\n              - name: c\n", i)
 		}
-		start := time.Now()
-		cfg := mustLoadText(t, sb.String())
-		if d := time.Since(start); d > time.Second {
-			t.Errorf("loading %d lines took %v", strings.Count(sb.String(), "\n"), d)
+		// Fastest of three: the bound catches pathological (e.g. quadratic) loading, and a single
+		// sample on a shared CI runner can stall for a second without any code being slow.
+		text := sb.String()
+		var cfg *Config
+		best := time.Duration(1<<63 - 1)
+		for range 3 {
+			start := time.Now()
+			cfg = mustLoadText(t, text)
+			best = min(best, time.Since(start))
+		}
+		if best > time.Second {
+			t.Errorf("loading %d lines took %v (fastest of 3)", strings.Count(text, "\n"), best)
 		}
 		if cfg.Counts().Buckets != 1500 {
 			t.Errorf("buckets = %d", cfg.Counts().Buckets)
