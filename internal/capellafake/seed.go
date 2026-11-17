@@ -306,3 +306,31 @@ func (f *Fake) Advance(d time.Duration) {
 		f.clock.Advance(d)
 	}
 }
+
+// RenameProject changes a project's name as the Capella UI would, keeping its ID. It reports
+// whether the project exists.
+func (f *Fake) RenameProject(projectID, name string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p := f.findProject(projectID)
+	if p == nil {
+		return false
+	}
+	p.obj["name"] = name
+	p.ver++
+	return true
+}
+
+// RemoveProject deletes a project and its clusters out of band (as another user would), with no
+// request recorded. It reports whether the project existed.
+func (f *Fake) RemoveProject(projectID string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i, p := range f.projects {
+		if str(p.obj, "id") == projectID {
+			f.projects = append(f.projects[:i], f.projects[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
