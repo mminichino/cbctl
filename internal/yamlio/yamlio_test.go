@@ -408,3 +408,30 @@ func TestUnmarshalTargetMustBePointer(t *testing.T) {
 		t.Error("want an error for a non-pointer target")
 	}
 }
+
+func TestKeysAt(t *testing.T) {
+	const doc = "b: 1\na:\n  z: 1\n  y: 2\n  x:\n    k: 1\nlist: [1, 2]\n\"a/b\": {q: 1}\n"
+	tests := []struct {
+		name string
+		ptr  string
+		want []string
+	}{
+		{"root keeps file order", "", []string{"b", "a", "list", "a/b"}},
+		{"nested", "/a", []string{"z", "y", "x"}},
+		{"deeper", "/a/x", []string{"k"}},
+		{"escaped segment", "/a~1b", []string{"q"}},
+		{"missing", "/nope", nil},
+		{"not a mapping", "/list", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := KeysAt([]byte(doc), tt.ptr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+				t.Errorf("KeysAt(%q) = %v, want %v", tt.ptr, got, tt.want)
+			}
+		})
+	}
+}

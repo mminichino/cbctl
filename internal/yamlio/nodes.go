@@ -1,6 +1,10 @@
 package yamlio
 
-import "go.yaml.in/yaml/v3"
+import (
+	"strings"
+
+	"go.yaml.in/yaml/v3"
+)
 
 // ParseNode parses y, which must hold at most one document, into its document node. It returns
 // nil for empty input. Comments and positions are kept, which makes it the entry point for
@@ -70,4 +74,36 @@ func DeleteMappingKeys(doc *yaml.Node, parentKey string, names []string) int {
 		break
 	}
 	return removed
+}
+
+// KeysAt returns the keys, in file order, of the mapping at the JSON pointer ptr ("" is the
+// document root) in y. It returns nil when ptr does not name a mapping. Go maps lose file
+// order, so lists that must follow the file (preset names, disk types) read it from here.
+func KeysAt(y []byte, ptr string, opts ...Option) ([]string, error) {
+	doc, err := ParseNode(y, opts...)
+	if err != nil || doc == nil {
+		return nil, err
+	}
+	n := doc
+	if n.Kind == yaml.DocumentNode && len(n.Content) == 1 {
+		n = n.Content[0]
+	}
+	if ptr != "" {
+		for _, seg := range strings.Split(strings.TrimPrefix(ptr, "/"), "/") {
+			seg = strings.NewReplacer("~1", "/", "~0", "~").Replace(seg)
+			next := (*yaml.Node)(nil)
+			if n.Kind == yaml.MappingNode {
+				for i := 0; i+1 < len(n.Content); i += 2 {
+					if n.Content[i].Value == seg {
+						next = n.Content[i+1]
+					}
+				}
+			}
+			if next == nil {
+				return nil, nil
+			}
+			n = next
+		}
+	}
+	return MappingKeys(n), nil
 }
