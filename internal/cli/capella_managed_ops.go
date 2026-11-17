@@ -1000,14 +1000,16 @@ func managedBackupDelete(kind string, bucketLevel bool) managedBuild {
 	return func(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 		target := kind + "/" + args[0]
 		what := "the backup schedule of " + args[0]
+		owner := "cluster " + args[0]
 		if bucketLevel {
 			target += "/" + args[1]
 			what = "the backup schedule of bucket " + args[1]
+			owner = "bucket " + args[1] + " of " + args[0]
 		}
 		return Mutation{
 			Target:      target,
 			Question:    fmt.Sprintf("Mark %s absent in %s and delete it in Capella?", what, fileName(ed)),
-			NoopMessage: fmt.Sprintf("there is no %s; nothing to do", what),
+			NoopMessage: owner + " has no backup schedule; nothing to do",
 			Edit: func(ed *capellafile.Editor) error {
 				cl, err := clusterEntry(cmd, args, ed)
 				if err != nil {
