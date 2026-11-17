@@ -8,7 +8,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Templates written under an empty projects: or clusters: list. The editor strips them when it

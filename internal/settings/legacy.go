@@ -8,7 +8,7 @@ import (
 	"sort"
 	"sync"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // LegacyEnv maps each capellactl environment variable to the cbctl variable that replaces it.

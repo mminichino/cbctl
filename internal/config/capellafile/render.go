@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sort"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Comment blocks that "sync" writes into an otherwise empty document. The editor strips them

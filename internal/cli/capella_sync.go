@@ -17,7 +17,7 @@ import (
 	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 type syncFlags struct {

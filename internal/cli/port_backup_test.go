@@ -10,7 +10,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/clitest"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // clusterPath is the fake's cluster URL as a Calls glob.

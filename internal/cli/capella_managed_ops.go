@@ -18,7 +18,7 @@ import (
 	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // managedBuild turns the flags and arguments of a resource command into the file mutation it

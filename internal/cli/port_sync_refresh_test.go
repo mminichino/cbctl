@@ -7,7 +7,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/clitest"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Ports of capellactl's tests/scenario/test_sync.py (CAP-038).

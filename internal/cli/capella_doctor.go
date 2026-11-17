@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/secrets"

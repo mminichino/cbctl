@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Profile holds non-secret Capella settings for a named profile.

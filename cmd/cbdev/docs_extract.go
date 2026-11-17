@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/docgen/port"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // cmdDocsExtractData runs a one-shot python3 importer against a capellactl checkout

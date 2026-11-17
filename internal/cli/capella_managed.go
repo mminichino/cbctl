@@ -16,7 +16,7 @@ import (
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Mutation is one change to capella.yaml that a Phase 2 resource command makes in file-managed
