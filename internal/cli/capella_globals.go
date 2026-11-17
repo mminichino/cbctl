@@ -254,7 +254,7 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		FileOrgSource: extra.FileOrgSource,
 	})
 	if err != nil {
-		return nil, Errorf(ExitConfigInvalid, "", "%v", err)
+		return nil, Errorf(ExitConfigInvalid, settingsAction, "%v", err)
 	}
 	for _, w := range resolved.Warnings {
 		warnOnce(d, w)
@@ -264,7 +264,7 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		if resolved.Profile != "" && resolved.Profile != "default" {
 			msg += fmt.Sprintf(" (profile %q)", resolved.Profile)
 		}
-		return nil, Errorf(ExitConfigInvalid, "", "%s", msg)
+		return nil, Errorf(ExitConfigInvalid, "Run 'cbctl configure' to save an API key, or set CAPELLA_API_KEY.", "%s", msg)
 	}
 
 	if g.NoWait && cmd.Flags().Changed("timeout") {
@@ -272,21 +272,25 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 	}
 
 	clk := clockFactory()
-	client, err := capellaapi.New(resolved.APIKey.Value,
+	opts := []capellaapi.Option{
 		capellaapi.WithBaseURL(resolved.BaseURL.Value),
 		capellaapi.WithOrgID(resolved.OrgID.Value),
 		capellaapi.WithClock(clk),
 		capellaapi.WithUserAgent(cliVersion()),
-	)
+	}
+	if d.HTTPClient != nil {
+		opts = append(opts, capellaapi.WithHTTPClient(d.HTTPClient))
+	}
+	client, err := capellaapi.New(resolved.APIKey.Value, opts...)
 	if err != nil {
-		return nil, Errorf(ExitConfigInvalid, "", "%v", err)
+		return nil, Errorf(ExitConfigInvalid, settingsAction, "%v", err)
 	}
 
 	ctx := cmd.Context()
 	if ctx == nil {
 		// cobra's Execute always sets a context; nil means a caller invoked RunE directly, and a
 		// Background fallback would silently drop Ctrl-C and deadlines.
-		return nil, Errorf(ExitError, "", "internal error: %s has no context", cmd.CommandPath())
+		return nil, Errorf(ExitError, unexpectedErrorAction, "internal error: %s has no context", cmd.CommandPath())
 	}
 	if !resolved.OrgID.IsSet() {
 		org, err := discoverOrg(ctx, client)

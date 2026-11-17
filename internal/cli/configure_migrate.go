@@ -69,10 +69,10 @@ func legacyKeyringFor(d Deps) settings.Keyring {
 
 func runConfigureMigrate(cmd *cobra.Command, f *migrateFlags) error {
 	if f.output != "text" && f.output != "json" {
-		return Errorf(ExitConfigInvalid, "", "--output must be text or json (got %q)", f.output)
+		return Errorf(ExitConfigInvalid, "Pass -o text or -o json.", "--output must be text or json (got %q)", f.output)
 	}
 	if f.removeLegacy && f.dryRun {
-		return Errorf(ExitConfigInvalid, "", "--remove-legacy cannot be combined with --dry-run")
+		return Errorf(ExitConfigInvalid, "Run with --dry-run first, then again with --remove-legacy.", "--remove-legacy cannot be combined with --dry-run")
 	}
 	d := depsFromCmd(cmd)
 	from := f.from
@@ -87,7 +87,7 @@ func runConfigureMigrate(cmd *cobra.Command, f *migrateFlags) error {
 	if err != nil {
 		var pe *settings.LegacyProfileError
 		if errors.As(err, &pe) || errors.Is(err, settings.ErrUnknownLegacyProfile) {
-			return Errorf(ExitConfigInvalid, "", "%v", err)
+			return Errorf(ExitConfigInvalid, "Pass --profile with a profile that capellactl has (cbctl configure migrate --dry-run lists them).", "%v", err)
 		}
 		return err
 	}

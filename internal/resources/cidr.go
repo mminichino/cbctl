@@ -206,8 +206,8 @@ func (r *cidrRec) Diff(_ context.Context, rc *plan.RunContext, desiredAny any, o
 		case anyIP[cidr] && !confirmed: // never open a cluster to every address by accident
 			a := newAction(r, kindAllowedCIDR, key, plan.Blocked, desired, nil, parent)
 			a.Topic = "safety"
-			a.Reason = fmt.Sprintf("%s would let every IP address connect; set allowAnyIp: true on the cluster to create it, "+
-				"or run 'cbctl capella cidr create %s %s --allow-any-ip'", cidr, cluster, cidr)
+			a.Reason = fmt.Sprintf("%s would let every IP address connect; to create it, run 'cbctl capella cidr create %s %s --allow-any-ip' "+
+				"(it records allowAnyIp in capella.yaml)", cidr, cluster, cidr)
 			return a, nil
 		}
 		a := newAction(r, kindAllowedCIDR, key, plan.Create, desired, nil, parent)

@@ -204,7 +204,9 @@ func validateCandidateEnv(ed *capellafile.Editor, text string, env func(string) 
 		return fmt.Sprintf("%d problems", n)
 	}
 	var msg string
+	shown := kept
 	if len(fresh) > 0 {
+		shown = fresh
 		msg = capellafile.RenderIssues("This change is not valid, so nothing was changed:", fresh)
 		if len(kept) > 0 {
 			msg += "\n" + capellafile.RenderIssues("Already in "+name+" before this command:", kept)
@@ -212,7 +214,7 @@ func validateCandidateEnv(ed *capellafile.Editor, text string, env func(string) 
 	} else {
 		msg = capellafile.RenderIssues(fmt.Sprintf("%s already had %s before this command, so nothing was changed:", name, problems(len(kept))), kept)
 	}
-	return nil, &CLIError{Code: ExitConfigInvalid, Message: msg, Action: capellafile.FixProblems}
+	return nil, &CLIError{Code: ExitConfigInvalid, Message: msg, Action: capellafile.FixProblemsFor(shown)}
 }
 
 // ---- switching a Phase 2 command to file-managed mode ----------------------------------------

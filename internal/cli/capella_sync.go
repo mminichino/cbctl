@@ -54,7 +54,7 @@ func newCapellaSyncCmd() *cobra.Command {
 	f.BoolVar(&sf.force, "force", false, "Replace a file that is not a cbctl file, or one for another organization (a .bak is kept)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		if sf.apiVersion != "" && !slices.Contains(capellafile.SupportedAPIVersions, sf.apiVersion) {
-			return Errorf(ExitConfigInvalid, "", "--api-version must be one of %s (got %q)",
+			return Errorf(ExitConfigInvalid, "Pass --api-version cbctl/v1, or capellactl/v1 to keep the file usable by capellactl.", "--api-version must be one of %s (got %q)",
 				strings.Join(capellafile.SupportedAPIVersions, ", "), sf.apiVersion)
 		}
 		return runSync(cmd, af, &sf)

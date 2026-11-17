@@ -1,4 +1,4 @@
 api_missing.yaml has 1 problem:
   apiVersion (line 1)
     missing required field 'apiVersion'
-    action: add apiVersion: cbctl/v1
+    action: the file must start with apiVersion cbctl/v1 ('cbctl capella init' writes a new file)

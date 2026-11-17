@@ -107,6 +107,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `sync` writes advanced credentials' reference comments under their cluster's
   `databaseCredentials`, not at the end of the file.
 - `configure` stores the key in the same keychain the other commands read.
+- `cluster create` wizard: when the answers make the cluster invalid (for example size `dev` with
+  `--availability multi`), it explains why and asks the provider and size again, keeping the name.
+- Shell completion completes CLUSTER arguments from the cluster names in `capella.yaml`, and
+  `cbctl completion SHELL` writes to the command's output.
+- `--version` also prints `Capella Management API v4.0`.
+- No progress dots with `TERM=dumb` (as with `CI` set or off a terminal).
+- Every error has a next step, including wrapped Server command errors; config actions name a
+  command instead of a field to type into `capella.yaml`.
 
 ### Deprecated
 

@@ -137,6 +137,9 @@ Messages are prefixed `[error] -`, `[warning] -` and `→` for the suggested act
 `[ERROR]:`, `[WARNING]:` and `[ACTION]:`. Scripts that match on exit codes need only the two rows
 above; scripts that match on message text need the new prefixes.
 
+While waiting, a terminal shows progress dots without capellactl's spinner between them. As before,
+there are no dots off a terminal, with `CI` set, or with `TERM=dumb`.
+
 ## JSON output
 
 `-o json` output has the same fields as capellactl for every Capella command, with two exceptions:

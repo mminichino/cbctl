@@ -35,7 +35,7 @@ const wizardTries = 3
 var clusterNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 _.-]{0,255}$`)
 
 // errWizardCancelled is input ending before the wizard finished (EOF or Ctrl-D).
-var errWizardCancelled = Errorf(ExitError, "", "Cancelled; nothing was changed.")
+var errWizardCancelled = Errorf(ExitError, "Run the command again when you are ready.", "Cancelled; nothing was changed.")
 
 // clusterWizard asks for the cluster create fields the flags did not give, capellactl style.
 type clusterWizard struct {

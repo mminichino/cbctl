@@ -51,7 +51,7 @@ func checkFormat(f *configureFlags) error {
 	case "", "cbctl", "legacy":
 		return nil
 	}
-	return Errorf(ExitConfigInvalid, "", "--output-format must be cbctl or legacy (got %q)", f.format)
+	return Errorf(ExitConfigInvalid, "Pass --output-format cbctl or --output-format legacy.", "--output-format must be cbctl or legacy (got %q)", f.format)
 }
 
 // keyringFactory, when set, builds the keyring used by configure instead of Deps.Keyring. Tests
@@ -160,7 +160,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	if apiHost != "" {
 		base, err = settings.NormalizeBaseURL(apiHost)
 		if err != nil {
-			return Errorf(ExitConfigInvalid, "", "%v", err)
+			return Errorf(ExitConfigInvalid, "Pass --api-host as a host name such as cloudapi.cloud.couchbase.com, or an https:// URL.", "%v", err)
 		}
 	} else {
 		resolved, rerr := resolveSettings(cmd, settings.Inputs{Profile: profile})
@@ -197,13 +197,13 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 			}
 		}
 		if !found {
-			return Errorf(ExitConfigInvalid, "", "organization %s is not visible to this key", orgID)
+			return Errorf(ExitConfigInvalid, "Check --org-id, or use an API key created in that organization.", "organization %s is not visible to this key", orgID)
 		}
 	} else if len(orgs) == 1 {
 		orgID = orgs[0].ID
 		orgName = orgs[0].Name
 	} else if len(orgs) == 0 {
-		return Errorf(ExitConfigInvalid, "", "no organizations visible to this API key")
+		return Errorf(ExitConfigInvalid, "Use an organization API key (Capella UI: Organization Settings > API Keys).", "no organizations visible to this API key")
 	} else if !f.apiKeyStdin && d.IsTTY(stdinFrom(cmd)) {
 		errOut := stderrFrom(cmd)
 		for i, o := range orgs {

@@ -14,7 +14,6 @@ import (
 // provider, size (custom: the service layout and each group), region, network and support
 // plan. name is the NAME argument (asked when empty); cidr is the suggested network.
 func (w *clusterWizard) run(cmd *cobra.Command, name, cidr string) (ClusterSpec, error) {
-	ch := cmd.Flags().Changed
 	spec := ClusterSpec{Name: name}
 	var err error
 	fmt.Fprintln(w.out, "New Capella cluster (press Enter to accept a default; Ctrl-D cancels)")
@@ -40,13 +39,24 @@ func (w *clusterWizard) run(cmd *cobra.Command, name, cidr string) (ClusterSpec,
 		free = kind == "free"
 		spec.Free = free
 	}
+	return w.details(cmd, spec, cidr)
+}
+
+// details asks the provider, size, region, network and support plan the flags did not set. It
+// is asked again, keeping the name and type, when the answers together make capella.yaml
+// invalid (capellactl's create loop).
+func (w *clusterWizard) details(cmd *cobra.Command, spec ClusterSpec, cidr string) (ClusterSpec, error) {
+	ch := cmd.Flags().Changed
+	var err error
+	free := spec.Free || flagBool(cmd, "free-tier")
+	spec = ClusterSpec{Name: spec.Name, Free: spec.Free}
 	spec.Provider = flagString(cmd, "provider")
 	if !ch("provider") {
 		if spec.Provider, err = w.choose("Cloud provider", "aws", cloudProviders); err != nil {
 			return spec, err
 		}
 	}
-	if !free && !sized {
+	if !free && sizeOpen(cmd) {
 		if err := w.askSize(cmd, &spec); err != nil {
 			return spec, err
 		}
@@ -84,6 +94,17 @@ func (w *clusterWizard) run(cmd *cobra.Command, name, cidr string) (ClusterSpec,
 		}
 	}
 	return spec, nil
+}
+
+// sizeOpen reports whether the wizard still asks the size: capellactl asks it unless a flag
+// already lays the cluster out (options such as --availability or --support-plan do not).
+func sizeOpen(cmd *cobra.Command) bool {
+	for _, f := range []string{"size", "group", "single-node", "nodes", "cpu", "ram"} {
+		if cmd.Flags().Lookup(f) != nil && cmd.Flags().Changed(f) {
+			return false
+		}
+	}
+	return true
 }
 
 // askSize asks the size preset; custom asks the service layout, then the one group's nodes,

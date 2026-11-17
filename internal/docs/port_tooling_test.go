@@ -176,7 +176,7 @@ func TestLicence_CAP044_AC2_NoticeAndVersionLine(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
-	if len(got) != 2 || got[0] != "cbctl version 1.2.3" || got[1] != "Licensed under Apache-2.0 · Copyright Couchbase, Inc. and contributors" {
+	if len(got) != 3 || got[0] != "cbctl version 1.2.3" || got[1] != "Capella Management API v4.0" || got[2] != "Licensed under Apache-2.0 · Copyright Couchbase, Inc. and contributors" {
 		t.Fatalf("--version = %q", out.String())
 	}
 }
