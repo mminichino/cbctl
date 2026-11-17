@@ -345,6 +345,18 @@ func TestScheduleApplyIsTargetedApply(t *testing.T) {
 
 	res = mustRun(t, "cluster", "apply", "envclu", "--yes")
 	wantContains(t, res.Stderr, "deprecated", "apply --target cluster/NAME")
+	// capellactl's --project qualifies the cluster (cluster/PROJECT/NAME): the wrong project
+	// selects nothing, the right one applies the cluster.
+	mustRun(t, "cluster", "schedule", "set", "envclu", "--weekend", "08:00-12:00", "--no-apply", "--yes")
+	f.ResetLog()
+	runResource(t, "cluster", "apply", "envclu", "--project", "nope", "--yes")
+	if w := f.Writes(); len(w) != 0 {
+		t.Errorf("--project nope wrote %v", w)
+	}
+	mustRun(t, "cluster", "apply", "envclu", "--project", "envproj", "--yes")
+	if n := f.Count("PUT", "onOffSchedule") + f.Count("POST", "onOffSchedule"); n != 1 {
+		t.Errorf("--project envproj: schedule writes = %d, want 1", n)
+	}
 	mustRun(t, "project", "apply", "envproj", "--yes")
 }
 

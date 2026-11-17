@@ -1,0 +1,98 @@
+V	apply	--allow-service-group-removal --allow-service-removal --power-on --prune --rotate-passwords --skip-capacity-check --target
+V	bucket	
+V	bucket backup	
+V	bucket backup create	--project
+V	bucket backup cycle	
+V	bucket backup cycle get	--project
+V	bucket backup cycle list	--project
+V	bucket backup delete	--project
+V	bucket backup export	--export-id --project
+V	bucket backup get	--project
+V	bucket backup list	--project
+V	bucket backup restore	--auto-remove-collections --exclude-data --filter-keys --filter-values --force-updates --include-data --map-data --project --replace-ttl --replace-ttl-with --services --to-cluster
+V	bucket backup schedule	
+V	bucket backup schedule delete	--project
+V	bucket backup schedule set	--cost-optimized --day --incremental-every --no-apply --no-cost-optimized --project --retention --start-at
+V	bucket backup schedule show	--project
+V	bucket create	--conflict-resolution --durability --eviction-policy --flush --memory --no-apply --no-flush --priority --project --replicas --storage-backend --ttl --type --vbuckets
+V	bucket delete	--project
+V	bucket get	--project
+V	bucket list	--project
+V	bucket update	--cross-cluster-versioning --durability --flush --memory --no-apply --no-cross-cluster-versioning --no-flush --priority --project --replicas --ttl
+V	cidr	
+V	cidr create	--allow-any-ip --comment --expires-at --no-apply --project
+V	cidr delete	--project
+V	cidr list	--project
+V	cluster	
+H	cluster apply	--project
+V	cluster backup	
+V	cluster backup create	--copy-to --project --retain
+V	cluster backup delete	--project
+V	cluster backup list	--project
+V	cluster backup regions	--project
+V	cluster backup restore	--from-region --project
+V	cluster backup restores	--project
+V	cluster backup retain	--project --retain
+V	cluster backup schedule	
+V	cluster backup schedule delete	--project
+V	cluster backup schedule options	--project
+V	cluster backup schedule set	--copy-to --every --no-apply --no-copies --project --retain --start
+V	cluster backup schedule show	--project
+V	cluster clone	--cidr --description --no-apply --no-data-model --project --region --server-version --support-plan --to-project --with-cidrs --with-credentials
+V	cluster create	--availability --cidr --cmek-id --cpu --description --disk-auto-expansion --disk-iops --disk-size --disk-type --free-tier --group --no-apply --no-disk-auto-expansion --nodes --private-dns --project --provider --ram --region --server-version --services --single-node --size --support-plan --support-timezone --zone
+V	cluster delete	--cascade --discard-snapshots --project
+V	cluster disk-types	--provider
+V	cluster get	--project
+V	cluster group	
+V	cluster group add	--cpu --disk-auto-expansion --disk-iops --disk-size --disk-type --no-apply --no-disk-auto-expansion --nodes --project --ram --services
+V	cluster group list	--project
+V	cluster group remove	--allow-service-removal --no-apply --project --skip-capacity-check
+V	cluster list	--project
+V	cluster options	
+V	cluster power	--off --on --project --with-app-service
+V	cluster protect	--off --on --project
+V	cluster scale	--all-groups --group --max --min --no-apply --nodes --project --skip-capacity-check --step
+V	cluster schedule	
+V	cluster schedule apply	
+V	cluster schedule delete	--project
+V	cluster schedule pause	--power-on --project
+V	cluster schedule resume	--project
+V	cluster schedule set	--friday --monday --no-apply --project --saturday --sunday --thursday --timezone --tuesday --wednesday --weekdays --weekend
+V	cluster schedule show	--project
+V	cluster update	--cpu --description --disk-auto-expansion --disk-iops --disk-size --disk-type --group --no-apply --no-disk-auto-expansion --project --ram --support-plan --support-timezone
+V	collection	
+V	collection create	--max-ttl --no-apply --project
+V	collection delete	--project
+V	collection list	--project
+V	collection update	--max-ttl --no-apply --project
+V	completion	
+V	configure	--api-base-url --api-key-stdin --config-file --import --no-import --org-id --profile
+V	configure list	
+V	configure remove	--profile
+V	configure show	--profile
+V	credential	
+V	credential create	--all-buckets --bucket --collection --no-apply --password-env --password-file --privileges --project --scope
+V	credential delete	--project
+V	credential get	--project
+V	credential list	--project
+V	credential update	--all-buckets --bucket --collection --no-apply --password-env --password-file --privileges --project --rotate-password --scope
+V	destroy	--discard-snapshots
+V	drift	--detailed-exitcode
+V	help	
+H	import	--cluster --cluster-id --file --force --full --project --project-id --stdout
+V	init	--access --allow-any-ip --bucket --bucket-memory --cidr --cluster --cpu --credential --dry-run --file --force --hibernation --network-cidr --no-protect --nodes --non-interactive --office-hours --org-id --password-env --preset --project --project-id --protect --provider --ram --region --scope --storage-backend --support-plan --timezone
+V	plan	--detailed-exitcode --target
+V	project	
+H	project apply	
+V	project create	--description
+V	project delete	--cascade --discard-snapshots
+V	project get	
+V	project list	
+V	project update	--description --no-apply
+V	scope	
+V	scope create	--no-apply --project
+V	scope delete	--project
+V	scope list	--project
+V	sync	--cluster --cluster-id --dry-run --force --full --project --project-id --skip-project --stdout
+V	validate	
+G		--auto-approve --config --log-level --no-wait --output --profile --quiet --timeout --version --yes

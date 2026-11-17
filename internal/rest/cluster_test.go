@@ -131,8 +131,7 @@ func TestCreateClusterMultiNodeRebalanceFailure(t *testing.T) {
 		"couchbase.server.0.services": "data",
 		"couchbase.server.1.ip":       second.addr(),
 		"couchbase.server.1.services": "data,eventing",
-		// RAM set so the second node's memory is not read over its default port.
-		"couchbase.server.1.ram": "4",
+		"couchbase.server.1.ram":      "4",
 	}
 	_, err := NewClient().CreateCluster(serverConfig(primary.addr()), opts)
 	if err == nil || !strings.Contains(err.Error(), "failed to create Couchbase Server cluster: HTTP 400") {
@@ -141,8 +140,9 @@ func TestCreateClusterMultiNodeRebalanceFailure(t *testing.T) {
 	if second.count(http.MethodGet, "/pools") != 1 {
 		t.Fatal("expected API wait on second node")
 	}
+	// The node spec names a non-default port, so addNode must keep it.
 	adds := primary.requests(http.MethodPost, "/controller/addNode")
-	if len(adds) != 1 || adds[0].Form.Get("hostname") != "127.0.0.1" || adds[0].Form.Get("services") != "kv,eventing" {
+	if len(adds) != 1 || adds[0].Form.Get("hostname") != second.addr() || adds[0].Form.Get("services") != "kv,eventing" {
 		t.Fatalf("addNode = %+v", adds)
 	}
 	quota := primary.requests(http.MethodPost, "/pools/default")

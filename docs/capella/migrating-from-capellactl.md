@@ -35,8 +35,9 @@ The rule: `capellactl X` is `cbctl capella X`, except for these rows.
 | `capellactl help cluster scale` | `cbctl capella cluster scale --help` | `cbctl help capella cluster scale` also works |
 | `capellactl completion bash\|zsh\|fish` | `cbctl completion bash\|zsh\|fish\|powershell` | `cbctl capella completion` exits 3 and names the root command |
 | `capellactl project apply NAME` (hidden) | `cbctl capella apply --target project/NAME` | The old form still works, hidden, with a deprecation warning |
-| `capellactl cluster apply NAME` (hidden) | `cbctl capella apply --target cluster/NAME` | The old form still works, hidden, with a deprecation warning |
+| `capellactl cluster apply NAME` (hidden) | `cbctl capella apply --target cluster/NAME` | The old form still works, hidden, with a deprecation warning; `--project P` selects `cluster/P/NAME` |
 | `capellactl cluster schedule apply NAME` | `cbctl capella cluster schedule apply NAME` | Same as `apply --target schedule/NAME` |
+| `capellactl --version` | `cbctl capella --version` | Same text as `cbctl --version`: version, Management API version, licence |
 | `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`, `--no-cross-cluster-versioning`, `--no-protect` | Same | Accepted wherever the positive flag is, and also as `--flush=false` and so on |
 
 Prompts work as in capellactl when a terminal is attached: `cluster create` without a name runs
@@ -51,8 +52,8 @@ Other differences in these commands:
   `--auto-approve`. With a capella.yaml it asks, as capellactl did (`-y` skips the question).
 - `project list` has the columns `NAME ID DESCRIPTION` (capellactl: `S.NO NAME DESCRIPTION CREATED
   IN FILE ID`). `-o json` lists the projects in the same order.
-- `configure list` shows the organization ID and whether a key is stored; capellactl showed the
-  organization name and a keychain column.
+- `configure list` shows the organization as `NAME (ID)` and whether a key is stored, with no
+  config-file column.
 - `cluster protect --off` in file-managed mode writes `deletionProtection: false` into
   capella.yaml; capellactl removed the field.
 

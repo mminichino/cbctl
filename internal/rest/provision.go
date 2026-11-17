@@ -3,6 +3,8 @@ package rest
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mminichino/cbctl/internal/logging"
 )
 
 // ProvisionOptions configures per-node cluster bootstrap, join, and rebalance.
@@ -93,9 +95,17 @@ func (c *Client) BootstrapPrimary(opts ProvisionOptions) (bool, error) {
 		}
 	}
 	if hasService(services, "query") {
-		_ = c.WaitForQueryReady(local, opts.Username, opts.Password, 30)
+		c.warnIfQueryNotReady(local, opts.Username, opts.Password)
 	}
 	return true, nil
+}
+
+// warnIfQueryNotReady waits for the query service. The node is initialised either way, so a
+// slow query service is not a create failure, but it is reported rather than hidden.
+func (c *Client) warnIfQueryNotReady(ep Endpoint, username, password string) {
+	if err := c.WaitForQueryReady(ep, username, password, 30); err != nil {
+		logging.Warning("query service on %s is not ready yet: %v; run 'cbctl cluster test' once it is", ep.Host, err)
+	}
 }
 
 func hasService(services []string, want string) bool {

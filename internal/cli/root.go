@@ -30,6 +30,7 @@ var rootCmd = buildRootCmd()
 func SetVersion(version, commit, date string) {
 	versionString = fmt.Sprintf("%s (commit=%s date=%s)", version, commit, date)
 	rootCmd.Version = versionString
+	shareVersionWithCapella(rootCmd)
 }
 
 // NewRootCmd builds a fresh cbctl command tree. It shares no command or flag state with any
@@ -42,7 +43,19 @@ func NewRootCmd(d Deps) *cobra.Command {
 		root.Version = versionString
 	}
 	root.SetVersionTemplate(versionTemplate)
+	shareVersionWithCapella(root)
 	return root
+}
+
+// shareVersionWithCapella makes `cbctl capella --version` print what `cbctl --version` does, so
+// a script that replaced `capellactl` with `cbctl capella` keeps working.
+func shareVersionWithCapella(root *cobra.Command) {
+	for _, c := range root.Commands() {
+		if c.Name() == "capella" {
+			c.Version = root.Version
+			c.SetVersionTemplate(strings.Replace(versionTemplate, "{{.Name}}", root.Name(), 1))
+		}
+	}
 }
 
 // capellaAPIVersion is the Capella Management API version the Capella commands use.

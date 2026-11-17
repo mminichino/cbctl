@@ -253,7 +253,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	if cmd.Flags().Changed("config-file") {
 		configFile = f.configFile
 	}
-	profiles[profile] = settings.Profile{OrganizationID: orgID, APIBaseURL: base, ConfigFile: configFile}
+	profiles[profile] = settings.Profile{OrganizationID: orgID, OrganizationName: orgName, APIBaseURL: base, ConfigFile: configFile}
 	if err := store.Save(profiles); err != nil {
 		undoKey()
 		return err
@@ -353,10 +353,11 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 	}
 	kr := configureKeyring(cmd)
 	type row struct {
-		Profile      string `json:"profile"`
-		Organization string `json:"organization"`
-		APIHost      string `json:"apiHost"`
-		Key          string `json:"key"`
+		Profile          string `json:"profile"`
+		Organization     string `json:"organization"`
+		OrganizationName string `json:"organizationName,omitempty"`
+		APIHost          string `json:"apiHost"`
+		Key              string `json:"key"`
 	}
 	if f.output == "json" && f.format == "legacy" {
 		enc := json.NewEncoder(cmd.OutOrStdout())
@@ -375,7 +376,7 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 		if _, err := kr.Get(name); err == nil {
 			keyStatus = "stored"
 		}
-		rows = append(rows, row{Profile: name, Organization: p.OrganizationID, APIHost: p.APIBaseURL, Key: keyStatus})
+		rows = append(rows, row{Profile: name, Organization: p.OrganizationID, OrganizationName: p.OrganizationName, APIHost: p.APIBaseURL, Key: keyStatus})
 	}
 	if f.output == "json" {
 		enc := json.NewEncoder(cmd.OutOrStdout())
@@ -384,7 +385,11 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "PROFILE  ORGANIZATION  API HOST  KEY\n")
 	for _, r := range rows {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  %s  %s\n", r.Profile, r.Organization, r.APIHost, r.Key)
+		org := r.Organization
+		if r.OrganizationName != "" {
+			org = r.OrganizationName + " (" + r.Organization + ")" // as capellactl showed it
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  %s  %s\n", r.Profile, org, r.APIHost, r.Key)
 	}
 	return nil
 }

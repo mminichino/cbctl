@@ -49,7 +49,7 @@ cbctl capella cluster create|update|scale|protect|delete|clone ... [--no-apply|-
 cbctl capella cluster group add|remove|cluster schedule set|delete|pause|resume|cluster backup schedule set|delete ... [--no-apply|--direct]
 cbctl capella bucket add|update|delete|bucket backup schedule set|delete|scope add|delete|collection add|update|delete ... [--no-apply|--direct]
 cbctl capella cidr create|delete|credential create|update|delete ... [--no-apply|--direct]   # passwords only as ${VAR}/${file:PATH} via --password-env/--password-file
-# capellactl spellings: bucket create C B | scope create C B S | collection create C B S X (= add, stderr note); cluster schedule apply C (= apply --target schedule/C); help [TOPIC] (= guide, hidden)
+# capellactl spellings: bucket create C B | scope create C B S | collection create C B S X (= add, stderr note); cluster schedule apply C (= apply --target schedule/C); help [TOPIC] (= guide, hidden); capella --version (= cbctl --version); cluster apply C [--project P] (hidden, deprecated)
 # Deprecated (hidden; warn on stderr): capella cluster exists|destroy|test, capella bucket create NAME --database|exists, cluster apply|project apply -> use cluster get / cluster delete / credential create + cluster test / bucket add / bucket get / apply --target KIND/NAME
 # Managed 'cluster create' [NAME] (NAME or --name; a different pair exits 3; wizard on a TTY when the name is missing; no capella.yaml = direct create): --name N [--size dev|small|medium|large|custom] [--group SERVICES:NODESxCPU/RAM[:DISK]]... [--free-tier] [--provider] [--region] [--cidr] [--support-plan]
 

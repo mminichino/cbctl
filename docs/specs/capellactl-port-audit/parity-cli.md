@@ -6,6 +6,45 @@
 
 Status legend: MATCH · RENAMED (doc? = whether a user-facing doc gives the mapping) · PARTIAL · DIFFERENT · MISSING · INTENTIONALLY-DROPPED (just? = whether the justification still holds).
 
+## 0. Re-verification before the merge to main (2026-11-17, release 0.6.0)
+
+The tables below are the audit snapshot at b05642b and are kept unchanged as the record. Every
+row that was not MATCH was checked again against the branch tip. **No MISSING row remains.**
+Command paths and long options are now checked mechanically: `TestCapellactlCompat`
+(`internal/cli/capellactl_tree_test.go`) loads capellactl's whole click tree
+(`internal/cli/testdata/capellactl-tree.tsv`, 98 commands) and fails if a path or option does not
+resolve under `cbctl capella`, except for documented exceptions (`completion`, `import`'s sync flags).
+
+| Row (snapshot status) | Now | Evidence |
+|---|---|---|
+| `--version` (PARTIAL: no API version; `cbctl capella --version` unknown flag) | MATCH: API version and licence lines; `cbctl capella --version` prints the same | `TestCLI_CAP001_AC1_VersionOutput`, `TestCLI_CAP001_AC1_CapellaVersionMatchesRoot` |
+| `CAPELLACTL_*` env vars (RENAMED, no mapping, ignored silently) | RENAMED, documented; old names honoured with one warning | guide "Environment variables"; `TestCapellactlConfigEnvVar`, `TestLegacyEnvAuth` |
+| `CBCTL_QUIET` accepts only `1` (PARTIAL) | MATCH: 1/true/yes/on, and a warning for anything else | `TestEnvQuiet` |
+| `--timeout 90` (PARTIAL) | MATCH: plain seconds, `90S`, `5m`, `1h30m` | `TestCapellaTimeoutParse` |
+| Unknown sub-command exits 0 (DIFFERENT) | exit 3 with a hint (capellactl: 2; cbctl uses 3 for every usage error) | `TestUnknownSubcommand`, `TestUnknownSubcommandHints` |
+| Usage errors exit 1 (DIFFERENT) | exit 3, documented | guide "Exit codes and messages" |
+| No terminal, no `-y` (DIFFERENT: 4 vs 1) | kept at 4 ("blocked"), documented | guide "Exit codes and messages" |
+| Missing answer without a terminal; prompts for project create/update, cluster clone, group add, bucket add (PARTIAL) | MATCH | `TestPrompts`, `TestPrompts_CAP042_AC2_AskUsesDefaultOrNamesFlag`, `TestClusterWizard` |
+| `help …` (RENAMED, no doc) | `guide …`, hidden `help` alias, documented | `TestCapellaHelpAlias` |
+| completion of CLUSTER names (PARTIAL) | MATCH | `TestCompletion_CAP034_AC6_ClusterNamesFromConfig` |
+| `cluster schedule apply NAME` (MISSING) | MATCH (visible) | `TestScheduleApplyIsTargetedApply` |
+| `cluster apply` / `project apply` (dropped) | hidden, deprecated aliases; `cluster apply --project P` selects `cluster/P/NAME` | `TestScheduleApplyIsTargetedApply` |
+| `configure --import/--no-import` (MISSING) | MATCH | `TestConfigure_OffersImport` |
+| `configure --api-base-url` (RENAMED, no doc) | accepted as `--api-host`, documented | guide "Commands" table |
+| profile default from `CBCTL_PROFILE` (PARTIAL) | MATCH | `activeProfile` in `configure.go`; `TestConfigureMigrateCommand` |
+| `organizationName` profile key (PARTIAL) | MATCH: stored by `configure`, carried over by `migrate`, shown by `configure list` as `NAME (ID)` | `TestMigrateKeepsOrganizationName` |
+| 401 help (PARTIAL) | MATCH: checklist with key length and tail, allow-list, token vs ID | `TestConfigure_CAP037_AC7_RejectionShowsHintAndChecklist` |
+| `configure list|show` JSON (DIFFERENT) | `--output-format legacy` gives capellactl's shape; rows are sorted | `TestConfigureLegacyOutputFormat` |
+| profile store / keychain service (DIFFERENT, no import) | read as a fallback with a warning; `configure migrate` copies them | `TestLegacyProfileAndKeychainFallback`, `TestConfigureMigrateCommand` |
+| no keychain → exit 3 (DIFFERENT) | MATCH: profile saved, key not, warning | `configure.go` (`no OS keychain available`) |
+| `credentialsOutput` default (DIFFERENT) | `./.capellactl/credentials` is used while `./.cbctl/credentials` does not exist; `doctor` reports it | `TestResolveCredentialsDir`, `TestMigrationEndToEndDoctorClean` |
+| `bucket|scope|collection create` with capellactl's arguments (RENAMED + collision) | forwards to `add` with a note | `TestCapellactlCreateForwardsToAdd` |
+| `cluster create NAME` positional, wizard, direct mode (PARTIAL) | MATCH | `TestDirectClusterCreate`, `TestClusterWizard` |
+| `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush` … (PARTIAL) | MATCH | `TestNegationFlags` |
+| hidden `import` = sync (DIFFERENT) | `capella import` with sync flags exits 3 and names `sync` | `TestImportSyncHint` |
+| `init --password-env` default name (DIFFERENT) | kept (`CBCTL_PWD_<CLUSTER>_<NAME>`), documented | guide "capella.yaml and apiVersion" |
+| Message prefixes (DIFFERENT) | kept (project logging rule), documented | guide "Exit codes and messages" |
+
 ## 1. Global / root surface
 
 | capellactl | cbctl | Status | Notes |

@@ -146,7 +146,21 @@ func TestCLI_CAP001_AC1_VersionOutput(t *testing.T) {
 	}
 }
 
-// capellaTree returns the visible commands under cbctl capella.
+// capellactl scripts become `cbctl capella ...`, so `cbctl capella --version` must work too.
+func TestCLI_CAP001_AC1_CapellaVersionMatchesRoot(t *testing.T) {
+	want := "cbctl version 1.2.3\nCapella Management API v4.0\n" + cli.LicenceLine + "\n"
+	for _, args := range [][]string{{"capella", "--version"}, {"capella", "-q", "--version"}} {
+		var out, errW strings.Builder
+		code := cli.Run(t.Context(), args, cli.Deps{Version: "1.2.3", Stdout: &out, Stderr: &errW})
+		if code != 0 || out.String() != want || errW.Len() != 0 {
+			t.Fatalf("%v: exit %d stdout %q stderr %q", args, code, out.String(), errW.String())
+		}
+	}
+	var out, errW strings.Builder
+	if code := cli.Run(t.Context(), []string{"capella", "cluster", "--version"}, cli.Deps{Version: "1.2.3", Stdout: &out, Stderr: &errW}); code != 3 {
+		t.Fatalf("capella cluster --version: exit %d, want 3 (stdout %q)", code, out.String())
+	}
+}
 func capellaTree(t *testing.T) []*cobra.Command {
 	t.Helper()
 	root := cli.NewRootCmd(cli.Deps{})

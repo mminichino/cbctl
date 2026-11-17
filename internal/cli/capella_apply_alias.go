@@ -45,6 +45,19 @@ func newHiddenApplyAlias(kind string) *cobra.Command {
 		// capellactl's "project apply" applied the project's own settings, not its clusters.
 		cmd.Annotations = map[string]string{noDescendantsAnnotation: "true"}
 	}
+	if kind == "cluster" {
+		// capellactl's "cluster apply NAME --project P" picked the cluster when its name repeats;
+		// the target spelling for that is cluster/P/NAME.
+		var project string
+		cmd.Flags().StringVar(&project, "project", "", "Project of the cluster (only needed when the name repeats)")
+		run := cmd.RunE
+		cmd.RunE = func(c *cobra.Command, args []string) error {
+			if project != "" && len(args) == 1 {
+				args = []string{project + "/" + args[0]}
+			}
+			return run(c, args)
+		}
+	}
 	deprecateLegacy(cmd, "cbctl capella apply --target "+kind+"/NAME")
 	return cmd
 }

@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,12 +50,13 @@ func (e Endpoint) scheme() string {
 	return "http"
 }
 
+// JoinHostPort brackets IPv6 literals so the result is a valid URL authority.
 func (e Endpoint) adminURL(path string) string {
-	return fmt.Sprintf("%s://%s:%d%s", e.scheme(), e.Host, e.AdminPort, path)
+	return fmt.Sprintf("%s://%s%s", e.scheme(), net.JoinHostPort(e.Host, strconv.Itoa(e.AdminPort)), path)
 }
 
 func (e Endpoint) queryURL(path string) string {
-	return fmt.Sprintf("%s://%s:%d%s", e.scheme(), e.Host, e.QueryPort, path)
+	return fmt.Sprintf("%s://%s%s", e.scheme(), net.JoinHostPort(e.Host, strconv.Itoa(e.QueryPort)), path)
 }
 
 // Client performs form/JSON REST calls against a cluster endpoint.

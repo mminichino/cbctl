@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-17
+
+Folds capellactl into cbctl: every capellactl command is available under `cbctl capella`, and
+capellactl is no longer supported. See [Migration](#migration).
+
 ### Added
 
 - File-managed `cbctl capella cluster create` (capellactl parity): checks the file and the Capella
@@ -52,6 +57,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   duplicate bucket, scope, collection, credential or allowed CIDR with Capella's code 1010.
 - LICENSE is byte-identical to the Apache License 2.0 text again (final newline restored); the runbook's
   CI/CD section gives the right exit code (4) for a change without a terminal or `-y`.
+- Couchbase Server commands: IPv6 literals work in `--host` and node specs (`::1`, `[::1]:8091`);
+  multi-node `cluster create` keeps a node spec's non-default management port when adding the node;
+  `--ext-api` is used for alternate-address setup as for every other step; a query service that is
+  not ready after provisioner `cluster create` is reported as a warning instead of silently ignored.
+- `TestCapellactlCompat` checks every capellactl command and option against cbctl, from a dump of
+  capellactl's command tree.
 
 ### Changed
 
@@ -122,7 +133,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `--availability multi`), it explains why and asks the provider and size again, keeping the name.
 - Shell completion completes CLUSTER arguments from the cluster names in `capella.yaml`, and
   `cbctl completion SHELL` writes to the command's output.
-- `--version` also prints `Capella Management API v4.0`.
+- `--version` also prints `Capella Management API v4.0`, and `cbctl capella --version` prints the
+  same text (scripts that replaced `capellactl` with `cbctl capella` keep working).
+- The hidden `capella cluster apply NAME` accepts capellactl's `--project P` (= `cluster/P/NAME`).
+- `configure` keeps the organization name in the profile (and `configure migrate` carries
+  capellactl's over); `configure list` shows `NAME (ID)` as capellactl did.
 - No progress dots with `TERM=dumb` (as with `CI` set or off a terminal).
 - Every error has a next step, including wrapped Server command errors; config actions name a
   command instead of a field to type into `capella.yaml`.
@@ -159,3 +174,6 @@ keeps that version. See [docs/capella/migrating-from-capellactl.md](docs/capella
 ### Security
 
 - Secret redaction in logs and CLI output; generated credential passwords written only to 0600 files.
+
+[Unreleased]: https://github.com/mminichino/cbctl/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/mminichino/cbctl/compare/v0.5.0...v0.6.0

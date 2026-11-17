@@ -13,10 +13,10 @@ Capella cloud operations are available under `cbctl capella` (see [Capella](#cap
 curl -sL "https://github.com/mminichino/cbctl/releases/download/latest/cbctl_Darwin_arm64.tar.gz" \
   | tar xz
 sudo mv cbctl /usr/local/bin/
-cbctl --version
+cbctl --version            # cbctl capella --version prints the same
 
-# Pin a version (replace v0.2.0)
-# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.2.0/cbctl_Darwin_arm64.tar.gz" | tar xz
+# Pin a version (replace v0.6.0)
+# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.6.0/cbctl_Darwin_arm64.tar.gz" | tar xz
 ```
 
 See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures. Asset URLs use `/releases/download/<tag>/...` (tag before the filename).
@@ -325,7 +325,7 @@ These pre-port commands are hidden from `--help`, still run, and print a warning
 | `capella bucket create NAME --database N` | `capella bucket add N NAME [--memory MB] [--replicas N]` |
 | `capella bucket exists NAME --database N` | `capella bucket get N NAME` |
 | `capella cluster create --database N ...` (legacy flags) | `capella cluster create N [--size ...]`, then `capella cidr create` / `capella credential create` |
-| `capella cluster apply N`, `capella project apply N` | `capella apply --target cluster/N` / `--target project/N` |
+| `capella cluster apply N [--project P]`, `capella project apply N` | `capella apply --target cluster/N` (`cluster/P/N`) / `--target project/N` |
 
 The legacy flags (`--database`, `--database-id`, `--org`, `--project-id`, `--user-email`, `--user-id`, `--allow-cidr`, `-u`) are hidden. They are safe by default: `--allow-cidr` has no default and `0.0.0.0/0` / `::/0` need `--allow-any-ip`; no database user is created unless `--username` and `--password-env VAR` or `--password-file PATH` are given; a literal `-p/--password` exits 3. Mixing legacy flags with `--size`/`--group` exits 3. `capella import` is the JSONL import; called without arguments or with sync flags (`--full`, `--stdout`, `--cluster`, ...) it exits 3 and points to `capella sync` (capellactl's `import`).
 

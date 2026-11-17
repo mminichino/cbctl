@@ -225,8 +225,8 @@ func checkCommand(c docCmd) string {
 				help = true // cobra adds --help to every command when it runs
 				continue
 			}
-			if alt == "--version" && cmd == root && root.Version != "" {
-				help = true // cobra adds --version to a root command with a Version
+			if alt == "--version" && cmd.Version != "" {
+				help = true // cobra adds --version to a command with a Version (root and capella)
 				continue
 			}
 			fl := lookupFlag(cmd, alt)

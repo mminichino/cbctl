@@ -1,12 +1,15 @@
 package rest
 
 import (
+	"io"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/logging"
 )
 
 // The wait loops pace on Client.Clock, so their retry branches run instantly in tests and
@@ -57,4 +60,30 @@ func TestClientSleep_DefaultsToRealClock(t *testing.T) {
 	if time.Since(start) < time.Millisecond {
 		t.Fatal("nil Clock should fall back to a real sleep")
 	}
+}
+
+// A query service that never answers is reported as a warning (provisioning still succeeds);
+// a ready one prints nothing.
+func TestWarnIfQueryNotReady(t *testing.T) {
+	t.Run("not ready warns", func(t *testing.T) {
+		ep := closedEndpoint(t)
+		ep.QueryPort = ep.AdminPort
+		c := NewClient()
+		c.Clock = engine.NewFakeClock(time.Time{})
+		var errBuf strings.Builder
+		logging.WithOutputs(io.Discard, &errBuf, func() { c.warnIfQueryNotReady(ep, "u", "p") })
+		if !strings.Contains(errBuf.String(), "query service on 127.0.0.1 is not ready yet") {
+			t.Fatalf("stderr = %q", errBuf.String())
+		}
+	})
+	t.Run("ready is silent", func(t *testing.T) {
+		f := newFakeCB(t)
+		ep := f.endpoint()
+		ep.QueryPort = ep.AdminPort
+		var errBuf strings.Builder
+		logging.WithOutputs(io.Discard, &errBuf, func() { NewClient().warnIfQueryNotReady(ep, "u", "p") })
+		if errBuf.Len() != 0 {
+			t.Fatalf("stderr = %q", errBuf.String())
+		}
+	})
 }

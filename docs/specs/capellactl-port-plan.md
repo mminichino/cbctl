@@ -736,7 +736,7 @@ func defaultRepo(ctx context.Context) string
 4. **Coverage:** `make cover-gate` meets every tier in Phase 6.
 5. **Stability:** `rg 'os\.Exit\(' internal/ --glob '!*_test.go'` is empty, `go test -race ./...` is green, `make lint` is green, and the hermetic gate fails hard.
 6. **Docs:** `make docs-check` passes. The migration guide, the 5 ported operator docs and the full config reference exist. README and cbctl.mdc are current.
-7. **Nightly:** 3 consecutive green scheduled nightlies on the branch tip, verified by `cbdev ci gate` without `--report-only`.
+7. **Nightly:** one green `workflow_dispatch` run of `nightly.yml` on the branch tip before the merge. GitHub fires `schedule` only on the default branch, so the scheduled streak cannot exist before `nightly.yml` is on `main`. The 3-consecutive-green-scheduled-nightlies rule is enforced afterwards by the release workflow's blocking gate (`cbdev ci release-gate`), which must pass before a release tag publishes.
 
 ## 4. Workflow (D7 and user rules)
 
