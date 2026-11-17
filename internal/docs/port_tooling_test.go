@@ -181,17 +181,18 @@ func TestLicence_CAP044_AC2_NoticeAndVersionLine(t *testing.T) {
 	}
 }
 
-// TestGate_CAP032_AC5_ReleaseWorkflowRunsTheGate: release.yml runs the release gate on the
-// release commit with the workflow token and actions: read, and the release job needs it.
+// TestGate_CAP032_AC5_ReleaseWorkflowRunsTheGate: release.yml runs the nightly health report
+// on the release commit with the workflow token and actions: read, report-only, and the
+// release job does not need it (the nightly is a health signal, not a gate).
 func TestGate_CAP032_AC5_ReleaseWorkflowRunsTheGate(t *testing.T) {
 	wf := loadYAML(t, filepath.Join(repoRoot(t), ".github", "workflows", "release.yml"))
 	jobs, _ := wf["jobs"].(map[string]any)
-	gate, _ := jobs["gate"].(map[string]any)
+	gate, _ := jobs["nightly-health"].(map[string]any)
 	if gate == nil {
-		t.Fatal("release.yml has no gate job")
+		t.Fatal("release.yml has no nightly-health job")
 	}
 	if p, _ := gate["permissions"].(map[string]any); p["actions"] != "read" {
-		t.Errorf("gate permissions = %#v, want actions: read", p)
+		t.Errorf("nightly-health permissions = %#v, want actions: read", p)
 	}
 	var step map[string]any
 	steps, _ := gate["steps"].([]any)
@@ -202,21 +203,21 @@ func TestGate_CAP032_AC5_ReleaseWorkflowRunsTheGate(t *testing.T) {
 		}
 	}
 	if step == nil {
-		t.Fatal("the gate job does not run cbdev ci release-gate")
+		t.Fatal("the nightly-health job does not run cbdev ci release-gate")
 	}
 	run := asString(step["run"])
 	if !strings.Contains(run, `--commit "${GITHUB_SHA}"`) && !strings.Contains(run, "--commit ${{ github.sha }}") {
-		t.Errorf("release gate does not check the release commit: %s", run)
+		t.Errorf("nightly health report does not check the release commit: %s", run)
 	}
-	if strings.Contains(run, "--report-only") {
-		t.Errorf("release gate must block (Phase 7): drop --report-only: %s", run)
+	if !strings.Contains(run, "--report-only") {
+		t.Errorf("nightly health report must pass --report-only (never blocks): %s", run)
 	}
 	if env, _ := step["env"].(map[string]any); asString(env["GH_TOKEN"]) != "${{ github.token }}" {
-		t.Errorf("release gate GH_TOKEN = %v, want ${{ github.token }}", env["GH_TOKEN"])
+		t.Errorf("nightly health report GH_TOKEN = %v, want ${{ github.token }}", env["GH_TOKEN"])
 	}
 	release, _ := jobs["goreleaser"].(map[string]any)
-	if !needsContains(release["needs"], "gate") {
-		t.Errorf("goreleaser needs = %v, want gate", release["needs"])
+	if needsContains(release["needs"], "nightly-health") || needsContains(release["needs"], "gate") {
+		t.Errorf("goreleaser needs = %v; the nightly must not gate a release", release["needs"])
 	}
 }
 

@@ -3,8 +3,8 @@ name: nightly
 run-name: "${{ inputs.probe && format('probe: {0}', inputs.probe) || 'nightly' }}"
 # CAP-032: Capella sandbox integration every night. The weekly janitor is janitor.yml.
 # Needs repository secret CAPELLA_SANDBOX_API_KEY and repository variable CAPELLA_SANDBOX_ORG_ID.
-# A release tag needs three consecutive green scheduled runs, the newest on the tagged commit
-# (cbdev ci release-gate).
+# A health signal for main (schedule) or any ref (workflow_dispatch), never a gate: no merge,
+# push, tag or release waits for it. `cbdev ci release-gate --report-only` summarizes the streak.
 
 on:
   schedule:
@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       probe:
-        description: "Run only a live API probe instead of the suite (release gate ignores dispatches)"
+        description: "Run only a live API probe instead of the suite (the health report ignores dispatches)"
         type: choice
         options: ["", "schedule"]
         default: ""

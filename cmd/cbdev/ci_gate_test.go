@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// Phase 7 acceptance: the checked-in fixtures drive the blocking gate's exit code.
+// The checked-in fixtures drive the nightly health report's verdict and exit code.
 func TestReleaseGateFixtures(t *testing.T) {
 	sha := strings.Repeat("a", 40)
 	cases := []struct {
@@ -42,6 +42,18 @@ func TestReleaseGateUsage(t *testing.T) {
 	}
 	if code := cmdCIReleaseGate([]string{"--commit", "x", "--runs-json", filepath.Join(t.TempDir(), "absent.json")}, &out, &errb); code != 1 {
 		t.Fatalf("unreadable fixture: exit %d, want 1", code)
+	}
+	bad := filepath.Join(t.TempDir(), "bad.json")
+	if err := os.WriteFile(bad, []byte("{not json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := cmdCIReleaseGate([]string{"--commit", "x", "--runs-json", bad}, &out, &errb); code != 1 {
+		t.Fatalf("unparsable runs: exit %d, want 1", code)
+	}
+	out.Reset()
+	// The nightly is a health signal: with --report-only missing evidence never blocks.
+	if code := cmdCIReleaseGate([]string{"--commit", "x", "--runs-json", bad, "--report-only"}, &out, &errb); code != 0 || !strings.Contains(out.String(), "UNKNOWN") {
+		t.Fatalf("unparsable runs --report-only: exit %d, want 0 with UNKNOWN\n%s", code, out.String())
 	}
 }
 

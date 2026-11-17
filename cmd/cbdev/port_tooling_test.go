@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-// TestGate_CAP032_AC5_CLIAndReportOnly: the release gate fails (exit 1) on too few green nights,
-// and --report-only prints the verdict but exits 0.
+// TestGate_CAP032_AC5_CLIAndReportOnly: without --report-only the health report exits 1 on too
+// few green nights (local diagnosis), and --report-only prints the verdict but exits 0.
 func TestGate_CAP032_AC5_CLIAndReportOnly(t *testing.T) {
 	sha := strings.Repeat("a", 40)
 	run := func(day int) map[string]any {

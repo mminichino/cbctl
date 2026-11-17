@@ -10,11 +10,13 @@ permissions:
   contents: read
 
 jobs:
-  # Blocks the release unless the last three scheduled nightlies (one per UTC day, integration
-  # job actually run) are green and the newest tested the tagged commit. An API error blocks too.
-  gate:
+  # Informational only: reports the health of the recent scheduled nightlies next to the
+  # release. The nightly is a health signal, not a gate: goreleaser does not need this job,
+  # --report-only always exits 0 on a red streak, and continue-on-error covers an API error.
+  nightly-health:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    continue-on-error: true
     permissions:
       contents: read
       actions: read
@@ -28,16 +30,16 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Release gate
+      - name: Nightly health report (never blocks)
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           go run ./cmd/cbdev ci release-gate
           --commit "${GITHUB_SHA}"
           --repo "${GITHUB_REPOSITORY}"
+          --report-only
 
   goreleaser:
-    needs: gate
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # A cancelled run stops before the "latest" step, so latest is never moved to a partial release.

@@ -55,7 +55,7 @@ releases:
           - CAP-028
           - CAP-029
       - name: "Phase 4 — Adopt, harden & ship"
-        outcome: "Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs"
+        outcome: "Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration health signal and customer docs"
         ids:
           - CAP-030
           - CAP-036
@@ -91,7 +91,7 @@ releases:
     checklist:
       - "All P0 stories are Implemented (and P1 stories are Implemented or explicitly descoped with sign-off)"
       - "CI green on `main`: lint, type check, unit, contract and scenario suites"
-      - "CAP-032 nightly integration suite green three nights in a row against the sandbox organization, including the zero-writes re-run check"
+      - "CAP-032 nightly integration suite health reviewed (a signal, not a gate): recent scheduled runs against the sandbox organization green, including the zero-writes re-run check, or any red night understood"
       - "Redaction canary test passes; no API key or password in any captured output (CAP-008)"
       - "Every open question in the story files is answered or explicitly deferred to 1.1"
       - "Import round trip (CAP-036 AC2) shows no changes against at least one real customer-like environment in the sandbox"
@@ -155,7 +155,7 @@ releases:
       - "All P0 stories are Implemented (and P1 stories are Implemented or explicitly descoped with sign-off)"
       - "`docs/backlog/release-1.5.0/API-COVERAGE.md` shows every planned operation ✅ Done"
       - "CI green on `main`, including `cbdev docs ac-coverage --docs docs/backlog/release-1.5.0` and the 1.5.0 story-index check"
-      - "Nightly integration suite green three nights in a row with the 1.5.0 scenarios (CAP-089)"
+      - "Nightly integration suite health reviewed with the 1.5.0 scenarios (CAP-089; a signal, not a gate)"
       - "Redaction canary passes for the new secrets: API key tokens, alert webhook URLs and bot tokens, audit-log download URLs (CAP-008)"
       - "Every open question in the 1.5.0 story files is answered or explicitly deferred"
       - "1.0.0 capella.yaml files validate and plan with no changes under 1.5.0 (no breaking schema change)"

@@ -45,7 +45,7 @@ func cmdCIReleaseGate(args []string, stdout, stderr io.Writer) int {
 	workflow := fs.String("workflow", "nightly.yml", "nightly workflow file name")
 	nights := fs.Int("nights", 3, "consecutive green nights required")
 	runsJSON := fs.String("runs-json", "", "path to a workflow_runs JSON fixture with per-run jobs (skip gh api)")
-	reportOnly := fs.Bool("report-only", false, "print the verdict and always exit 0 (local diagnosis only; release.yml blocks)")
+	reportOnly := fs.Bool("report-only", false, "print the verdict and always exit 0 (release.yml uses this: the nightly is a health signal, not a gate)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -78,8 +78,13 @@ func cmdCIReleaseGate(args []string, stdout, stderr io.Writer) int {
 		runs, err = releasegate.FetchRuns(ctx, *repo, *workflow, *branch)
 	}
 	if err != nil {
-		// An API error or rate limit blocks the release: the gate never passes on missing evidence.
+		// No verdict on missing evidence. With --report-only the error is printed and the run
+		// still exits 0, so an API error never blocks a release.
 		fmt.Fprintln(stderr, err.Error())
+		if *reportOnly {
+			fmt.Fprintln(stdout, "UNKNOWN (report only: could not read the nightly runs)")
+			return 0
+		}
 		return 1
 	}
 

@@ -29,14 +29,16 @@ capellactl is no longer supported. See [Migration](#migration).
 - Capella init wizard polish and live §13.4 declarative cluster flow (gated by `CBCTL_LIVE_CLUSTER=1`).
 - Hermetic `cli.Run` / `cli.Deps` entry for in-process tests; fake Inventory route parity test.
 - Phase 4 scaffolding: `cmd/cbdev`, CI libraries (`secretscan`, `releasegate`, `janitor`), `clitest`,
-  nightly/release gates.
+  nightly health report.
 - Tiered coverage gate (`make cover-gate`, `cbdev ci cover-gate --tiers default --profile P...`):
   merges `-coverpkg=./internal/...` profiles from the unit suite and the Server Docker flow and
   checks each package against its tier in `internal/ci/covergate/tiers.json`; a missing package
   fails. Replaces `cover-engine` in CI (`cover` job).
-- The release gate blocks: `release.yml` no longer passes `--report-only`. A night counts only
+- The nightly is a health signal, not a gate: `release.yml` runs `cbdev ci release-gate
+  --report-only` in an informational `nightly-health` job (`continue-on-error`; goreleaser does not
+  need it), and no merge, push or tag waits for a green nightly. The report counts a night only
   when its `integration` job ran (deduped runs are ignored), one run per UTC day (newest attempt),
-  and an API error fails the gate. The workflow defaults to `contents: read`; goreleaser has
+  and prints `UNKNOWN` when the runs cannot be read. The workflow defaults to `contents: read`; goreleaser has
   `contents: write` and a 30-minute timeout. `--repo` defaults to the `origin` remote.
 - Phase 4 docs/backlog port: `docs/backlog/` (SOURCE, 1.0.0 `stories.yaml` + architecture,
   26× release-1.5.0 CAP stories, API snapshots), `internal/docgen/port` rewrite engine,

@@ -8,13 +8,11 @@ import (
 	"testing"
 )
 
-// TestReleaseWorkflowBlocks pins Phase 7: the release gate blocks, permissions are least
-// privilege, and goreleaser cannot run unbounded.
-func TestReleaseWorkflowBlocks(t *testing.T) {
+// TestReleaseWorkflowNightlyIsInformational pins that the nightly is a health signal, not a
+// release gate: the release runs the report with --report-only, goreleaser does not need it,
+// permissions are least privilege, and goreleaser cannot run unbounded.
+func TestReleaseWorkflowNightlyIsInformational(t *testing.T) {
 	path := filepath.Join(repoRoot(t), ".github", "workflows", "release.yml")
-	if raw := readFile(t, path); strings.Contains(raw, "--report-only") {
-		t.Error("release.yml must not pass --report-only: the gate blocks")
-	}
 	wf := loadYAML(t, path)
 	if p, _ := wf["permissions"].(map[string]any); asString(p["contents"]) != "read" || len(p) != 1 {
 		t.Errorf("workflow permissions = %#v, want only contents: read", wf["permissions"])
@@ -30,9 +28,49 @@ func TestReleaseWorkflowBlocks(t *testing.T) {
 	if mins, ok := release["timeout-minutes"].(int); !ok || mins <= 0 || mins > 30 {
 		t.Errorf("goreleaser timeout-minutes = %#v, want 1..30", release["timeout-minutes"])
 	}
-	gate, _ := jobs["gate"].(map[string]any)
-	if p, _ := gate["permissions"].(map[string]any); asString(p["contents"]) != "read" || asString(p["actions"]) != "read" {
-		t.Errorf("gate permissions = %#v, want contents: read, actions: read", gate["permissions"])
+	if needs := release["needs"]; needs != nil {
+		t.Errorf("goreleaser needs = %#v; the nightly must not gate a release", needs)
+	}
+	health, _ := jobs["nightly-health"].(map[string]any)
+	if health == nil {
+		t.Fatal("release.yml has no nightly-health job")
+	}
+	if p, _ := health["permissions"].(map[string]any); asString(p["contents"]) != "read" || asString(p["actions"]) != "read" {
+		t.Errorf("nightly-health permissions = %#v, want contents: read, actions: read", health["permissions"])
+	}
+	if health["continue-on-error"] != true {
+		t.Errorf("nightly-health continue-on-error = %#v, want true", health["continue-on-error"])
+	}
+	if !strings.Contains(stepRuns(health), "--report-only") {
+		t.Error("nightly-health must pass --report-only: the nightly never blocks")
+	}
+	for name := range jobs {
+		job, _ := jobs[name].(map[string]any)
+		if needsContains(job["needs"], "nightly-health") {
+			t.Errorf("job %s needs nightly-health; the nightly must not gate anything", name)
+		}
+	}
+}
+
+// TestNoWorkflowWaitsForTheNightly: no other workflow depends on nightly.yml (workflow_run,
+// a required gate step), so the nightly can never block a merge, push or tag.
+func TestNoWorkflowWaitsForTheNightly(t *testing.T) {
+	dir := filepath.Join(repoRoot(t), ".github", "workflows")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || e.Name() == "nightly.yml" {
+			continue
+		}
+		raw := readFile(t, filepath.Join(dir, e.Name()))
+		if strings.Contains(raw, "workflow_run") {
+			t.Errorf("%s triggers on workflow_run; the nightly must stay informational", e.Name())
+		}
+		if strings.Contains(raw, "cbdev ci release-gate") && !strings.Contains(raw, "--report-only") {
+			t.Errorf("%s runs the nightly report without --report-only", e.Name())
+		}
 	}
 }
 

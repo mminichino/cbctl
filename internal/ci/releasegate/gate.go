@@ -1,5 +1,6 @@
-// Package releasegate decides whether a release tag is allowed based on recent
-// nightly CI runs (CAP-032 AC5, port plan Phase 7).
+// Package releasegate summarizes recent scheduled nightly CI runs as a health signal for a
+// branch or a release commit (CAP-032 AC5). It is informational: release.yml runs it with
+// --report-only and nothing waits for it.
 //
 // A night counts only when a scheduled run of the nightly workflow completed and its
 // integration job actually ran: a run whose integration job was skipped (the dedupe job
@@ -110,7 +111,7 @@ func Evaluate(runs []Run, commit string, nights int) (ok bool, lines []string) {
 	}
 	if newest := last[0].HeadSHA; newest != commit {
 		return false, append(lines, fmt.Sprintf(
-			"the newest green nightly tested %s, not the release commit %s; tag the commit the nightly tested, or wait for the next nightly",
+			"the newest green nightly tested %s, not the release commit %s; the next nightly will test it (informational, not a gate)",
 			short(newest), short(commit)))
 	}
 	return true, append(lines, fmt.Sprintf("%d consecutive green nights, the newest on %s", nights, short(commit)))

@@ -1,5 +1,8 @@
 # cbctl
 
+[![CI](https://github.com/mminichino/cbctl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mminichino/cbctl/actions/workflows/ci.yml)
+[![nightly](https://github.com/mminichino/cbctl/actions/workflows/nightly.yml/badge.svg?branch=main&event=schedule)](https://github.com/mminichino/cbctl/actions/workflows/nightly.yml)
+
 Couchbase Server CLI for provisioning and inspecting clusters and keyspaces.
 
 Capella cloud operations are available under `cbctl capella` (see [Capella](#capella)).
@@ -388,4 +391,4 @@ make check              # everything CI runs, including lint
 
 CI (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main` and `mm--capellactl-port`. Workflow actions are pinned by commit SHA; Dependabot (`.github/dependabot.yml`) proposes weekly bumps.
 
-Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (4 characters or more, ending in `-`) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).
+Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The nightly Capella sandbox run (`nightly.yml`, scheduled on `main`, dispatchable on any branch) is a health signal, not a gate: no merge, push, tag or release waits for it. The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (4 characters or more, ending in `-`) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

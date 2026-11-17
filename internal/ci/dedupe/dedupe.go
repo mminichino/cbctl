@@ -50,7 +50,7 @@ var ErrNoSelf = errors.New("the current run is not in the workflow's run list")
 //     UTC day (GitHub occasionally fires a cron twice).
 //
 // A re-run attempt of self (same ID) is never a duplicate, and a scheduled run is never skipped
-// for a success on an earlier day: the release gate needs one scheduled run per night. A probe
+// for a success on an earlier day: the nightly health report counts one scheduled run per night. A probe
 // is skipped only while another run is active (one sandbox user at a time), and a probe's
 // success never makes another run a duplicate.
 func Decide(self RunRef, others []RunRef, window time.Duration) (skip bool, reason string) {

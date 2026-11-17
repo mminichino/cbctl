@@ -179,7 +179,7 @@ _Nightly integration suite, guides, examples and CI checks for every 1.5.0 area.
 - [ ] All P0 stories are Implemented (and P1 stories are Implemented or explicitly descoped with sign-off)
 - [ ] `docs/backlog/release-1.5.0/API-COVERAGE.md` shows every planned operation ✅ Done
 - [ ] CI green on `main`, including `cbdev docs ac-coverage --docs docs/backlog/release-1.5.0` and the 1.5.0 story-index check
-- [ ] Nightly integration suite green three nights in a row with the 1.5.0 scenarios (CAP-089)
+- [ ] Nightly integration suite health reviewed with the 1.5.0 scenarios (CAP-089; a signal, not a gate)
 - [ ] Redaction canary passes for the new secrets: API key tokens, alert webhook URLs and bot tokens, audit-log download URLs (CAP-008)
 - [ ] Every open question in the 1.5.0 story files is answered or explicitly deferred
 - [ ] 1.0.0 capella.yaml files validate and plan with no changes under 1.5.0 (no breaking schema change)

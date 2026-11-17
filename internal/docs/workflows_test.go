@@ -26,9 +26,12 @@ func TestWorkflowsLint(t *testing.T) {
 	release := loadYAML(t, filepath.Join(wfDir, "release.yml"))
 	jobs, _ := release["jobs"].(map[string]any)
 	goreleaser, _ := jobs["goreleaser"].(map[string]any)
-	needs := goreleaser["needs"]
-	if !needsContains(needs, "gate") {
-		t.Fatalf("release.yml goreleaser job must need gate, got %#v", needs)
+	if goreleaser == nil {
+		t.Fatal("release.yml has no goreleaser job")
+	}
+	// The nightly is a health signal: goreleaser never waits for it.
+	if needs := goreleaser["needs"]; needsContains(needs, "nightly-health") || needsContains(needs, "gate") {
+		t.Fatalf("release.yml goreleaser job must not need the nightly report, got %#v", needs)
 	}
 
 	for _, name := range []string{"ci.yml", "release.yml"} {

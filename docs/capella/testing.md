@@ -93,7 +93,7 @@ so a failed apply is still torn down.
 1. A `dedupe` job (`cbdev ci dedupe`) skips the run when another run of the same commit is queued
    or in progress, when a manual dispatch follows a success on the same commit within 20 hours, or
    when the cron fired twice on one day. A scheduled run is never skipped for an earlier night's
-   success: the release gate needs one per night. If the run list cannot be read, it warns and runs.
+   success: the health report counts one per night. If the run list cannot be read, it warns and runs.
 2. A preflight fails on an empty secret or variable.
 3. The suite runs with `CBCTL_IT_REQUIRE_TARGET=1`.
 4. Whatever happened, a sweep deletes this run's projects (`janitor --prefix
@@ -103,22 +103,30 @@ so a failed apply is still torn down.
 
 A second run waits for the first (`concurrency: nightly-sandbox`, never cancelled mid-teardown).
 GitHub keeps only one pending run per group, so a dispatch can replace a waiting scheduled run;
-that night then has no scheduled run and the release gate's streak restarts. Re-dispatching a
+that night then has no scheduled run and the health report's streak restarts. Re-dispatching a
 failed night is an attempt of the same run and is not skipped.
 
-### Release gate
+### Nightly health signal
 
-A `v*` tag runs `.github/workflows/release.yml`. Its `gate` job (`cbdev ci release-gate`) blocks
-the release unless the last three nights each have a green scheduled nightly, on consecutive UTC
-dates, the newest on the tagged commit. A night counts only when its `integration` job actually
-ran: a run whose integration job was skipped by `dedupe` is ignored (and its night breaks the
-streak). A re-run on the same day replaces that day's earlier attempt. If the run or job list
-cannot be read (an API error or rate limit), the gate fails; it never passes on missing evidence.
-`--report-only` prints the verdict without blocking, for local diagnosis:
+The nightly is a health signal for `main` (scheduled runs) and for any branch you dispatch it on
+(`gh workflow run nightly.yml --ref BRANCH`). It is **not a gate**: it is not a required check, and
+no merge, push, tag or release waits for it. A red nightly means "look at this", not "you may not
+ship".
+
+`cbdev ci release-gate --report-only` summarizes the streak: whether the last three nights each
+have a green scheduled nightly, on consecutive UTC dates, the newest on a given commit. A night
+counts only when its `integration` job actually ran (a run skipped by `dedupe` is ignored and its
+night breaks the streak); a re-run on the same day replaces that day's earlier attempt; if the run
+list cannot be read it prints `UNKNOWN`. A `v*` tag runs `.github/workflows/release.yml`, whose
+`nightly-health` job prints this report next to the release (`continue-on-error`, and goreleaser
+does not need it). Locally:
 
 ```sh
 go run ./cmd/cbdev ci release-gate --commit "$(git rev-parse HEAD)" --report-only
 ```
+
+Without `--report-only` the command exits 1 on a red or unknown streak, for a script that wants to
+act on it; no workflow in this repository does.
 
 ## Coverage gate
 

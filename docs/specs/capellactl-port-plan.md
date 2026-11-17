@@ -58,12 +58,12 @@ The order follows risk and dependency. Earlier phases make later work verifiable
 | 4 | Documentation parity and migration guide | P-CLI-05, P-CLI-08 (doc), P-CLI-16 (doc); P-ENG-03, 05, 06 (guide); F-28, F-29 |
 | 5 | Sandbox integration safety: auth, guards, teardown, evidence, duplicate runs | F-01, 02, 03, 04, 07, 09, 10, 11, 12, 13, 14, 16, 24, 25, 30, 31 |
 | 6 | Test parity to 100% and tiered coverage gates | P-TST-01..18; F-17, F-19, F-20, F-21, F-22, F-23 |
-| 7 | Release gate that blocks | F-05, F-06, F-15 (permissions/timeouts), F-32 |
+| 7 | ~~Release gate that blocks~~ **Dropped (2026-11-17):** the nightly is a health signal, not a gate. Kept: the report's counting fixes and release.yml permissions/timeouts | F-05, F-06, F-15 (permissions/timeouts), F-32 |
 | — | Deferred | F-26: App Services sweep. Neither tool manages App Services yet. |
 
 Phases 1–4 deliver the primary goal. Phases 0, 5, 6 and 7 deliver the secondary goal. Phase 6 runs alongside 1–4: every phase adds its own tests, and Phase 6 closes the remaining gaps and turns the gates on.
 
-**Done means merge-ready to `main`.** Every phase's acceptance criteria pass, the §3 exit criteria hold, and the release gate (Phase 7) has seen 3 consecutive green scheduled nightlies on the branch tip.
+**Done means merge-ready to `main`.** Every phase's acceptance criteria pass and the §3 exit criteria hold. The nightly is a health signal for the branch and for `main`; it does not block a merge, push or tag.
 
 ## Phase 0: CI on the port branch, lint, environment-proof tests
 
@@ -485,7 +485,7 @@ This phase combines v1 Phases 1, 2 and 4, with D3 and D4 applied. v1 has the ful
 - **D4:** the org allowlist reads `CBCTL_IT_ALLOWED_ORG_IDS: ${{ vars.CAPELLA_SANDBOX_ORG_ID }}`. `CAPELLA_ORG_ID` comes from the same variable. The org ID isn't secret, so `secrets.CAPELLA_SANDBOX_ORG_ID` goes away and the API key stays a secret (D1). The guard also calls `GET /v4/organizations/{id}` once, so a key/org mismatch fails in preflight and not halfway through a test.
 - **D3:** the nightly keeps `concurrency: { group: nightly-sandbox, cancel-in-progress: false }`, with no lock and no per-event groups. Duplicate-run protection: a new first job, `dedupe`, runs `go run ./cmd/cbdev ci dedupe`.
   - It sets `skip=true` when another run of `nightly.yml` for the same `head_sha` and the same inputs is `in_progress` or `queued`, or when a `workflow_dispatch` run duplicates a run that succeeded on that SHA in the last 20h.
-  - Scheduled runs are never skipped for a success on an earlier day, because the release gate needs one per night.
+  - Scheduled runs are never skipped for a success on an earlier day, because the nightly health report counts one per night.
   - Dependent jobs use `if: needs.dedupe.outputs.skip != 'true'`.
 - The weekly janitor moves to `.github/workflows/janitor.yml` (from v1 Phase 5), so nightly has one cron. It gets its own concurrency group `sandbox-janitor` and the same D1/D4 env.
 
@@ -552,7 +552,7 @@ func (p GuardPolicy) VerifyOrgReachable(ctx context.Context, c *capellaapi.Clien
 | Watchdog or signal | Run-prefix sweep with a bounded 10–25 min context, then the post-step `always()` sweep |
 
 **Edge cases**
-- A schedule and a dispatch on the same SHA, both queued: the single group serializes them, and the second run's `dedupe` sees the first `in_progress` and skips. GitHub may replace a pending scheduled run with a newer dispatch (F-14). That's accepted under D3; the gate's per-day dedupe in Phase 7 absorbs it, and the guide documents it.
+- A schedule and a dispatch on the same SHA, both queued: the single group serializes them, and the second run's `dedupe` sees the first `in_progress` and skips. GitHub may replace a pending scheduled run with a newer dispatch (F-14). That's accepted under D3; the health report's per-day dedupe absorbs it, and the guide documents it.
 - A re-run of a failed nightly (attempt 2) is not a duplicate.
 - A local developer: no `GITHUB_ACTIONS`, so the allowlist is optional and only warns. `CBCTL_TEST_PREFIX` may be custom, but must match `^cbctl-ci-([a-z0-9]+-)*$`.
 - Concurrent `t.Cleanup` and a sweep on the same project: 404 counts as success.
@@ -673,7 +673,9 @@ func runCoverGate(profile string, tiers []Tier) int // cmd/cbdev cover-gate
 - `TestBinarySmoke` is green on linux, macos and windows.
 - `scenario-port.md` footer counts are generated and equal the checker's output.
 
-## Phase 7: Release gate that blocks
+## Phase 7: Release gate that blocks (dropped)
+
+> **Dropped on 2026-11-17.** The nightly is a health signal for a branch or `main`, not a gate: it must not block a merge, push or tag. `release.yml` runs `cbdev ci release-gate --report-only` in an informational `nightly-health` job (`continue-on-error: true`); goreleaser does not `need` it. What survives from this phase: the counting fixes in `internal/ci/releasegate` (one run per UTC day, integration job actually ran, deduped runs ignored), `defaultRepo`, workflow-level `contents: read`, and the goreleaser `contents: write` / 30-minute timeout. The text below is the original plan, kept for history; its "blocks the release" rows no longer apply.
 
 This is v1 Phase 5, minus the concurrency change (D3) and the janitor split (moved to Phase 5).
 
@@ -736,14 +738,14 @@ func defaultRepo(ctx context.Context) string
 4. **Coverage:** `make cover-gate` meets every tier in Phase 6.
 5. **Stability:** `rg 'os\.Exit\(' internal/ --glob '!*_test.go'` is empty, `go test -race ./...` is green, `make lint` is green, and the hermetic gate fails hard.
 6. **Docs:** `make docs-check` passes. The migration guide, the 5 ported operator docs and the full config reference exist. README and cbctl.mdc are current.
-7. **Nightly:** one green `workflow_dispatch` run of `nightly.yml` on the branch tip before the merge. GitHub fires `schedule` only on the default branch, so the scheduled streak cannot exist before `nightly.yml` is on `main`. The 3-consecutive-green-scheduled-nightlies rule is enforced afterwards by the release workflow's blocking gate (`cbdev ci release-gate`), which must pass before a release tag publishes.
+7. **Nightly (signal, not a gate):** a dispatched `nightly.yml` run on the branch tip shows the branch's health against the live sandbox. It informs the merge decision but is not a requirement for it, nor for a push or a release tag. After the merge, scheduled runs on `main` report `main`'s health (`cbdev ci release-gate --report-only`).
 
 ## 4. Workflow (D7 and user rules)
 
 - All commits go on `mm--capellactl-port`. Each phase ends with `go build ./... && go vet ./... && make lint && go test -race ./... && make docs-check`, then a commit (or a small series) and `git push origin mm--capellactl-port`. Never push to `main`.
 - Phase commits use the existing style, for example `fix(cli): …`, `feat(settings): …` and `test(cli): …`.
 - `.cursor/rules/cbctl.mdc` and `README.md` are updated in the same phase as the behavior change, per `general.mdc`. Phase 4 adds the migration guide on top.
-- Phases 0 → 1 → 2 → 3 → 4 run in order, because each builds on the previous. Phase 5 can start after Phase 1. Phase 6 runs alongside the others and finishes last. Phase 7 comes after Phase 5.
+- Phases 0 → 1 → 2 → 3 → 4 run in order, because each builds on the previous. Phase 5 can start after Phase 1. Phase 6 runs alongside the others and finishes last. Phase 7 was dropped (the nightly is a health signal).
 
 ## 5. Decisions on Q7–Q10 (2026-11-16)
 
