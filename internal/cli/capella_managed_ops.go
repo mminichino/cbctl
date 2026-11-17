@@ -1139,7 +1139,16 @@ func managedClusterUpdate(cmd *cobra.Command, args []string, _ *envRuntime, ed *
 						current, _ = ed.Decode(dn)
 					}
 				}
-				ed.Set(gn, []string{"node", "disk"}, disk.apply(clusterProviderOf(ed, cl), current))
+				provider := clusterProviderOf(ed, cl)
+				newType := disk.diskType
+				if newType == "" {
+					newType, _ = current["type"].(string)
+				}
+				if fixedSizeDisk(provider, newType) && (disk.size != nil || disk.iops != nil) {
+					return usageError("choose a larger type with --disk-type (for example P20), or Ultra to set size and IOPS yourself",
+						"azure disk type %s has a size and IOPS set by the type", newType)
+				}
+				ed.Set(gn, []string{"node", "disk"}, disk.apply(provider, current))
 			}
 			return nil
 		},
@@ -1173,6 +1182,9 @@ func managedGroupAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capel
 			cl, err := clusterEntry(cmd, args, ed)
 			if err != nil {
 				return err
+			}
+			if v := ed.Child(cl, "tier"); v != nil && v.Value == "free" {
+				return blockedError("create a provisioned cluster for that ('cbctl capella cluster create')", "%s", freeTierBlocked)
 			}
 			if _, single, _ := fileGroups(cl); single {
 				return usageError("create a multiNode cluster to add groups", "singleNode clusters have exactly one service group")
@@ -1399,9 +1411,27 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	if err != nil {
 		return Mutation{}, err
 	}
+	// With a real capella.yaml, check it and what Capella runs before asking anything, as
+	// capellactl did: a file that is already invalid stops here, and the name and network are
+	// checked against the clusters only Capella knows.
+	var networks *capellaNetworks
+	fileProject := ""
+	if e != nil && !e.Ephemeral {
+		if _, err := validateCandidateEnv(ed, ed.Original, envFrom(e.cmd)); err != nil {
+			return Mutation{}, err
+		}
+		if p, _, err := pickFileProject(cmd, ed); err == nil {
+			fileProject = p
+			if networks, err = readCapellaNetworks(e, ed, p); err != nil {
+				return Mutation{}, err
+			}
+		}
+	}
 	if name == "" && e != nil && !e.Ephemeral {
 		if _, tty := e.terminalIn(); tty {
-			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, suggestCIDR(fileCIDRs(ed)))
+			w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
+			w.cidrCheck = wizardCIDRCheck(fileCIDRs(ed), networks)
+			spec, err := w.run(cmd, suggestCIDR(networks.used(fileCIDRs(ed))))
 			if err != nil {
 				return Mutation{}, err
 			}
@@ -1485,13 +1515,43 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	if err != nil {
 		return Mutation{}, err
 	}
+	replace := false
 	if dup := hasClusterNamed(ed, projNode, name); dup {
-		return Mutation{}, blockedError("change it with 'cbctl capella cluster update' or 'cbctl capella cluster scale'",
-			"cluster %s already exists in %s", name, fileName(ed))
+		if !undeployedEntry(ed, project, name, networks) {
+			return Mutation{}, blockedError("change it with 'cbctl capella cluster update' or 'cbctl capella cluster scale'",
+				"cluster %s already exists in %s", name, fileName(ed))
+		}
+		replace = true
+	} else if networks != nil && networks.names[name] && project == fileProject {
+		return Mutation{}, blockedError("run 'cbctl capella sync' to bring it into "+fileName(ed)+", then change it with 'cbctl capella cluster update'",
+			"cluster %s already exists in project %s in Capella", name, project)
 	}
+	fileNets := fileCIDRs(ed)
+	if replace {
+		// The entry being replaced gives its range back.
+		if _, old, _ := ed.FindCluster(name, project); old != nil {
+			if cp := childMap(ed, old, "cloudProvider"); cp != nil {
+				if v := ed.Child(cp, "cidr"); v != nil {
+					fileNets = slices.DeleteFunc(fileNets, func(c string) bool { return c == v.Value })
+				}
+			}
+		}
+	}
+	used := networks.used(fileNets)
 	cidr := flagString(cmd, "cidr")
 	if cidr == "" {
-		cidr = suggestCIDR(fileCIDRs(ed))
+		cidr = suggestCIDR(used)
+	} else if networks != nil {
+		if err := networks.overlapError(cidr, suggestCIDR(used)); err != nil {
+			return Mutation{}, err
+		}
+	}
+	if other, ok := networks.elsewhereOverlap(cidr); ok && cmd.Flags().Changed("cidr") {
+		printNotice(stderrFrom(cmd), fmt.Sprintf("%s overlaps the network of cluster %s", cidr, other),
+			"none needed unless you will connect the two networks")
+	}
+	if replace {
+		printNotice(stderrFrom(cmd), fmt.Sprintf("%s is in %s but was never deployed to Capella; replacing it", name, fileName(ed)), "")
 	}
 	region := flagString(cmd, "region")
 	if region == "" {
@@ -1572,13 +1632,17 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 		summary = fmt.Sprintf("%d group(s), %d node(s)", len(layout), total)
 	}
 	return Mutation{
-		Target:    "cluster/" + name,
-		Question:  fmt.Sprintf("Add %s to %s and deploy it now?", name, fileName(ed)),
-		AfterPlan: []string{fmt.Sprintf("New cluster %s in project %s: %s %s, %s, network %s", name, project, provider, region, summary, cidr)},
+		Target:     "cluster/" + name,
+		Question:   fmt.Sprintf("Add %s to %s and deploy it now?", name, fileName(ed)),
+		AfterPlan:  []string{fmt.Sprintf("New cluster %s in project %s: %s %s, %s, network %s", name, project, provider, region, summary, cidr)},
+		AfterApply: func(p *plan.Plan) { recordServerVersion(e, p, project, name) },
 		Edit: func(ed *capellafile.Editor) error {
 			_, pn, err := pickFileProject(cmd, ed)
 			if err != nil {
 				return err
+			}
+			if replace {
+				return replaceUndeployed(ed, project, cluster)
 			}
 			ed.AddCluster(pn, cluster)
 			return nil
@@ -1640,8 +1704,9 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 		}
 	}
 	return Mutation{
-		Target:   "cluster/" + name,
-		Question: fmt.Sprintf("Add %s (a copy of %s) to %s and deploy it now?", name, source, fileName(ed)),
+		Target:    "cluster/" + name,
+		Question:  fmt.Sprintf("Add %s (a copy of %s) to %s and deploy it now?", name, source, fileName(ed)),
+		AfterPlan: []string{"not copied: " + strings.Join(managedNotCopied(cmd), ", ")},
 		Edit: func(ed *capellafile.Editor) error {
 			srcProj, src, err := ed.FindCluster(source, projectFlag(cmd))
 			var amb *capellafile.AmbiguousError
@@ -1732,6 +1797,22 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 			return nil
 		},
 	}, nil
+}
+
+// managedNotCopied is what a file-managed clone leaves behind, in the order the direct clone
+// reports it (notCopied). Region-bound settings (zones, CMEK, private DNS) are never written.
+func managedNotCopied(cmd *cobra.Command) []string {
+	out := []string{"documents", "on/off schedule"}
+	if flagBool(cmd, "no-data-model") {
+		out = append([]string{"data model"}, out...)
+	}
+	if !flagBool(cmd, "with-cidrs") {
+		out = append(out, "allowed CIDRs")
+	}
+	if !flagBool(cmd, "with-credentials") {
+		out = append(out, "database credentials")
+	}
+	return out
 }
 
 // hasClusterNamed reports whether project declares a cluster with this name.

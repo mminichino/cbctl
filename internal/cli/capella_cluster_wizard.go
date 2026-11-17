@@ -36,6 +36,8 @@ var errWizardCancelled = Errorf(ExitError, "", "Cancelled; nothing was changed."
 type clusterWizard struct {
 	in  *bufio.Reader
 	out io.Writer
+	// cidrCheck validates the typed network (default: any CIDR); a bad answer is asked again.
+	cidrCheck func(string) error
 }
 
 func newClusterWizard(in io.Reader, out io.Writer) *clusterWizard {
@@ -170,12 +172,16 @@ func (w *clusterWizard) run(cmd *cobra.Command, cidr string) (ClusterSpec, error
 		}
 	}
 	if !free && !ch("cidr") {
-		if spec.CIDR, err = w.ask("Network CIDR", cidr, func(v string) error {
-			if _, err := netip.ParsePrefix(v); err != nil {
-				return fmt.Errorf("give a CIDR such as 10.0.0.0/24")
+		check := w.cidrCheck
+		if check == nil {
+			check = func(v string) error {
+				if _, err := netip.ParsePrefix(v); err != nil {
+					return fmt.Errorf("give a CIDR such as 10.0.0.0/24")
+				}
+				return nil
 			}
-			return nil
-		}); err != nil {
+		}
+		if spec.CIDR, err = w.ask("Network CIDR", cidr, check); err != nil {
 			return spec, err
 		}
 	}

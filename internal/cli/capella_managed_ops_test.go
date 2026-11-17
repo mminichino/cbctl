@@ -123,7 +123,10 @@ func TestManagedClusterCommands(t *testing.T) {
 
 	mustRun(t, "cluster", "create", "--name", "fresh", "--size", "dev", "--region", "us-west-2", "--no-apply", "--yes")
 	wantFile(t, path, []string{"name: fresh", "configurationType: singleNode", "region: us-west-2", "cidr: 10.0.1.0/24"})
-	wantExit(t, runResource(t, "cluster", "create", "--name", "fresh", "--no-apply", "--yes"), ExitBlocked, "already exists")
+	// An entry that was never deployed is replaced on a rerun (capellactl); a deployed one is not.
+	res := mustRun(t, "cluster", "create", "--name", "fresh", "--size", "dev", "--region", "us-east-2", "--no-apply", "--yes")
+	wantContains(t, res.Stderr, "fresh is in capella.yaml but was never deployed to Capella; replacing it")
+	wantFile(t, path, []string{"region: us-east-2", "cidr: 10.0.1.0/24"}, "region: us-west-2")
 	wantExit(t, runResource(t, "cluster", "create", "--name", "x", "--group", "data:oops", "--no-apply", "--yes"), ExitConfigInvalid, "--group")
 	mustRun(t, "cluster", "create", "--name", "grouped", "--group", "data:3x4/16", "--group", "search:2x4/16", "--no-apply", "--yes")
 	wantFile(t, path, []string{"name: grouped", "services: [search]"})

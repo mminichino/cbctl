@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- File-managed `cbctl capella cluster create` (capellactl parity): checks the file and the Capella
+  network before asking anything, refuses a CIDR overlapping a cluster that is in the project in
+  Capella but not in `capella.yaml` (the wizard re-asks it), warns on overlap with another project,
+  replaces an entry that was never deployed instead of refusing it, and records the Couchbase
+  Server version Capella chose so `sync` finds nothing to add.
+- `cbctl capella cluster update NAME` with no flags on a terminal asks each value (Enter keeps it).
+- File-managed `cluster scale --step` reports per-group results (`-o json` matches
+  `scale.schema.json`, without `clusterId`); `cluster group add` is refused on free tier;
+  `cluster update --disk-size/--disk-iops` on a fixed-size Azure disk (P6…P60) exits 3.
+
 - Capella fold-in Phases 0–3: Management API client, Capella resource commands under `cbctl capella`,
   declarative `capella.yaml` engine (`sync` / `validate` / `plan` / `apply` / `drift` / `destroy` / `init`),
   file-managed mode for Phase 2 mutators, presets, guide topics, and secret handling.

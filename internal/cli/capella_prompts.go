@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -76,6 +77,56 @@ func installPrompts(capella *cobra.Command) {
 		}
 		return args, setFlag(cmd, "services", v, true)
 	})
+	wrapPrompt(find("cluster", "update"), promptClusterUpdate)
+}
+
+// clusterUpdateOptions are the cluster update flags that change something.
+var clusterUpdateOptions = []string{"description", "support-plan", "support-timezone", "cpu", "ram", "disk-type",
+	"disk-size", "disk-iops", "disk-auto-expansion"}
+
+// promptClusterUpdate asks for the settings of "cluster update CLUSTER" given with no option, as
+// capellactl did; Enter keeps a value. Without a terminal the command's own "nothing to update"
+// error stands.
+func promptClusterUpdate(cmd *cobra.Command, args []string) ([]string, error) {
+	if len(args) != 1 || !canPrompt(cmd) || slices.ContainsFunc(clusterUpdateOptions, cmd.Flags().Changed) {
+		return args, nil
+	}
+	w := promptOf(cmd)
+	fmt.Fprintf(w.out, "Change %s (Press Enter to keep the current value)\n", args[0])
+	keepOr := func(check func(string) error) func(string) error {
+		return func(v string) error {
+			if v == "" {
+				return nil
+			}
+			return check(v)
+		}
+	}
+	whole := func(v string) error {
+		if n, err := strconv.Atoi(v); err != nil || n <= 0 {
+			return fmt.Errorf("give a whole number, or press Enter to keep the current value")
+		}
+		return nil
+	}
+	questions := []struct {
+		flag, prompt string
+		check        func(string) error
+	}{
+		{"description", "Description", func(string) error { return nil }},
+		{"support-plan", "Support plan (" + strings.Join(supportPlans, "/") + ")", oneOf(supportPlans)},
+		{"support-timezone", "Support timezone (" + strings.Join(supportTimezones, "/") + ")", oneOf(supportTimezones)},
+		{"cpu", "vCPUs per node (group running data)", whole},
+		{"ram", "RAM GB per node (group running data)", whole},
+	}
+	for _, q := range questions {
+		v, err := w.ask(q.prompt, "", keepOr(q.check))
+		if err != nil {
+			return nil, err
+		}
+		if err := setFlag(cmd, q.flag, v, v != ""); err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
 }
 
 // wrapPrompt runs fill before cmd's RunE; fill returns the (completed) arguments.

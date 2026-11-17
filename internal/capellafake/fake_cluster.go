@@ -189,10 +189,32 @@ func (p *project) removeCluster(cl *cluster) {
 	}
 }
 
+// azureFixedDisks are the size (GB) and IOPS of Azure premium disks. Capella sets them from the
+// type, refuses them in a request, and reports them on GET (observed 2026-10-07).
+var azureFixedDisks = map[string][2]int{
+	"P6": {64, 240}, "P10": {128, 500}, "P15": {256, 1100}, "P20": {512, 2300},
+	"P30": {1024, 5000}, "P40": {2048, 7500}, "P50": {4096, 7500}, "P60": {8192, 16000},
+}
+
+// withFixedDisks adds the storage and iops Capella reports for Azure premium disk types.
+func withFixedDisks(groups []any) []any {
+	for _, g := range groups {
+		gm, _ := g.(map[string]any)
+		disk := sub(sub(gm, "node"), "disk")
+		if disk == nil {
+			continue
+		}
+		if fixed, ok := azureFixedDisks[str(disk, "type")]; ok {
+			disk["storage"], disk["iops"] = fixed[0], fixed[1]
+		}
+	}
+	return groups
+}
+
 // newCluster adds a cluster in "deploying" that becomes healthy after the settle polls.
 func (f *Fake) newCluster(p *project, body Obj, free bool) *cluster {
 	id := uuid.NewString()
-	groups := list(body, "serviceGroups")
+	groups := withFixedDisks(list(body, "serviceGroups"))
 	nodes := 0
 	for _, g := range groups {
 		if gm, ok := g.(map[string]any); ok {
@@ -402,9 +424,10 @@ func (c *rctx) updateCluster() {
 		cl.obj["support"] = clone(s)
 	}
 	if groups := list(body, "serviceGroups"); len(groups) > 0 && !same(groups, cl.obj["serviceGroups"]) {
-		cl.obj["serviceGroups"] = groups
-		cl.transition("scaling", "healthy")
+		cl.obj["serviceGroups"] = withFixedDisks(groups)
 	}
+	// Capella runs a cluster job ("scaling") for every cluster update, settings-only ones too.
+	cl.transition("scaling", "healthy")
 	cl.touch(c.f)
 	c.noContent()
 }
