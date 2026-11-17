@@ -10,6 +10,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/clitest"
+	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -333,28 +334,31 @@ const planNoChanges = "Plan: 0 to add, 0 to change, 0 to delete, 0 blocked."
 // clusterSchedule returns the first cluster's backupSchedule in capella.yaml (nil when absent).
 func clusterSchedule(t *testing.T, s *clitest.Scenario) map[string]any {
 	t.Helper()
-	var doc struct {
-		Projects []struct {
-			Clusters []map[string]any `yaml:"clusters"`
-		} `yaml:"projects"`
-	}
-	if err := yaml.Unmarshal([]byte(s.ReadFile("capella.yaml")), &doc); err != nil {
+	doc, err := capellafile.ParseObj([]byte(s.ReadFile("capella.yaml")))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if len(doc.Projects) == 0 || len(doc.Projects[0].Clusters) == 0 {
+	projects, _ := doc["projects"].([]any)
+	if len(projects) == 0 {
 		t.Fatal("capella.yaml has no cluster")
 	}
-	m, _ := doc.Projects[0].Clusters[0]["backupSchedule"].(map[string]any)
+	project, _ := projects[0].(map[string]any)
+	clusters, _ := project["clusters"].([]any)
+	if len(clusters) == 0 {
+		t.Fatal("capella.yaml has no cluster")
+	}
+	cluster, _ := clusters[0].(map[string]any)
+	m, _ := cluster["backupSchedule"].(map[string]any)
 	return m
 }
 
 func wantYAML(t *testing.T, got map[string]any, want string) {
 	t.Helper()
-	var w map[string]any
-	if err := yaml.Unmarshal([]byte(want), &w); err != nil {
+	w, err := capellafile.ParseObj([]byte(want))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, w) {
+	if !reflect.DeepEqual(capellafile.NormalizeNumbers(got), capellafile.NormalizeNumbers(w)) {
 		t.Errorf("backupSchedule = %v, want %v", got, w)
 	}
 }
