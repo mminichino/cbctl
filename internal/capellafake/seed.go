@@ -299,6 +299,14 @@ func (f *Fake) FailDestroy(clusterID string) {
 	cl.failDestroy = true
 }
 
+// FailDeployNext makes the next cluster created through the API settle on deploymentFailed
+// instead of healthy (capellactl's fail_deploy_next).
+func (f *Fake) FailDeployNext() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.failDeploy = true
+}
+
 // Advance moves the Fake's clock forward by d (convenience for Clock().Advance(d)).
 func (f *Fake) Advance(d time.Duration) {
 	if f.clock != nil {

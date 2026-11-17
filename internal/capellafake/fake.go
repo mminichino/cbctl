@@ -126,7 +126,9 @@ type Fake struct {
 	lenient        bool // unknown routes are a plain 404 rather than a test failure
 	// cidrDuplicates lets a cluster hold the same CIDR twice (AllowDuplicateCIDRs).
 	cidrDuplicates bool
-	log            []Request
+	// failDeploy makes the next created cluster settle on deploymentFailed (FailDeployNext).
+	failDeploy bool
+	log        []Request
 }
 
 // res is a versioned resource; ver is the number in its ETag.

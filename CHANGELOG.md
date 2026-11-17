@@ -66,6 +66,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `cbctl configure migrate` (alias `import-capellactl`) and `cbctl capella doctor`.
 - capellactl's prompts on a terminal: the `cluster create` wizard, `cluster clone` without
   arguments, `bucket add --memory`, `project create` description, `cluster group add --services`.
+- The `cluster create` wizard asks capellactl's questions: one or several service groups (unused
+  services as the default), a known compute size picker, a disk-type picker per group (also on
+  `cluster group add`), and accepts the start of an answer (`m` for `multiple groups`).
+- `cluster create` warns about a compute size the provider does not list; `--group` usage errors
+  match capellactl's; an unknown service suggests the closest one.
+- Fix: `cluster update --disk-type` keeps the group's current disk size when the new type allows it
+  (it used to reset it to the type's smallest size and fail as a shrink).
 - capellactl spellings: `bucket|scope|collection create` with capellactl's arguments,
   `cluster schedule apply`, `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`,
   `--no-cross-cluster-versioning`, `configure --api-base-url`, and

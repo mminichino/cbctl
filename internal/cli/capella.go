@@ -72,8 +72,16 @@ func newCapellaClusterCreateCmd() *cobra.Command {
 		Use:   "create [NAME]",
 		Short: "Create a Capella cluster",
 		Long: "Create a cluster. With a capella.yaml present the cluster is added to the file and applied; without one\n" +
-			"(or with --direct) it is created in Capella directly. On a terminal, a missing name starts a short wizard.\n\n" +
-			"Examples:\n  cbctl capella cluster create dev-01 --size dev\n  cbctl capella cluster create prod-01 --group data:3x8/32 --group index,query:2x8/32 --region us-east-2",
+			"(or with --direct) it is created in Capella directly. On a terminal, a missing name starts a short wizard,\n" +
+			"and with a name but no size flags the type, provider, size, region, network and support plan are asked.\n\n" +
+			"Examples:\n  cbctl capella cluster create dev-01 --size dev\n  cbctl capella cluster create prod-01 --group data:3x8/32 --group index,query:2x8/32 --region us-east-2\n" +
+			"  cbctl capella cluster create prod-02 --group data:3x8/32:size=100 --group analytics:2x16/64:size=200,iops=5000\n\n" +
+			"--group SERVICES:NODESxCPU/RAM[:DISK] (repeatable; one per service group):\n" +
+			"  SERVICES       data, index, query, search, analytics, eventing (comma-separated)\n" +
+			"  NODESxCPU/RAM  nodes, vCPUs and GB of RAM per node, e.g. 3x8/32\n" +
+			"  DISK           type=, size= (GB), iops=, auto-expansion= (azure)\n" +
+			"Sizes Capella offers: cbctl capella cluster options. Disk types: cbctl capella cluster disk-types.\n" +
+			"To copy the layout of an existing cluster: cbctl capella cluster clone SOURCE NEW_NAME --region REGION --no-data-model",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usesLegacyFlags(cmd) {

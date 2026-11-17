@@ -56,10 +56,10 @@ func runDirectClusterCreate(cmd *cobra.Command, args []string) error {
 		w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
 		if !cmd.Flags().Changed("free-tier") {
 			if usedBy, err := rt.freeTierUsedBy(); err == nil {
-				w.offerFree = usedBy == ""
+				w.noFree = usedBy != ""
 			}
 		}
-		spec, err := w.run(cmd, suggestCIDR(usedList))
+		spec, err := w.run(cmd, "", suggestCIDR(usedList))
 		if err != nil {
 			return err
 		}

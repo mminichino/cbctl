@@ -695,8 +695,8 @@ func TestFreeTier_CAP041_AC3_InteractiveChoices(t *testing.T) {
 	mustScenario(t, s.Run("capella", "sync"), "sync")
 	s.TTY(true)
 	s.Answers("y")
-	// cbctl runs the wizard when the name is missing, so the name is its first answer.
-	r := mustScenario(t, s.RunWith("try-01\nfree\ngcp\n\n", "capella", "cluster", "create"), "cluster create")
+	// As capellactl's test: NAME given, the wizard asks the type, provider and region.
+	r := mustScenario(t, s.RunWith("free\ngcp\n\n", "capella", "cluster", "create", "try-01"), "cluster create")
 	out := dataOut(r)
 	wantContains(t, out, "Cluster type (free, provisioned) [provisioned]",
 		"Region (free-tier regions) (us-central1, europe-west1, asia-east1) [us-central1]")
@@ -717,7 +717,7 @@ func TestFreeTier_CAP041_AC3_NotOfferedWhenUsed(t *testing.T) {
 	clitest.AssertNoWrites(t, s.Fake)
 	s.TTY(true)
 	s.Answers("y")
-	r = mustScenario(t, s.RunWith("prov-01\n\n\n\n\n", "capella", "cluster", "create"), "cluster create")
+	r = mustScenario(t, s.RunWith("\n\n\n\n\n", "capella", "cluster", "create", "prov-01"), "cluster create")
 	if strings.Contains(dataOut(r), "Cluster type") {
 		t.Fatalf("free tier offered while used:\n%s", dataOut(r))
 	}
