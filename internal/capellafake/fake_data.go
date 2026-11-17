@@ -553,7 +553,7 @@ func (c *rctx) createUser() {
 	pw := str(body, "password")
 	generated := pw == ""
 	if generated {
-		pw = secrets.GeneratePassword(32)
+		pw = secrets.MustGenerate(32)
 	} else if !secrets.MeetsRules(pw) {
 		c.err(http.StatusUnprocessableEntity, "password does not meet the rules: "+secrets.Rules)
 		return

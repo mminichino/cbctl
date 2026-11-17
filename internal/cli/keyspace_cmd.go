@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -46,22 +45,18 @@ The bucket is always ensured.`,
 
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cfg); err != nil {
-				logging.Error("Failed to create keyspace: %v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cfg); err != nil {
+				return failure("Failed to create keyspace", err)
 			}
 			if err := s.CreateBucket(bucket, quota, replicas); err != nil {
-				logging.Error("Failed to create keyspace: %v", err)
-				exitErr()
+				return failure("Failed to create keyspace", err)
 			}
 			// CreateScope / CreateCollection no-op when name is _default.
 			if err := s.CreateScope(bucket, scope); err != nil {
-				logging.Error("Failed to create keyspace: %v", err)
-				exitErr()
+				return failure("Failed to create keyspace", err)
 			}
 			if err := s.CreateCollection(bucket, scope, collection); err != nil {
-				logging.Error("Failed to create keyspace: %v", err)
-				exitErr()
+				return failure("Failed to create keyspace", err)
 			}
 			logging.Info("Keyspace %q created", args[0])
 			return nil

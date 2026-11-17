@@ -1,6 +1,7 @@
 package capella
 
 import (
+	"context"
 	"net"
 	"net/url"
 	"regexp"
@@ -40,8 +41,9 @@ func NewConnectivity() *Connectivity {
 	}
 }
 
-// CheckConnectivity polls until a manager port is reachable or timeout elapses.
-func (c *Connectivity) CheckConnectivity(connectString string, tls bool, timeout time.Duration) bool {
+// CheckConnectivity polls until a manager port is reachable, timeout elapses, or ctx is done.
+// Callers check ctx.Err() on false to tell cancellation from an unreachable cluster.
+func (c *Connectivity) CheckConnectivity(ctx context.Context, connectString string, tls bool, timeout time.Duration) bool {
 	if c == nil {
 		c = NewConnectivity()
 	}
@@ -52,7 +54,7 @@ func (c *Connectivity) CheckConnectivity(connectString string, tls bool, timeout
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		for _, t := range targets {
-			if canConnect(t.Host, t.Port) {
+			if canConnect(ctx, t.Host, t.Port) {
 				return true
 			}
 		}
@@ -68,9 +70,23 @@ func (c *Connectivity) CheckConnectivity(connectString string, tls bool, timeout
 		if sleep > remaining {
 			sleep = remaining
 		}
-		time.Sleep(sleep)
+		if !sleepCtx(ctx, sleep) {
+			return false
+		}
 	}
 	return false
+}
+
+// sleepCtx sleeps for d and reports false if ctx ended first.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-t.C:
+		return true
+	}
 }
 
 // ResolveTargets resolves connect-string hosts to manager HostPorts.
@@ -215,8 +231,9 @@ func bareHostname(connectString string) string {
 	return connectString
 }
 
-func canConnect(host string, port int) bool {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), defaultDialTO)
+func canConnect(ctx context.Context, host string, port int) bool {
+	d := net.Dialer{Timeout: defaultDialTO}
+	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false
 	}

@@ -189,7 +189,7 @@ func TestCapellaLive(t *testing.T) {
 		envCluster := l.name("clu")
 		free := l.freeTierAvailable()
 		path := writeLiveYAML(t, dir, free, envProject, envCluster)
-		pw := secrets.GeneratePassword(32)
+		pw := secrets.MustGenerate(32)
 		t.Setenv("CBCTL_LIVE_PWD", pw)
 
 		validateOut := l.runIn(dir, "validate")

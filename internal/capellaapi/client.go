@@ -327,6 +327,13 @@ type attemptResult struct {
 
 // attempt performs one round trip. The returned error is non-retryable (a malformed request);
 // network failures are reported through attemptResult.transportErr instead.
+// maxResponseBody bounds how much of a response body is read. The largest Capella v4 list page
+// is far below this; anything bigger is a misbehaving proxy or endpoint, not data to buffer.
+const maxResponseBody = 32 << 20
+
+// ErrResponseTooLarge is returned when a response body exceeds maxResponseBody.
+var ErrResponseTooLarge = errors.New("response too large")
+
 func (c *Client) attempt(ctx context.Context, method, target string, payload []byte, ifMatch string) (attemptResult, error) {
 	var wrote atomic.Bool
 	trace := &httptrace.ClientTrace{
@@ -356,9 +363,13 @@ func (c *Client) attempt(ctx context.Context, method, target string, payload []b
 		return attemptResult{transportErr: redactErr(err), wrote: wrote.Load()}, nil
 	}
 	defer func() { _ = hr.Body.Close() }() // body fully read below; close errors carry no information
-	data, err := io.ReadAll(hr.Body)
+	data, err := io.ReadAll(io.LimitReader(hr.Body, maxResponseBody+1))
 	if err != nil {
 		return attemptResult{transportErr: redactErr(err), wrote: wrote.Load()}, nil
+	}
+	if len(data) > maxResponseBody {
+		// Not retried: the same request would return the same oversized body.
+		return attemptResult{}, fmt.Errorf("%s %s: %w (limit %d MiB)", method, req.URL.Path, ErrResponseTooLarge, maxResponseBody>>20)
 	}
 	return attemptResult{resp: &Response{Status: hr.StatusCode, Header: hr.Header, Body: data}}, nil
 }

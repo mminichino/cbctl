@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -20,12 +21,13 @@ var runMu sync.Mutex
 // It never calls os.Exit. SIGINT handling is the caller's responsibility (pass a cancellable ctx).
 func Run(ctx context.Context, args []string, d Deps) (code int) {
 	d = normalizeDeps(d)
-	if d.ResetRedaction {
-		redact.Reset()
-	}
 
 	runMu.Lock()
 	defer runMu.Unlock()
+	// Reset under runMu: a concurrent Run's secrets stay registered until that run releases the lock.
+	if d.ResetRedaction {
+		redact.Reset()
+	}
 
 	// NewRootCmd is under the lock because cobra.EnablePrefixMatching is process-global.
 	root := NewRootCmd(d)
@@ -66,7 +68,7 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 		}
 	}()
 
-	err := root.ExecuteContext(ctx)
+	err := interruptedError(ctx, classifyCobraError(root.ExecuteContext(ctx)))
 	return int(HandleError(err))
 }
 
@@ -103,4 +105,13 @@ func normalizeDeps(d Deps) Deps {
 		d.Home = settings.HomeDir(d.Env)
 	}
 	return d
+}
+
+// interruptedError makes a failure that happened after the invocation was cancelled (Ctrl-C,
+// SIGTERM) exit 130, whatever error type the library that noticed the cancellation returned.
+func interruptedError(ctx context.Context, err error) error {
+	if err == nil || !errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", context.Canceled, err)
 }

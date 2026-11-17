@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"context"
-
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/server"
 	"github.com/spf13/cobra"
@@ -35,13 +33,11 @@ func newBucketCreateCmd() *cobra.Command {
 			cfg.Bucket = name
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cfg); err != nil {
-				logging.Error("Failed to create bucket: %v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cfg); err != nil {
+				return failure("Failed to create bucket", err)
 			}
 			if err := s.CreateBucket(name, quota, replicas); err != nil {
-				logging.Error("Failed to create bucket: %v", err)
-				exitErr()
+				return failure("Failed to create bucket", err)
 			}
 			logging.Info("Bucket %q created", name)
 			return nil
@@ -62,14 +58,12 @@ func newBucketExistsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cf.config()); err != nil {
-				logging.Error("%v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cf.config()); err != nil {
+				return failure("", err)
 			}
 			ok, err := s.BucketExists(args[0])
 			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
+				return failure("", err)
 			}
 			if ok {
 				logging.Println("true")
@@ -110,13 +104,11 @@ func newScopeCreateCmd() *cobra.Command {
 			cfg.Scope = name
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cfg); err != nil {
-				logging.Error("Failed to create scope: %v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cfg); err != nil {
+				return failure("Failed to create scope", err)
 			}
 			if err := s.CreateScope(bucket, name); err != nil {
-				logging.Error("Failed to create scope: %v", err)
-				exitErr()
+				return failure("Failed to create scope", err)
 			}
 			logging.Info("Scope %q created in bucket %q", name, bucket)
 			return nil
@@ -140,14 +132,12 @@ func newScopeExistsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cf.config()); err != nil {
-				logging.Error("%v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cf.config()); err != nil {
+				return failure("", err)
 			}
 			ok, err := s.ScopeExists(bucket, args[0])
 			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
+				return failure("", err)
 			}
 			if ok {
 				logging.Println("true")
@@ -192,13 +182,11 @@ func newCollectionCreateCmd() *cobra.Command {
 			cfg.Collection = name
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cfg); err != nil {
-				logging.Error("Failed to create collection: %v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cfg); err != nil {
+				return failure("Failed to create collection", err)
 			}
 			if err := s.CreateCollection(bucket, scope, name); err != nil {
-				logging.Error("Failed to create collection: %v", err)
-				exitErr()
+				return failure("Failed to create collection", err)
 			}
 			logging.Info("Collection %q created in bucket %q scope %q", name, bucket, scope)
 			return nil
@@ -225,14 +213,12 @@ func newCollectionExistsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cf.config()); err != nil {
-				logging.Error("%v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cf.config()); err != nil {
+				return failure("", err)
 			}
 			ok, err := s.CollectionExists(bucket, scope, args[0])
 			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
+				return failure("", err)
 			}
 			if ok {
 				logging.Println("true")
@@ -268,27 +254,23 @@ func newImportCmd() *cobra.Command {
 			cfg.Collection = collection
 			s := server.New()
 			defer s.Disconnect()
-			if err := s.Connect(context.Background(), cfg); err != nil {
-				logging.Error("Failed to import JSON Lines file: %v", err)
-				exitErr()
+			if err := s.Connect(cmd.Context(), cfg); err != nil {
+				return failure("Failed to import JSON Lines file", err)
 			}
 			if _, err := s.EnsureCollection(bucket, scope, collection); err != nil {
-				logging.Error("Failed to import JSON Lines file: %v", err)
-				exitErr()
+				return failure("Failed to import JSON Lines file", err)
 			}
 			empty, err := s.CollectionIsEmpty(bucket, scope, collection)
 			if err != nil {
-				logging.Error("Failed to import JSON Lines file: %v", err)
-				exitErr()
+				return failure("Failed to import JSON Lines file", err)
 			}
 			if !empty {
 				logging.Warning("Collection not empty")
 				return nil
 			}
-			imported, err := s.PopulateCollection(path, bucket, scope, collection)
+			imported, err := s.PopulateCollection(cmd.Context(), path, bucket, scope, collection)
 			if err != nil {
-				logging.Error("Failed to import JSON Lines file: %v", err)
-				exitErr()
+				return failure("Failed to import JSON Lines file", err)
 			}
 			logging.Info("Imported %d documents", imported)
 			return nil

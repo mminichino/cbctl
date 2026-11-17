@@ -95,7 +95,12 @@ func (s *Server) Connect(ctx context.Context, cfg *config.Config) error {
 		ServiceTypes: []gocb.ServiceType{gocb.ServiceTypeManagement},
 	}
 	if err := cluster.WaitUntilReady(waitFor, waitOpts); err != nil {
-		_ = cluster.Close(nil)
+		_ = cluster.Close(nil) // the connect already failed; a close error adds nothing
+		if cerr := ctx.Err(); cerr != nil {
+			// gocb reports cancellation as its own ErrRequestCanceled; return the context error
+			// so callers map Ctrl-C to exit 130.
+			return fmt.Errorf("wait until ready: %w", cerr)
+		}
 		return fmt.Errorf("wait until ready: %w", err)
 	}
 

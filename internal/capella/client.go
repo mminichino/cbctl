@@ -9,9 +9,11 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config"
+	"github.com/mminichino/cbctl/internal/engine"
 )
 
 const organizationsPath = "/v4/organizations"
@@ -29,13 +31,39 @@ type Client struct {
 	DatabaseID       string
 	AccountEmail     string
 	AccountID        string
-	HTTP             *http.Client
-	lastStatus       int
-	lastBody         string
+	// HTTP overrides the capellaapi transport (tests only). nil uses the tuned capellaapi client,
+	// which has dial, TLS and response-header timeouts.
+	HTTP       *http.Client
+	lastStatus int
+	lastBody   string
+
+	// ctx bounds every request this client makes. The legacy object graph (Organization →
+	// Project → Cluster → Buckets/Credentials/...) predates context plumbing; the Backend sets
+	// ctx once per command so cancellation and deadlines reach every call without rewriting
+	// each helper's signature.
+	ctx context.Context
+	// Clock and WaitTimeout drive cluster state waits; zero values use engine.RealClock and
+	// DefaultWaitTimeout.
+	Clock       engine.Clock
+	WaitTimeout time.Duration
 
 	apiOnce sync.Once
 	api     *capellaapi.Client
 	apiErr  error
+}
+
+// SetContext sets the context used by every subsequent request. A nil ctx is ignored.
+func (c *Client) SetContext(ctx context.Context) {
+	if c != nil && ctx != nil {
+		c.ctx = ctx
+	}
+}
+
+func (c *Client) context() context.Context {
+	if c == nil || c.ctx == nil {
+		return context.Background()
+	}
+	return c.ctx
 }
 
 // NewClient constructs a Capella API client.
@@ -47,7 +75,6 @@ func NewClient(token, apiHost string) *Client {
 		Token:       token,
 		APIHost:     apiHost,
 		ProjectName: config.DefaultCapellaProjectName,
-		HTTP:        &http.Client{},
 	}
 }
 
@@ -96,6 +123,9 @@ func (c *Client) apiClient() (*capellaapi.Client, error) {
 		if c.HTTP != nil {
 			opts = append(opts, capellaapi.WithHTTPClient(c.HTTP))
 		}
+		if c.Clock != nil {
+			opts = append(opts, capellaapi.WithClock(c.Clock)) // retry backoff on the injected clock
+		}
 		c.api, c.apiErr = capellaapi.New(c.Token, opts...)
 	})
 	return c.api, c.apiErr
@@ -110,7 +140,7 @@ func (c *Client) doJSON(method, path string, body any, dest any) error {
 		api.SetOrgID(c.OrganizationID)
 	}
 	opt := capellaapi.RequestOptions{Body: body}
-	resp, err := api.Do(context.Background(), method, path, opt, dest)
+	resp, err := api.Do(c.context(), method, path, opt, dest)
 	if resp != nil {
 		c.lastStatus = resp.Status
 		c.lastBody = string(resp.Body)
@@ -210,10 +240,17 @@ func (c *Client) GetPaged(path string, perPage int) ([]json.RawMessage, error) {
 		return nil, err
 	}
 	q := url.Values{}
-	items, err := capellaapi.Paginate[json.RawMessage](context.Background(), api, path, "data", q)
+	items, err := capellaapi.Paginate[json.RawMessage](c.context(), api, path, "data", q)
 	if err != nil {
 		if IsNotFound(err) {
 			return nil, nil
+		}
+		// Only an unexpected response shape falls back to the page/last loop. API, transport
+		// and context errors would fail the same way again, so they are returned as is.
+		var apiErr *capellaapi.APIError
+		var trErr *capellaapi.TransportError
+		if errors.As(err, &apiErr) || errors.As(err, &trErr) || c.context().Err() != nil {
+			return nil, err
 		}
 		// Fall back to previous page/last semantics if Paginate fails on shape — keep
 		// compatible path via manual loop using doJSON for older response shapes.

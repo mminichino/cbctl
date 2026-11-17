@@ -1,9 +1,12 @@
 package capella
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/models"
 	"github.com/mminichino/cbctl/internal/rest"
@@ -260,35 +263,40 @@ func (c *Cluster) Add(clusterName string) error {
 	return nil
 }
 
-// Wait polls cluster state.
-func (c *Cluster) Wait(clusterID string, state State, op StateWaitOperation) State {
-	path := c.Endpoint() + "/" + clusterID
-	waitDestroyed := op == StateWaitNotEquals && state == StateDestroying
-	for i := 0; i < 600; i++ {
-		var data ClusterData
-		err := c.client().GetJSON(path, &data)
-		if err != nil {
-			if IsNotFound(err) {
-				return StateDestroyed
-			}
-			time.Sleep(time.Second)
-			continue
+// DefaultWaitTimeout bounds each legacy cluster state wait (create or delete). The pre-port loop
+// polled 600 times about a second apart; Capella deploys usually finish well inside 20 minutes.
+const DefaultWaitTimeout = 20 * time.Minute
+
+// clusterGetter adapts the legacy client to engine.ClusterGetter so legacy waits share the
+// managed path's backoff, failure states, timeout and cancellation.
+type clusterGetter struct{ c *Cluster }
+
+func (g clusterGetter) GetCluster(_ context.Context, _, clusterID string) (*engine.ClusterWithState, error) {
+	var data ClusterData
+	if err := g.c.client().GetJSON(g.c.Endpoint()+"/"+clusterID, &data); err != nil {
+		if IsNotFound(err) {
+			return nil, engine.ErrNotFound
 		}
-		current := State(data.CurrentState)
-		if current == StateFailed {
-			return StateFailed
-		}
-		if waitDestroyed {
-			time.Sleep(time.Second)
-			continue
-		}
-		if !op.evaluate(current == state) {
-			time.Sleep(time.Second)
-			continue
-		}
-		return StateHealthy
+		return nil, err
 	}
-	return StateUnknown
+	return &engine.ClusterWithState{Name: data.Name, CurrentState: data.CurrentState}, nil
+}
+
+// wait polls clusterID until op succeeds. It returns *engine.WaitFailed for a failure state,
+// *engine.WaitTimeout at the deadline, the API error for a failed read (401/403 end the wait
+// at once), and ctx.Err() when the command is cancelled.
+func (c *Cluster) wait(clusterID, name string, op engine.Op) error {
+	client := c.client()
+	clk := client.Clock
+	if clk == nil {
+		clk = engine.RealClock{}
+	}
+	timeout := client.WaitTimeout
+	if timeout <= 0 {
+		timeout = DefaultWaitTimeout
+	}
+	_, err := engine.WaitForCluster(client.context(), clusterGetter{c}, c.Project.ID(), clusterID, op, timeout, clk, name, engine.WaitHooks{})
+	return err
 }
 
 // List clusters in the project.
@@ -324,13 +332,12 @@ func (c *Cluster) Create(clusterName string, cfg *ClusterConfig) error {
 		return err
 	}
 	if existing != nil {
-		waitResult := c.Wait(existing.ID, StateHealthy, StateWaitEquals)
-		if waitResult != StateHealthy {
-			return fmt.Errorf("Cluster is not healthy: %s", waitResult)
+		if err := c.wait(existing.ID, clusterName, engine.OpReady); err != nil {
+			return fmt.Errorf("waiting for existing cluster %s: %w", clusterName, err)
 		}
-		data, err := c.GetByID(existing.ID)
+		data, err := c.fetchByID(existing.ID)
 		if err != nil {
-			return fmt.Errorf("Cluster lookup failed: %w", err)
+			return fmt.Errorf("cluster lookup failed: %w", err)
 		}
 		c.Data = data
 		c.attachServices()
@@ -349,11 +356,11 @@ func (c *Cluster) Create(clusterName string, cfg *ClusterConfig) error {
 		if err := c.client().PostJSON(c.Endpoint(), params, &idResp); err != nil {
 			return apiError(c.client().lastStatus, c.client().lastBody, "Cluster Create Error", err)
 		}
-		waitResult := c.Wait(idResp.ID, StateHealthy, StateWaitEquals)
-		if waitResult == StateHealthy {
-			data, err := c.GetByID(idResp.ID)
+		err := c.wait(idResp.ID, clusterName, engine.OpCreate)
+		if err == nil {
+			data, err := c.fetchByID(idResp.ID)
 			if err != nil {
-				return fmt.Errorf("Cluster creation failed: %w", err)
+				return fmt.Errorf("cluster creation failed: %w", err)
 			}
 			c.Data = data
 			c.attachServices()
@@ -361,21 +368,26 @@ func (c *Cluster) Create(clusterName string, cfg *ClusterConfig) error {
 			c.Project.RegisterCluster(c)
 			return nil
 		}
-		if waitResult == StateFailed {
-			c.deleteByID(idResp.ID)
-			if attempt < maxAttempts {
-				continue
-			}
-			return fmt.Errorf("Cluster creation failed after %d attempts", maxAttempts)
+		var failed *engine.WaitFailed
+		if !errors.As(err, &failed) {
+			return err // timeout, cancellation or an API error: the cluster may still be deploying
 		}
-		return fmt.Errorf("Cluster creation failed: %s", waitResult)
+		if derr := c.deleteByID(idResp.ID, clusterName); derr != nil {
+			return errors.Join(err, fmt.Errorf("removing failed cluster %s: %w", idResp.ID, derr))
+		}
+		if attempt == maxAttempts {
+			return fmt.Errorf("cluster creation failed after %d attempts: %w", maxAttempts, err)
+		}
+		logging.Warning("Cluster %s entered %s; retrying (attempt %d of %d)", clusterName, failed.State, attempt+1, maxAttempts)
 	}
-	return fmt.Errorf("Cluster creation failed")
+	return fmt.Errorf("cluster creation failed")
 }
 
-func (c *Cluster) deleteByID(clusterID string) {
-	_ = c.client().Delete(c.Endpoint() + "/" + clusterID)
-	_ = c.Wait(clusterID, StateDestroying, StateWaitNotEquals)
+func (c *Cluster) deleteByID(clusterID, name string) error {
+	if err := c.client().Delete(c.Endpoint() + "/" + clusterID); err != nil && !IsNotFound(err) {
+		return err
+	}
+	return c.wait(clusterID, name, engine.OpDelete)
 }
 
 func (c *Cluster) attachServices() {
@@ -407,11 +419,12 @@ func (c *Cluster) Delete() error {
 	id := c.Data.ID
 	name := c.Data.Name
 	if err := c.client().Delete(c.Endpoint() + "/" + id); err != nil {
-		return apiError(c.client().lastStatus, c.client().lastBody, "Cluster Delete Error", err)
+		if !IsNotFound(err) {
+			return apiError(c.client().lastStatus, c.client().lastBody, "Cluster Delete Error", err)
+		}
 	}
-	waitResult := c.Wait(id, StateDestroying, StateWaitNotEquals)
-	if waitResult != StateDestroyed {
-		return fmt.Errorf("Cluster deletion failed: %s", waitResult)
+	if err := c.wait(id, name, engine.OpDelete); err != nil {
+		return fmt.Errorf("cluster deletion failed: %w", err)
 	}
 	logging.Info("Capella cluster %s destroyed", name)
 	c.Data = nil
@@ -446,6 +459,18 @@ func (c *Cluster) GetByID(clusterID string) (*ClusterData, error) {
 	if cached := c.Project.FindClusterByID(clusterID); cached != nil && cached.Data != nil {
 		return cached.Data, nil
 	}
+	var data ClusterData
+	if err := c.client().GetJSON(c.Endpoint()+"/"+clusterID, &data); err != nil {
+		if IsNotFound(err) {
+			return nil, notFound("Cluster ID not found")
+		}
+		return nil, apiError(c.client().lastStatus, c.client().lastBody, "Cluster Get Error", err)
+	}
+	return &data, nil
+}
+
+// fetchByID GETs a cluster by ID, bypassing the cache (used after a wait, when cached data is stale).
+func (c *Cluster) fetchByID(clusterID string) (*ClusterData, error) {
 	var data ClusterData
 	if err := c.client().GetJSON(c.Endpoint()+"/"+clusterID, &data); err != nil {
 		if IsNotFound(err) {

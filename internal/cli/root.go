@@ -3,9 +3,12 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"sort"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -46,7 +49,7 @@ func buildRootCmd() *cobra.Command {
 		Use:   "cbctl",
 		Short: "Provision Couchbase Server and Capella clusters, buckets, scopes, and collections",
 		Long:  "Provision Couchbase Server clusters, buckets, scopes, and collections. Capella operations live under the capella subgroup.",
-		// No args → help (match Python no_args_is_help).
+		// No args → help (match Python no_args_is_help); hardenTree swaps in unknownSubcommand.
 		Run:           func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -59,7 +62,151 @@ func buildRootCmd() *cobra.Command {
 	root.AddCommand(newImportCmd())
 	root.AddCommand(newCapellaCmd())
 	root.AddCommand(newConfigureCmd())
+	root.SetFlagErrorFunc(flagError)
+	hardenTree(root)
 	return root
+}
+
+// removedVerbs maps capellactl command paths (without the leading "cbctl ") that cbctl does not
+// provide as commands to the invocation that replaces them. They exit 3 with the replacement as
+// the hint instead of falling through to group help.
+var removedVerbs = map[string]string{}
+
+// hardenTree makes usage mistakes fail loudly. Cobra runs a group's Run with an unknown
+// positional (cobra only validates arguments on the root), so "cbctl capella cluster bogus" used
+// to print help and exit 0. Every group now answers an unknown subcommand with exit 3 and a
+// suggestion, and every argument-count error exits 3.
+func hardenTree(root *cobra.Command) {
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		if c.HasSubCommands() {
+			switch {
+			case c.RunE == nil:
+				// A pure group: no args prints help, anything else is an unknown subcommand.
+				c.Run = nil
+				c.RunE = unknownSubcommand
+				c.Args = cobra.ArbitraryArgs
+			case c.Args == nil:
+				// A group that also runs itself (configure): it takes flags, not positionals.
+				c.Args = func(cmd *cobra.Command, args []string) error {
+					if len(args) > 0 {
+						return unknownSubcommand(cmd, args)
+					}
+					return nil
+				}
+			}
+		}
+		if c.Args != nil {
+			c.Args = usageArgs(c.Args)
+		}
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	walk(root)
+}
+
+// unknownSubcommand is the RunE of every command group. No args prints help (exit 0); an
+// unknown or ambiguous subcommand, or a removed capellactl verb, is a usage error (exit 3).
+func unknownSubcommand(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+	word := args[0]
+	msg := fmt.Sprintf("unknown command %q for %q", word, cmd.CommandPath())
+	key := strings.TrimPrefix(cmd.CommandPath()+" "+word, cmd.Root().Name()+" ")
+	if repl, ok := removedVerbs[key]; ok {
+		return &CLIError{Code: ExitConfigInvalid, Message: msg, Action: "use " + repl}
+	}
+	if cands := prefixCandidates(cmd, word); len(cands) > 1 {
+		return &CLIError{
+			Code:    ExitConfigInvalid,
+			Message: fmt.Sprintf("ambiguous command %q for %q", word, cmd.CommandPath()),
+			Action:  "did you mean " + strings.Join(cands, ", ") + "?",
+		}
+	}
+	action := fmt.Sprintf("run '%s --help' for the list of commands", cmd.CommandPath())
+	if cmd.SuggestionsMinimumDistance <= 0 {
+		cmd.SuggestionsMinimumDistance = 2
+	}
+	if sugg := cmd.SuggestionsFor(word); len(sugg) > 0 {
+		action = "did you mean " + strings.Join(sugg, ", ") + "?"
+	}
+	return &CLIError{Code: ExitConfigInvalid, Message: msg, Action: action}
+}
+
+// prefixCandidates lists the visible subcommands of cmd that start with word. Cobra resolves a
+// unique prefix itself (EnablePrefixMatching), so more than one candidate means ambiguity.
+func prefixCandidates(cmd *cobra.Command, word string) []string {
+	var out []string
+	for _, sub := range cmd.Commands() {
+		if !sub.IsAvailableCommand() {
+			continue
+		}
+		if strings.HasPrefix(sub.Name(), word) {
+			out = append(out, sub.Name())
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// usageArgs wraps a positional-argument validator so its errors exit 3.
+func usageArgs(validate cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		err := validate(cmd, args)
+		if err == nil {
+			return nil
+		}
+		var cliErr *CLIError
+		if errors.As(err, &cliErr) {
+			return err
+		}
+		return &CLIError{
+			Code:    ExitConfigInvalid,
+			Message: err.Error(),
+			Action:  fmt.Sprintf("run '%s --help' for usage", cmd.CommandPath()),
+			Err:     err,
+		}
+	}
+}
+
+// flagError maps a flag parse error (unknown flag, bad value, missing value) to exit 3.
+func flagError(cmd *cobra.Command, err error) error {
+	return &CLIError{
+		Code:    ExitConfigInvalid,
+		Message: err.Error(),
+		Action:  fmt.Sprintf("run '%s --help' for usage", cmd.CommandPath()),
+		Err:     err,
+	}
+}
+
+// cobraUsagePrefixes are the messages cobra returns, untyped, for flag constraints it checks
+// after parsing (MarkFlagRequired, flag groups).
+var cobraUsagePrefixes = []string{
+	"required flag(s) ",
+	"if any flags in the group ",
+	"at least one of the flags in the group ",
+	"none of the others can be; ",
+}
+
+// classifyCobraError turns cobra's untyped flag-constraint errors into exit-3 usage errors.
+// Every other error is returned unchanged.
+func classifyCobraError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var cliErr *CLIError
+	if errors.As(err, &cliErr) {
+		return err
+	}
+	msg := err.Error()
+	for _, p := range cobraUsagePrefixes {
+		if strings.HasPrefix(msg, p) || strings.Contains(msg, p) {
+			return &CLIError{Code: ExitConfigInvalid, Message: msg, Err: err}
+		}
+	}
+	return err
 }
 
 // Execute runs the root command under a signal-aware context.
@@ -84,9 +231,5 @@ func Execute() error {
 	root.SetIn(d.Stdin)
 	root.SetOut(d.Stdout)
 	root.SetErr(d.Stderr)
-	return root.ExecuteContext(ctx)
-}
-
-func exitErr() {
-	os.Exit(1)
+	return interruptedError(ctx, classifyCobraError(root.ExecuteContext(ctx)))
 }

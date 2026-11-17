@@ -498,7 +498,7 @@ func TestCredentials(t *testing.T) {
 	if _, _, err := c.CreateCredential(ctx, p, cl, capellaapi.CreateCredentialRequest{Name: "weak", Password: "weak", Access: access}); !errors.Is(err, capellaapi.ErrValidation) {
 		t.Fatalf("weak password: err = %v, want ErrValidation", err)
 	}
-	good := secrets.GeneratePassword(24)
+	good := secrets.MustGenerate(24)
 	_, echoed, err := c.CreateCredential(ctx, p, cl, capellaapi.CreateCredentialRequest{Name: "given", Password: good, Access: access})
 	if err != nil || echoed != "" {
 		t.Fatalf("supplied password: echoed %q, err %v", echoed, err)

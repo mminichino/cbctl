@@ -10,6 +10,7 @@ import (
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/secrets"
 )
 
 // ExitCode is a process exit status.
@@ -55,6 +56,42 @@ func Errorf(code ExitCode, action, format string, a ...any) *CLIError {
 	return &CLIError{Code: code, Message: fmt.Sprintf(format, a...), Action: action}
 }
 
+// failure wraps a runtime error from a Server or legacy command as an ExitError CLIError whose
+// message is "<prefix>: <err>" (or just err when prefix is empty). Cancellation is passed through
+// unchanged so HandleError maps it to ExitInterrupted, and an existing CLIError keeps its code.
+func failure(prefix string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) {
+		return err
+	}
+	var cliErr *CLIError
+	if errors.As(err, &cliErr) {
+		return err
+	}
+	msg := err.Error()
+	if prefix != "" {
+		msg = prefix + ": " + msg
+	}
+	return &CLIError{Code: wrappedExitCode(err), Message: msg, Err: err}
+}
+
+// wrappedExitCode is the code HandleError would return for an untyped-at-the-top error, so wrapping
+// it in failure keeps timeouts at 5 and config errors at 3.
+func wrappedExitCode(err error) ExitCode {
+	var wt *engine.WaitTimeout
+	var st *engine.StatusTimeout
+	var cfgErr *capellafile.ConfigError
+	switch {
+	case errors.As(err, &wt), errors.As(err, &st), errors.Is(err, context.DeadlineExceeded):
+		return ExitTimeout
+	case errors.As(err, &cfgErr):
+		return ExitConfigInvalid
+	}
+	return ExitError
+}
+
 var errWriter io.Writer
 
 func errorOut() io.Writer {
@@ -75,6 +112,16 @@ func SetErrorWriter(w io.Writer) {
 func HandleError(err error) ExitCode {
 	if err == nil {
 		return ExitOK
+	}
+	var restoreErr *secrets.RestoreError
+	if errors.As(err, &restoreErr) {
+		code := HandleError(restoreErr.Primary)
+		printError("could not restore previous password file: " + restoreErr.Restore.Error())
+		printAction(restoreErr.Action())
+		if code == ExitOK {
+			code = ExitError
+		}
+		return code
 	}
 	if errors.Is(err, context.Canceled) {
 		fmt.Fprintln(errorOut())
@@ -147,9 +194,18 @@ func HandleError(err error) ExitCode {
 		return ExitError
 	}
 
+	if errors.Is(err, context.DeadlineExceeded) {
+		printError(fmt.Sprintf(errStoppedWaiting, err))
+		printAction("run the command again to keep waiting, or pass a longer --timeout")
+		return ExitTimeout
+	}
+
 	printError(err.Error())
 	return ExitError
 }
+
+// errStoppedWaiting is printed for a context deadline that no typed wait error explains.
+const errStoppedWaiting = "stopped waiting: %v; the operation continues in Capella"
 
 func printError(msg string) {
 	fmt.Fprintf(errorOut(), "[error] - %s\n", redact.String(msg))

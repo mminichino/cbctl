@@ -240,7 +240,9 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 
 	ctx := cmd.Context()
 	if ctx == nil {
-		ctx = context.Background()
+		// cobra's Execute always sets a context; nil means a caller invoked RunE directly, and a
+		// Background fallback would silently drop Ctrl-C and deadlines.
+		return nil, Errorf(ExitError, "", "internal error: %s has no context", cmd.CommandPath())
 	}
 	if !resolved.OrgID.IsSet() {
 		org, err := discoverOrg(ctx, client)

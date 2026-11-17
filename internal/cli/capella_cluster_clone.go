@@ -370,7 +370,10 @@ func (rt *runtime) copyCredentials(src *clusterTarget, projectID, clusterID stri
 	}
 	var issued []namedSecret
 	for _, c := range items {
-		pw := secrets.GeneratePassword(generatedPasswordLength)
+		pw, err := secrets.Generate(generatedPasswordLength)
+		if err != nil {
+			return issued, err
+		}
 		if _, _, err := rt.Client.CreateCredential(rt.Ctx, projectID, clusterID,
 			capellaapi.CreateCredentialRequest{Name: c.Name, Password: pw, Access: c.Access}); err != nil {
 			if errors.Is(err, capellaapi.ErrConflict) {

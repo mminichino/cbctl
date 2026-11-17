@@ -115,7 +115,7 @@ cbctl keyspace create <bucket.scope.collection> --host 127.0.0.1 -u Administrato
 # Import
 cbctl import <jsonl-file> <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
-No subcommand → help. Subgroups with no args → help.
+No subcommand → help. Subgroups with no args → help (exit 0). An unknown or ambiguous subcommand, a bad flag, a missing required flag or a wrong argument count exits 3 (Server and Capella commands alike) with a hint on stderr.
 
 ## Shared connection flags
 

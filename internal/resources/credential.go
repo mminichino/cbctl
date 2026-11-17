@@ -490,7 +490,10 @@ func (r *credentialRec) create(ctx context.Context, rc *plan.RunContext, a *plan
 	if _, err := secrets.Preflight(dir, cluster, name, r.opts.ForceOverwriteSecret); err != nil {
 		return err
 	}
-	generated := secrets.GeneratePassword(32)
+	generated, err := secrets.Generate(32)
+	if err != nil {
+		return err
+	}
 	req.Password = generated
 	id, returned, err := rc.Client.CreateCredential(ctx, pid, cid, req)
 	if err != nil {
@@ -549,7 +552,9 @@ func (r *credentialRec) update(ctx context.Context, rc *plan.RunContext, a *plan
 		}
 		password, _ := d["password"].(string)
 		if password == "" { // generated; saved before it is sent
-			password = secrets.GeneratePassword(32)
+			if password, err = secrets.Generate(32); err != nil {
+				return err
+			}
 			if savedPath, savedBackup, err = secrets.WriteRotatedCredential(r.secretDir(rc), cluster, name, uid, password); err != nil {
 				return err
 			}
@@ -562,7 +567,9 @@ func (r *credentialRec) update(ctx context.Context, rc *plan.RunContext, a *plan
 	}
 	if err := rc.Client.UpdateCredential(ctx, pid, cid, uid, req, etag); err != nil {
 		if savedPath != "" {
-			secrets.RestoreRotatedCredential(savedPath, savedBackup)
+			if rerr := secrets.RestoreRotatedCredential(savedPath, savedBackup); rerr != nil {
+				return &secrets.RestoreError{Primary: err, Restore: rerr, Path: savedPath, Backup: savedBackup}
+			}
 		}
 		return err
 	}

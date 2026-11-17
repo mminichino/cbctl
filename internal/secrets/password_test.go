@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -52,7 +53,7 @@ func TestMeetsRules(t *testing.T) {
 func TestGeneratePasswordPolicy(t *testing.T) {
 	t.Parallel()
 	for i := 0; i < 500; i++ {
-		pw := GeneratePassword(32)
+		pw := MustGenerate(32)
 		if !MeetsRules(pw) {
 			t.Fatalf("generated password %q does not meet the rules", pw)
 		}
@@ -83,7 +84,7 @@ func TestGeneratePasswordLength(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			for i := 0; i < 50; i++ {
-				pw := GeneratePassword(tc.in)
+				pw := MustGenerate(tc.in)
 				if got := utf8.RuneCountInString(pw); got != tc.want {
 					t.Fatalf("len = %d, want %d (%q)", got, tc.want, pw)
 				}
@@ -99,7 +100,7 @@ func TestGeneratePasswordUnique(t *testing.T) {
 	t.Parallel()
 	seen := make(map[string]bool)
 	for i := 0; i < 1000; i++ {
-		pw := GeneratePassword(32)
+		pw := MustGenerate(32)
 		if seen[pw] {
 			t.Fatalf("duplicate password generated: %q", pw)
 		}
@@ -111,11 +112,28 @@ func TestGeneratePasswordUsesAllClasses(t *testing.T) {
 	t.Parallel()
 	// Even at the minimum length, every class is represented.
 	for i := 0; i < 200; i++ {
-		pw := GeneratePassword(MinLength)
+		pw := MustGenerate(MinLength)
 		for name, class := range map[string]string{"upper": upper, "lower": lower, "digit": digit, "special": Special} {
 			if !strings.ContainsAny(pw, class) {
 				t.Fatalf("password %q has no %s character", pw, name)
 			}
 		}
+	}
+}
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) { return 0, errors.New("entropy unavailable") }
+
+func TestGenerateRandFailure(t *testing.T) {
+	prev := randReader
+	randReader = failingReader{}
+	t.Cleanup(func() { randReader = prev })
+	pw, err := Generate(32)
+	if err == nil || pw != "" {
+		t.Fatalf("Generate = %q, %v; want an error and no password", pw, err)
+	}
+	if !strings.Contains(err.Error(), "generating password") {
+		t.Fatalf("err = %v, want a 'generating password' context", err)
 	}
 }

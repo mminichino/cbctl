@@ -8,6 +8,8 @@ package secrets
 
 import (
 	"crypto/rand"
+	"fmt"
+	"io"
 	"math/big"
 	"strings"
 	"unicode"
@@ -59,35 +61,59 @@ func MeetsRules(password string) bool {
 	return hasUpper && hasLower && hasDigit && hasSpecial
 }
 
-// GeneratePassword returns a random password of length characters that satisfies MeetsRules: one
+// Generate returns a random password of length characters that satisfies MeetsRules: one
 // character from each class, the rest from all classes, shuffled with a CSPRNG. A length below
 // MinLength is raised to MinLength so the result is always valid (the Python original returned
-// 4 characters for lengths up to 4, which Capella would reject).
-func GeneratePassword(length int) string {
+// 4 characters for lengths up to 4, which Capella would reject). A failure of the system CSPRNG
+// is returned as an error; there is no safe fallback.
+func Generate(length int) (string, error) {
 	if length < MinLength {
 		length = MinLength
 	}
 	alphabet := upper + lower + digit + Special
 	chars := make([]byte, 0, length)
 	for _, class := range classes {
-		chars = append(chars, class[randBelow(len(class))])
+		i, err := randBelow(len(class))
+		if err != nil {
+			return "", err
+		}
+		chars = append(chars, class[i])
 	}
 	for len(chars) < length {
-		chars = append(chars, alphabet[randBelow(len(alphabet))])
+		i, err := randBelow(len(alphabet))
+		if err != nil {
+			return "", err
+		}
+		chars = append(chars, alphabet[i])
 	}
 	for i := len(chars) - 1; i > 0; i-- {
-		j := randBelow(i + 1)
+		j, err := randBelow(i + 1)
+		if err != nil {
+			return "", err
+		}
 		chars[i], chars[j] = chars[j], chars[i]
 	}
-	return string(chars)
+	return string(chars), nil
 }
 
-// randBelow returns a uniform random int in [0, n). A failure of the system CSPRNG leaves no
-// safe way to continue, so it panics rather than returning a predictable value.
-func randBelow(n int) int {
-	v, err := rand.Int(rand.Reader, big.NewInt(int64(n)))
+// MustGenerate is Generate for test doubles and tests, where a CSPRNG failure can only be an
+// environment fault. Product code uses Generate and returns the error.
+func MustGenerate(length int) string {
+	pw, err := Generate(length)
 	if err != nil {
-		panic("secrets: crypto/rand failed: " + err.Error())
+		panic(err)
 	}
-	return int(v.Int64())
+	return pw
+}
+
+// randReader is the entropy source; tests replace it to exercise the failure path.
+var randReader io.Reader = rand.Reader
+
+// randBelow returns a uniform random int in [0, n).
+func randBelow(n int) (int, error) {
+	v, err := rand.Int(randReader, big.NewInt(int64(n)))
+	if err != nil {
+		return 0, fmt.Errorf("generating password: %w", err)
+	}
+	return int(v.Int64()), nil
 }

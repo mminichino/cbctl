@@ -230,10 +230,12 @@ cbctl configure remove --profile default -y
 | 0 | Success or intentional no-op |
 | 1 | API / transport / wait failure |
 | 2 | Changes found (`plan`/`drift --detailed-exitcode`, `sync --dry-run`) |
-| 3 | Invalid usage or config (missing key, bad flags, unknown/ambiguous name) |
+| 3 | Invalid usage or config (missing key, bad flags, wrong argument count, unknown/ambiguous subcommand or name) |
 | 4 | Blocked (deletion protection, free-tier restriction, confirmation without TTY) |
 | 5 | Async wait timed out (operation continues in Capella) |
 | 130 | Interrupted (Ctrl-C); Capella keeps running the operation |
+
+A group with no arguments prints its help and exits 0. An unknown subcommand (`cbctl capella cluster bogus`) exits 3 with a "did you mean …?" hint; an ambiguous prefix (`cbctl capella c`) lists the candidates. These codes apply to the Server commands too: their runtime failures exit 1, usage mistakes exit 3.
 
 ### Declarative workflow (`capella.yaml`)
 

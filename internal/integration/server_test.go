@@ -149,7 +149,7 @@ func TestServerCLIFlow(t *testing.T) {
 	if !empty {
 		t.Fatal("expected empty collection")
 	}
-	n, err := s.PopulateCollection(jsonl, bucket, scope, collection)
+	n, err := s.PopulateCollection(context.Background(), jsonl, bucket, scope, collection)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}

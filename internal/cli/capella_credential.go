@@ -397,7 +397,9 @@ Examples:
 
 		generated := password == ""
 		if generated {
-			password = secrets.GeneratePassword(generatedPasswordLength)
+			if password, err = secrets.Generate(generatedPasswordLength); err != nil {
+				return err
+			}
 		}
 		id, _, err := rt.Client.CreateCredential(rt.Ctx, pid, cid, capellaapi.CreateCredentialRequest{
 			Name: name, Password: password, Access: wanted,
@@ -513,7 +515,10 @@ Examples:
 		}
 		generated := false
 		if changePassword && password == "" {
-			password, generated = secrets.GeneratePassword(generatedPasswordLength), true
+			if password, err = secrets.Generate(generatedPasswordLength); err != nil {
+				return err
+			}
+			generated = true
 		}
 		pid, cid := t.ids()
 

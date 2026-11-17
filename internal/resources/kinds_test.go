@@ -1,10 +1,14 @@
 package resources
 
 import (
+	"context"
+	"errors"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/secrets"
 )
@@ -381,5 +385,55 @@ func TestAccessHelpers(t *testing.T) {
 	}
 	if got := PrivilegeLabel(map[string]bool{"data_writer": true, "data_reader": true, "xattr_read": true}); got != "read+write+xattr_read" {
 		t.Fatalf("label %v", got)
+	}
+}
+
+func TestCredentialRotateFailureRestoresSecret(t *testing.T) {
+	yaml := strings.Replace(credYAML, "        password: ${APP_PW}\n", "", 1)
+	e := newEnv(t, yaml)
+	e.apply(e.plan())
+	path := secrets.SecretPath(e.cfg.CredentialsOutput(), "one", "app")
+	first, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.rc.RotatePasswords = true
+	p := e.plan()
+	e.f.FailNext("PUT", `/users/`, 400, 1)
+	res := plan.Execute(context.Background(), e.rc, p)
+	if res.OK() {
+		t.Fatal("rotation should fail on the injected 400")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(first) {
+		t.Fatalf("secret file not restored after a failed rotation:\nbefore %s\nafter  %s", first, after)
+	}
+}
+
+func TestCredentialRotateRestoreFailureIsReported(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("needs POSIX permissions enforced")
+	}
+	yaml := strings.Replace(credYAML, "        password: ${APP_PW}\n", "", 1)
+	e := newEnv(t, yaml)
+	e.apply(e.plan())
+	path := secrets.SecretPath(e.cfg.CredentialsOutput(), "one", "app")
+	e.rc.RotatePasswords = true
+	p := e.plan()
+	// Make the restore fail: after the new secret is written, the file becomes read-only.
+	e.f.FailNextOpts("PUT", "/v4/organizations/*/projects/*/clusters/*/users/*", capellafake.FaultOptions{
+		Status: 400, Before: func() { _ = os.Chmod(path, 0o400) },
+	})
+	t.Cleanup(func() { _ = os.Chmod(path, 0o600) })
+	res := plan.Execute(context.Background(), e.rc, p)
+	if res.OK() {
+		t.Fatal("rotation should fail")
+	}
+	var re *secrets.RestoreError
+	if !errors.As(res.Err, &re) {
+		t.Fatalf("failure is not a *secrets.RestoreError: %v", res.Err)
 	}
 }
