@@ -8,7 +8,7 @@ import (
 )
 
 func TestRegisterAndString(t *testing.T) {
-	t.Parallel()
+	// Not parallel: Register/Reset mutate the package-global registry.
 	redact.Reset()
 	t.Cleanup(redact.Reset)
 
@@ -26,7 +26,7 @@ func TestRegisterAndString(t *testing.T) {
 }
 
 func TestObjectMasksKeys(t *testing.T) {
-	t.Parallel()
+	// Not parallel: Register/Reset mutate the package-global registry.
 	redact.Reset()
 	t.Cleanup(redact.Reset)
 

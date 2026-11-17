@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Managed `cluster delete` of a name missing from `capella.yaml` falls through to Capella, so a
   failed clone that rolled back the file can still be torn down.
+- `internal/redact` unit tests no longer run in parallel against the shared secret registry, which
+  made `TestRegisterAndString` flaky (seen on macOS CI).
 
 ## [0.6.0] - 2026-11-17
 
