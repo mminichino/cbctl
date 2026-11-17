@@ -70,13 +70,18 @@ func newCapellaBucketBackupCmd() *cobra.Command {
 	sched := &cobra.Command{
 		Use:   "schedule",
 		Short: "When a bucket is backed up and how long backups are kept",
-		Run:   func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
+		Long: "When a bucket is backed up and how long backups are kept. The schedule is recorded in capella.yaml.\n\n" +
+			"Examples:\n  cbctl capella bucket backup schedule set prod-01 orders --start-at 2 --incremental-every 12\n" +
+			"  cbctl capella bucket backup schedule show prod-01 orders\n  cbctl capella bucket backup schedule delete prod-01 orders",
+		Run: func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
 	}
 	sched.AddCommand(newBucketScheduleShowCmd(), newBucketScheduleSetCmd(), newBucketScheduleDeleteCmd())
 	cycle := &cobra.Command{
 		Use:   "cycle",
 		Short: "Backup cycles: a weekly full backup and the incrementals that follow it",
-		Run:   func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
+		Long: "Backup cycles: a weekly full backup and the incrementals that follow it.\n\n" +
+			"Examples:\n  cbctl capella bucket backup cycle list prod-01 orders\n  cbctl capella bucket backup cycle get prod-01 orders CYCLE_ID",
+		Run: func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
 	}
 	cycle.AddCommand(newBucketCycleListCmd(), newBucketCycleGetCmd())
 	cmd.AddCommand(sched, cycle, newBucketBackupListCmd(), newBucketBackupGetCmd(), newBucketBackupCreateCmd(),
@@ -139,6 +144,8 @@ func newBucketScheduleShowCmd() *cobra.Command {
 			rt.Out.Line("%s", bucketSummary(weekly))
 			return nil
 		})
+	cmd.Long = "Show a bucket's backup schedule.\n\n" +
+		"Examples:\n  cbctl capella bucket backup schedule show prod-01 orders\n  cbctl capella -o json bucket backup schedule show prod-01 orders"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -271,6 +278,8 @@ func newBucketScheduleDeleteCmd() *cobra.Command {
 			rt.report(res, "deleted the backup schedule of %s", args[1])
 			return nil
 		})
+	cmd.Long = "Delete a bucket's backup schedule. Existing backups are kept until they expire.\n\n" +
+		"Examples:\n  cbctl capella bucket backup schedule delete prod-01 orders\n  cbctl capella bucket backup schedule delete prod-01 orders --yes"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -344,6 +353,8 @@ func newBucketCycleListCmd() *cobra.Command {
 			rt.Out.Table([]string{"STARTED", "BACKUPS", "LATEST STATUS", "ID"}, rows)
 			return nil
 		})
+	cmd.Long = "List a bucket's backup cycles, newest first, with the number of backups and the status of the latest.\n\n" +
+		"Examples:\n  cbctl capella bucket backup cycle list prod-01 orders\n  cbctl capella -o json bucket backup cycle list prod-01 orders"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -367,6 +378,8 @@ func newBucketCycleGetCmd() *cobra.Command {
 			rt.Out.Table(backupHeader(false), backupRows(items, false))
 			return nil
 		})
+	cmd.Long = "List the backups of one cycle, newest first.\n\n" +
+		"Examples:\n  cbctl capella bucket backup cycle get prod-01 orders CYCLE_ID\n  cbctl capella -o json bucket backup cycle get prod-01 orders CYCLE_ID"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -444,6 +457,8 @@ func newBucketBackupGetCmd() *cobra.Command {
 			rt.Out.Object(b)
 			return nil
 		})
+	cmd.Long = "Show one bucket backup with its statistics.\n\n" +
+		"Examples:\n  cbctl capella bucket backup get prod-01 BACKUP_ID\n  cbctl capella -o json bucket backup get prod-01 BACKUP_ID"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -557,7 +572,8 @@ func newBucketBackupDeleteCmd() *cobra.Command {
 			return nil
 		})
 	cmd.Long = "Delete a backup and every other backup of its cycle (the weekly full and its incrementals). You confirm by\n" +
-		"typing the bucket name (or pass --yes).\n\nExample:\n  cbctl capella bucket backup delete prod-01 BACKUP_ID"
+		"typing the bucket name (or pass --yes).\n\nExamples:\n  cbctl capella bucket backup delete prod-01 BACKUP_ID\n" +
+		"  cbctl capella bucket backup delete prod-01 BACKUP_ID --yes"
 	addProjectFlag(cmd, &project)
 	return cmd
 }

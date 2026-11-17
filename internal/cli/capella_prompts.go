@@ -76,6 +76,58 @@ func installPrompts(capella *cobra.Command) {
 		}
 		return args, setFlag(cmd, "services", v, true)
 	})
+	wrapPrompt(find("bucket", "backup", "schedule", "set"), promptBucketSchedule)
+}
+
+// bucketScheduleFlags are the options of 'bucket backup schedule set'.
+var bucketScheduleFlags = []string{"day", "start-at", "incremental-every", "retention", "cost-optimized"}
+
+// promptBucketSchedule asks for each value of a bucket backup schedule, with the default shown,
+// when 'bucket backup schedule set' gets no option on a terminal (as capellactl did). Without a
+// terminal the defaults apply.
+func promptBucketSchedule(cmd *cobra.Command, args []string) ([]string, error) {
+	for _, f := range bucketScheduleFlags {
+		if cmd.Flags().Changed(f) {
+			return args, nil
+		}
+	}
+	if !canPrompt(cmd) {
+		return args, nil
+	}
+	w := promptOf(cmd)
+	def := bucketScheduleDefaults()
+	incs := make([]string, len(backupIncrements))
+	for i, n := range backupIncrements {
+		incs[i] = strconv.Itoa(n)
+	}
+	questions := []struct {
+		flag, prompt, def string
+		check             func(string) error
+	}{
+		{"day", "Day of the weekly full backup", fmt.Sprint(def["dayOfWeek"]), oneOf(backupDays)},
+		{"start-at", "Hour (UTC, 0-23) the backups start", fmt.Sprint(def["startAt"]), func(v string) error {
+			if n, err := strconv.Atoi(v); err != nil || n < 0 || n > 23 {
+				return fmt.Errorf("give an hour from 0 to 23")
+			}
+			return nil
+		}},
+		{"incremental-every", "Hours between incremental backups", fmt.Sprint(def["incrementalEvery"]), oneOf(incs)},
+		{"retention", "How long backups are kept", fmt.Sprint(def["retentionTime"]), oneOf(retentionValues())},
+		{"cost-optimized", "Cost-optimized retention (y/N)", "n", oneOf([]string{"y", "n", "yes", "no"})},
+	}
+	for _, q := range questions {
+		v, err := w.ask(q.prompt, q.def, q.check)
+		if err != nil {
+			return nil, err
+		}
+		if q.flag == "cost-optimized" {
+			v = strconv.FormatBool(v == "y" || v == "yes")
+		}
+		if err := cmd.Flags().Set(q.flag, v); err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
 }
 
 // wrapPrompt runs fill before cmd's RunE; fill returns the (completed) arguments.

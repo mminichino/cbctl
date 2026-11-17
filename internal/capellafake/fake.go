@@ -117,12 +117,14 @@ type Fake struct {
 	projects []*project
 	routes   []route
 
-	settle   int // polls a transitional state lasts
-	pageSize int // when > 0, caps perPage so tests can force multiple pages
-	failures []*failure
-	hooks    []*hook
-	lenient  bool // unknown routes are a plain 404 rather than a test failure
-	log      []Request
+	settle int // polls a transitional state lasts
+	// failNextBackup makes the next on-demand bucket backup end "failed".
+	failNextBackup bool
+	pageSize       int // when > 0, caps perPage so tests can force multiple pages
+	failures       []*failure
+	hooks          []*hook
+	lenient        bool // unknown routes are a plain 404 rather than a test failure
+	log            []Request
 }
 
 // res is a versioned resource; ver is the number in its ETag.
