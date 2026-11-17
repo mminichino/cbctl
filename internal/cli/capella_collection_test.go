@@ -241,7 +241,7 @@ func TestCollectionDelete(t *testing.T) {
 		}
 	})
 	t.Run("unknown", func(t *testing.T) {
-		wantExit(t, runResource(t, "collection", "delete", "clu", "orders", "inv", "ghost", "-y"), ExitConfigInvalid, "collection ghost not found")
+		wantContains(t, mustRun(t, "collection", "delete", "clu", "orders", "inv", "ghost", "-y").Stdout, "collection clu/orders/inv/ghost not found, nothing to do")
 	})
 	t.Run("delete", func(t *testing.T) {
 		res := mustRun(t, "collection", "delete", "clu", "orders", "inv", "items", "--yes")

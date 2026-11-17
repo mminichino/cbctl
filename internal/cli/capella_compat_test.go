@@ -226,7 +226,7 @@ func TestClusterWizard(t *testing.T) {
 
 	t.Run("custom groups with a re-asked answer", func(t *testing.T) {
 		f.ResetLog()
-		in := "wiz-01\nmars\naws\n\ncustom\ndata:oops\ndata:3x4/16\nindex,query:2x4/16\n\n\ny\n"
+		in := "wiz-01\nprovisioned\nmars\naws\n\ncustom\ndata:oops\ndata:3x4/16\nindex,query:2x4/16\n\n\ny\n"
 		res := runResourceIn(t, in, "cluster", "create", "--no-wait")
 		if res.Err != nil {
 			t.Fatalf("wizard: %v\n%s\n%s", res.Err, res.Stdout, res.Stderr)
@@ -254,7 +254,7 @@ func TestClusterWizard(t *testing.T) {
 	})
 
 	t.Run("three bad answers give up", func(t *testing.T) {
-		res := runResourceIn(t, "wiz-03\nx\ny\nz\n", "cluster", "create")
+		res := runResourceIn(t, "wiz-03\n\nx\ny\nz\n", "cluster", "create")
 		wantExit(t, res, ExitConfigInvalid, "no valid answer")
 	})
 }
