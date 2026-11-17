@@ -6,6 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// noDescendantsAnnotation on an apply command plans the targets without their children.
+const noDescendantsAnnotation = "cbctl/apply-no-descendants"
+
 // newTargetedApplyCmd is "apply --target KIND/NAME" under a resource group: capellactl spelled
 // it "KIND apply NAME". It takes the flags of apply (except --target) and runs it.
 func newTargetedApplyCmd(kind, short string) *cobra.Command {
@@ -37,6 +40,10 @@ func newScheduleApplyCmd() *cobra.Command {
 // newHiddenApplyAlias is a hidden, deprecated "cluster apply NAME" / "project apply NAME".
 func newHiddenApplyAlias(kind string) *cobra.Command {
 	cmd := newTargetedApplyCmd(kind, "Apply "+kind+" NAME from capella.yaml")
+	if kind == "project" {
+		// capellactl's "project apply" applied the project's own settings, not its clusters.
+		cmd.Annotations = map[string]string{noDescendantsAnnotation: "true"}
+	}
 	deprecateLegacy(cmd, "cbctl capella apply --target "+kind+"/NAME")
 	return cmd
 }

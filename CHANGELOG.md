@@ -47,6 +47,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`serviceGroups`, `buckets.scopes.collections`, `databaseCredentials.access`).
 - `capella project create --direct` looks for a project with the name before creating one. Capella
   allows two projects with the same name, so cbctl no longer relies on Capella to refuse it.
+- `capella project delete` of a missing project is a no-op (exit 0), so a rerun succeeds; on a
+  terminal it asks for the project name to be typed. `project create` of an existing name exits 4
+  with a `sync --project` hint, and `--config FILE` naming a missing file starts that file.
+- `capella project apply NAME` (hidden alias) applies the project only, not its clusters.
+- Managed `cluster protect --on` no longer asks for confirmation.
+- `configure` without an OS keychain saves the profile and warns (it used to exit 3), as capellactl
+  did. It reports what it cleaned from a pasted key and prints a checklist when Capella rejects it.
+- `configure` checks an existing capella.yaml against the key's organization and projects, offers
+  to write capella.yaml on a terminal (`--import` / `--no-import` choose without asking), and
+  prints the next step otherwise.
 
 ### Added (capellactl port)
 
@@ -87,7 +97,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Messages are prefixed `[error] -`, `[warning] -` and `→` (capellactl: `[ERROR]:`, `[WARNING]:`,
   `[ACTION]:`).
 - `configure list|show -o json` print arrays of rows unless `--output-format legacy`.
-- Without an OS keychain, `configure` exits 3 and saves nothing (capellactl saved the profile).
 - `init --password-env` defaults to `CBCTL_PWD_<CLUSTER>_<NAME>` (capellactl: `<NAME>_PASSWORD`).
 - Writing a password file that git would commit exits 4 (`--force-overwrite-secret` overrides).
 

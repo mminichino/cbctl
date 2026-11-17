@@ -218,12 +218,15 @@ Copy `.env.example` to `.env` for local keys (never committed). `cbctl` loads th
 
 ```bash
 cbctl configure --api-key-stdin --org-id <id>   # validate key, save profile + keychain
+cbctl configure --api-key-stdin --import        # ...then write capella.yaml from your projects (--no-import: never)
 cbctl configure show
 cbctl configure list
 cbctl configure remove --profile default -y
 cbctl configure migrate         # copy capellactl profiles + keychain API keys (--dry-run, --force, --remove-legacy)
 cbctl capella doctor            # offline: list what is left from capellactl (--detailed-exitcode exits 4)
 ```
+
+`configure` cleans a pasted key (quotes, `Bearer `, a byte-order mark, line breaks, paste markers) and says what it removed, never the key. A rejected key prints a checklist (the key's length and last 4 characters, the API host). Without an OS keychain the profile is saved and the key is not; set `CAPELLA_API_KEY`. After saving, on a terminal it offers to write `capella.yaml` with `sync`; without one it prints the `sync` command. An existing `capella.yaml` is never rewritten without `--import` or a yes, and `configure` warns when it is for another organization or declares a project the organization does not have.
 
 **Coming from capellactl.** [docs/capella/migrating-from-capellactl.md](docs/capella/migrating-from-capellactl.md) maps every command, setting, file and exit code (short version: `cbctl capella guide migrate`). Its settings keep working, each with a one-time `[warning]` on stderr:
 

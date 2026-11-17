@@ -28,7 +28,7 @@ cbctl collection create <name> --bucket <bucket> --scope <scope> --host 127.0.0.
 cbctl collection exists <name> --bucket <bucket> --scope <scope> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
 # Capella auth / profiles
-cbctl configure [--profile NAME] [--org-id ID] [--api-host HOST] [--api-key-stdin] # --api-base-url = --api-host (capellactl spelling)
+cbctl configure [--profile NAME] [--org-id ID] [--api-host HOST] [--api-key-stdin] [--import|--no-import] # --api-base-url = --api-host (capellactl spelling); no keychain: profile saved, key not
 cbctl configure show|list|remove
 cbctl configure migrate [--from DIR] [--profile P]... [--dry-run] [--force] [--remove-legacy] [-o json] # alias import-capellactl; conflicts exit 4
 cbctl capella configure   # alias
@@ -234,7 +234,7 @@ Import JSON Lines into a keyspace.
 - `capella import` without arguments or with `--full --stdout --dry-run --cluster --cluster-id --file` exits 3 with a hint to use `capella sync`.
 - Free-tier clusters: `bucket add` takes only `--memory`; `bucket update` only `--memory` and `--cross-cluster-versioning`; other flags exit 3.
 - `collection update --max-ttl` needs Couchbase Server 7.6.0+ (exit 4 otherwise).
-- `project delete` refuses a non-empty project unless `--cascade`; cascade deletes the clusters first and waits unless `--no-wait`.
+- `project delete` refuses a non-empty project unless `--cascade`; cascade deletes the clusters first and waits unless `--no-wait`. A missing project is a no-op (exit 0); on a terminal the project name must be typed to confirm. `project create` of an existing name exits 4 (hint: `sync --project`); with `--config FILE` naming a missing file it starts that file.
 - Prompts (TTY only): `cluster create` without a name runs a wizard; `cluster clone` without arguments picks the source and asks region, name and target project (with only SOURCE: region and name); `bucket add` asks `--memory` (default 1024); `project create` asks for an optional description, `project update` for `--description`; `cluster group add` asks `--services`; `bucket backup schedule set` without schedule flags asks day, start hour, incremental interval, retention and cost-optimized. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`); optional values use their defaults. Automation must pass every value as flags.
 - `cbctl capella completion` exits 3; shell completion is `cbctl completion bash|zsh|fish|powershell`.
 - Cluster operations (`scale`, `update`, `power`, `delete`, `clone`, `group add|remove`, `backup create|restore`) wait for completion; `--no-wait` returns status `accepted`. Exit 5 on timeout, 130 on Ctrl-C (the operation continues in Capella).

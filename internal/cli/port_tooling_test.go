@@ -58,10 +58,11 @@ func TestConfigure_CAP045_AC5_NoKeychain(t *testing.T) {
 		Keyring:   failingKeyring{},
 	}
 	code := Run(context.Background(), []string{"configure", "--api-key-stdin", "--org-id", "org-smoke",
-		"--api-base-url", srv.URL, "--profile", "smoke"}, d)
+		"--api-base-url", srv.URL, "--no-import", "--profile", "smoke"}, d)
 	out := stdout.String() + stderr.String()
-	if code != int(ExitConfigInvalid) {
-		t.Fatalf("exit %d, want %d\n%s", code, ExitConfigInvalid, out)
+	// capellactl saves the profile, warns and exits 0 (tests/binary/test_smoke.py ac5).
+	if code != int(ExitOK) {
+		t.Fatalf("exit %d, want %d\n%s", code, ExitOK, out)
 	}
 	for _, want := range []string{"no OS keychain available", "CAPELLA_API_KEY"} {
 		if !strings.Contains(out, want) {
@@ -71,7 +72,7 @@ func TestConfigure_CAP045_AC5_NoKeychain(t *testing.T) {
 	if strings.Contains(out, key) {
 		t.Fatalf("the API key was printed:\n%s", out)
 	}
-	if _, err := os.Stat(filepath.Join(home, "profiles.yaml")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("a profile was saved without a keychain (stat: %v)", err)
+	if _, err := os.Stat(filepath.Join(home, "profiles.yaml")); err != nil {
+		t.Errorf("the profile was not saved (stat: %v)", err)
 	}
 }

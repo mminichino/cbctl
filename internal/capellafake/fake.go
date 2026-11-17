@@ -124,6 +124,8 @@ type Fake struct {
 	failures       []*failure
 	hooks          []*hook
 	lenient        bool // unknown routes are a plain 404 rather than a test failure
+	// cidrDuplicates lets a cluster hold the same CIDR twice (AllowDuplicateCIDRs).
+	cidrDuplicates bool
 	log            []Request
 }
 

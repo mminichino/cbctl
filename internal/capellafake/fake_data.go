@@ -62,7 +62,7 @@ func (c *rctx) createCIDR() {
 		return
 	}
 	for _, e := range cl.cidrs {
-		if str(e.obj, "cidr") == cidr {
+		if str(e.obj, "cidr") == cidr && !c.f.cidrDuplicates {
 			c.exists("the CIDR " + cidr + " is already allowed")
 			return
 		}
