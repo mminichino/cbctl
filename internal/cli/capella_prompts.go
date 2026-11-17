@@ -76,6 +76,70 @@ func installPrompts(capella *cobra.Command) {
 		}
 		return args, setFlag(cmd, "services", v, true)
 	})
+	wrapPrompt(find("bucket", "update"), promptBucketUpdate)
+}
+
+// bucketQuestion is one prompt of promptBucketUpdate and the flag its answer sets.
+type bucketQuestion struct {
+	flag, prompt, def string
+	check             func(string) error
+}
+
+// bucketUpdateSettings are the bucket update flags that change something.
+var bucketUpdateSettings = []string{"memory", "replicas", "durability", "ttl", "flush", "no-flush", "priority",
+	"cross-cluster-versioning", "no-cross-cluster-versioning"}
+
+// promptBucketUpdate asks, like capellactl, for the new settings of a bucket when none was
+// given and a terminal is attached: memory, and on a provisioned cluster also replicas,
+// durability and TTL (Capella chooses those on the free tier). Enter keeps the current value.
+func promptBucketUpdate(cmd *cobra.Command, args []string) ([]string, error) {
+	for _, n := range bucketUpdateSettings {
+		if cmd.Flags().Changed(n) {
+			return args, nil
+		}
+	}
+	if !canPrompt(cmd) || len(args) != 2 {
+		return args, nil // the command reports "nothing to update"
+	}
+	rt, err := newRuntime(cmd, cmdAPIFlags(cmd))
+	if err != nil {
+		return nil, err
+	}
+	t, err := rt.locateCluster(args[0], flagString(cmd, "project"))
+	if err != nil {
+		return nil, err
+	}
+	cur, _, err := rt.readBucket(t, args[1])
+	if err != nil {
+		return nil, err
+	}
+	w := promptOf(cmd)
+	fmt.Fprintf(w.out, "Press Enter to keep the current value of %s.\n", args[1])
+	whole := func(min, max int) func(string) error {
+		return func(v string) error {
+			if n, err := strconv.Atoi(v); err != nil || n < min || (max >= 0 && n > max) {
+				return fmt.Errorf("give a whole number from %d", min)
+			}
+			return nil
+		}
+	}
+	questions := []bucketQuestion{{"memory", "Memory (MB)", strconv.Itoa(cur.MemoryAllocationInMb), whole(1, -1)}}
+	if !t.freeTier() {
+		questions = append(questions,
+			bucketQuestion{"replicas", "Replicas", strconv.Itoa(cur.Replicas), whole(0, 3)},
+			bucketQuestion{"durability", "Durability", cur.DurabilityLevel, nonEmpty("give a durability level")},
+			bucketQuestion{"ttl", "TTL seconds (0: none)", strconv.Itoa(cur.TimeToLiveInSeconds), whole(0, -1)})
+	}
+	for _, q := range questions {
+		v, err := w.ask(q.prompt, q.def, q.check)
+		if err != nil {
+			return nil, err
+		}
+		if err := setFlag(cmd, q.flag, v, true); err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
 }
 
 // wrapPrompt runs fill before cmd's RunE; fill returns the (completed) arguments.

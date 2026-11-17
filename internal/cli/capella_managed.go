@@ -277,6 +277,18 @@ func notInFile(kind, name, file string) error {
 	return Errorf(ExitConfigInvalid, "run 'cbctl capella sync' to add it", "%s %s is not in %s", kind, name, file)
 }
 
+// projectNotInFile is notInFile for a project. When the name is a cluster of the file, the error
+// says so and suggests the command with its project (didYouMean gets the project name).
+func projectNotInFile(ed *capellafile.Editor, name string, didYouMean func(project string) string) error {
+	if proj, node, err := ed.FindCluster(name, ""); err == nil && node != nil && proj != nil {
+		if pn := ed.Child(proj, "name"); pn != nil && pn.Value != "" {
+			return usageError("Did you mean: "+didYouMean(pn.Value), "%s is a cluster in project %s, not a project", name, pn.Value)
+		}
+	}
+	return Errorf(ExitConfigInvalid, fmt.Sprintf("run 'cbctl capella sync --project %s' to add it", name),
+		"project %s is not in %s", name, filepath.Base(ed.Path))
+}
+
 // findClusterNode locates a cluster in the file.
 func findClusterNode(ed *capellafile.Editor, name, project string) (*yaml.Node, error) {
 	_, node, err := ed.FindCluster(name, project)
@@ -342,7 +354,9 @@ func managedProjectUpdate(description *string) func(*cobra.Command, []string) er
 			Edit: func(ed *capellafile.Editor) error {
 				node, ok := ed.FindProject(name)
 				if !ok {
-					return notInFile("project", name, filepath.Base(ed.Path))
+					return projectNotInFile(ed, name, func(p string) string {
+						return fmt.Sprintf("cbctl capella project update %s --description %q", p, *description)
+					})
 				}
 				ed.Set(node, []string{"description"}, *description)
 				return nil

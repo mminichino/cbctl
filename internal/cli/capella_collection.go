@@ -9,6 +9,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -259,11 +260,23 @@ func newCapellaCollectionDeleteCmd() *cobra.Command {
 		if err := t.refuseIfProtected(); err != nil {
 			return err
 		}
-		question := fmt.Sprintf("Delete collection %s.%s with all its documents from %s/%s?", scope, name, t.Cluster.Name, t.Bucket.Name)
-		if ok, err := rt.confirmDelete(question); err != nil || !ok {
+		pid, cid := t.ids()
+		key := t.Cluster.Name + "/" + t.Bucket.Name + "/" + scope + "/" + name
+		if _, _, err := rt.Client.GetCollection(rt.Ctx, pid, cid, t.bucketID(), scope, name); err != nil {
+			if errors.Is(err, capellaapi.ErrNotFound) {
+				rt.report(collectionDoc{Cluster: t.Cluster.Name, Bucket: t.Bucket.Name, Scope: scope, Collection: name, Status: "not found"},
+					"collection %s not found, nothing to do", key)
+				return nil
+			}
+			return fmt.Errorf("reading collection %s: %w", name, err)
+		}
+		details, derr := resources.KeyspaceDeleteDetails(rt.Ctx, rt.Client, pid, cid, t.Bucket.Name, t.bucketID(), scope, name)
+		if derr != nil {
+			details = nil // informational only
+		}
+		if ok, err := rt.confirmNamedDelete("collection", key, name, details); err != nil || !ok {
 			return err
 		}
-		pid, cid := t.ids()
 		if err := rt.Client.DeleteCollection(rt.Ctx, pid, cid, t.bucketID(), scope, name); err != nil {
 			action := fmt.Sprintf("check the name with 'cbctl capella collection list %s %s %s'", t.Cluster.Name, t.Bucket.Name, scope)
 			return notFoundOr(err, "collection", name, action, "deleting collection "+name)

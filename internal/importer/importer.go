@@ -428,7 +428,7 @@ func BuildProject(ctx context.Context, client *capellaapi.Client, project capell
 					}
 					key := markerSeq.next("block")
 					block, _ := yaml.Marshal([]any{Obj{"name": uname, "access": []any{}}})
-					res.Comments[key] = fmt.Sprintf("%s has no access in Capella, so it is listed here for reference. To give it access:\n  cbctl capella credential create %s %s --bucket BUCKET --password-env VAR\n%s",
+					res.Comments[key] = fmt.Sprintf("%s has no access in Capella, so it is listed here for reference. To give it access:\n  cbctl capella credential create %s %s --privileges read --bucket BUCKET --password-env VAR\n%s",
 						uname, name, uname, strings.TrimRight(string(block), "\n"))
 					creds = append(creds, Obj{key: ""})
 					continue

@@ -36,6 +36,9 @@ var errWizardCancelled = Errorf(ExitError, "", "Cancelled; nothing was changed."
 type clusterWizard struct {
 	in  *bufio.Reader
 	out io.Writer
+	// offerFree asks for the cluster type (free or provisioned) first: set when the
+	// organization's free tier is still available and --free-tier was not given.
+	offerFree bool
 }
 
 func newClusterWizard(in io.Reader, out io.Writer) *clusterWizard {
@@ -119,6 +122,18 @@ func (w *clusterWizard) run(cmd *cobra.Command, cidr string) (ClusterSpec, error
 		return spec, err
 	}
 	free := flagBool(cmd, "free-tier")
+	if w.offerFree && !free && !ch("free-tier") {
+		kind, err := w.ask("Cluster type (free, provisioned)", "provisioned", oneOf([]string{"free", "provisioned"}))
+		if err != nil {
+			return spec, err
+		}
+		if kind == "free" {
+			if err := cmd.Flags().Set("free-tier", "true"); err != nil {
+				return spec, err
+			}
+			free = true
+		}
+	}
 	spec.Provider = flagString(cmd, "provider")
 	if !ch("provider") {
 		if spec.Provider, err = w.ask("Cloud provider ("+strings.Join(cloudProviders, "/")+")", "aws", oneOf(cloudProviders)); err != nil {
@@ -127,10 +142,12 @@ func (w *clusterWizard) run(cmd *cobra.Command, cidr string) (ClusterSpec, error
 	}
 	if !ch("region") {
 		def := regionDefaults[spec.Provider]
+		label := "Region"
 		if free {
 			def = freeTierRegions[spec.Provider][0]
+			label = "Region (free-tier regions) (" + strings.Join(freeTierRegions[spec.Provider], ", ") + ")"
 		}
-		if spec.Region, err = w.ask("Region", def, func(v string) error {
+		if spec.Region, err = w.ask(label, def, func(v string) error {
 			if v == "" {
 				return fmt.Errorf("a region is required")
 			}

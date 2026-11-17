@@ -185,6 +185,39 @@ func newCapellaClusterGetCmd() *cobra.Command {
 
 // ---- options ---------------------------------------------------------------------------------
 
+// freeTierUser names the cluster that uses the organization's one free-tier cluster.
+func freeTierUser(cluster, project string) string {
+	return fmt.Sprintf("%s in project %s", cluster, project)
+}
+
+// freeTierUsedBy returns freeTierUser of the organization's free-tier cluster, or "" when the
+// free tier is still available.
+func (r *runtime) freeTierUsedBy() (string, error) {
+	projects, err := r.Client.ListProjects(r.Ctx)
+	if err != nil {
+		return "", fmt.Errorf("listing projects: %w", err)
+	}
+	for _, p := range projects {
+		clusters, err := r.Client.ListClusters(r.Ctx, p.ID)
+		if err != nil {
+			return "", fmt.Errorf("listing clusters in project %s: %w", p.Name, err)
+		}
+		for i := range clusters {
+			if isFreeCluster(&clusters[i]) {
+				return freeTierUser(clusters[i].Name, p.Name), nil
+			}
+		}
+	}
+	return "", nil
+}
+
+// freeTierInUse is the refusal to create a second free-tier cluster (Capella allows one per
+// organization).
+func freeTierInUse(usedBy string) error {
+	return blockedError("delete that cluster first, or create a provisioned cluster without --free-tier",
+		"the free tier is already used by %s", usedBy)
+}
+
 type freeTierOptions struct {
 	Available   bool                `json:"available"`
 	UsedBy      string              `json:"usedBy"`
@@ -237,7 +270,7 @@ func newCapellaClusterOptionsCmd() *cobra.Command {
 				for i := range clusters {
 					c := &clusters[i]
 					if isFreeCluster(c) && usedBy == "" {
-						usedBy = fmt.Sprintf("%s in project %s", c.Name, p.Name)
+						usedBy = freeTierUser(c.Name, p.Name)
 					}
 					if c.CloudProvider != nil {
 						regions[c.CloudProvider.Type+" "+c.CloudProvider.Region] = true

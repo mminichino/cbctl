@@ -15,6 +15,7 @@ import (
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/presets"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -213,7 +214,13 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 			return err
 		}
 		if err := spec.remove(cmd, args, probe); err != nil {
-			return err
+			// Not in the file: still act on Capella, so a rerun of a finished delete is a no-op
+			// ("not found, nothing to do") and a resource only Capella has can be deleted.
+			var ce *CLIError
+			if spec.kind == "cluster" || mf.noApply || !errorAsCLI(err, &ce) || ce.Code != ExitConfigInvalid || !strings.Contains(ce.Message, "is not in "+file) {
+				return err
+			}
+			return direct(cmd, args)
 		}
 		label := spec.label(args)
 		if mf.noApply {
@@ -458,9 +465,35 @@ func managedCIDRCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *cap
 
 // ---- buckets, scopes, collections --------------------------------------------------------------
 
-func managedBucketAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
+func managedBucketAdd(cmd *cobra.Command, args []string, env *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	name := args[1]
 	ch := cmd.Flags().Changed
+	settings := func(b capellafile.Obj) {
+		for flag, key := range map[string]string{
+			"type": "type", "storage-backend": "storageBackend", "durability": "durabilityLevel",
+			"conflict-resolution": "bucketConflictResolution", "eviction-policy": "evictionPolicy"} {
+			if ch(flag) {
+				b[key] = flagString(cmd, flag)
+			}
+		}
+		for flag, key := range map[string]string{
+			"vbuckets": "vbuckets", "replicas": "replicas", "ttl": "timeToLiveInSeconds", "priority": "priority"} {
+			if ch(flag) {
+				b[key] = int64(flagInt(cmd, flag))
+			}
+		}
+		if ch("flush") {
+			b["flushEnabled"] = flagBool(cmd, "flush")
+		}
+	}
+	// A bucket in the file but not in Capella is an earlier create that did not finish. Like
+	// capellactl, the given settings go into its entry and the bucket is created, because a
+	// later update could not set the storage backend or type.
+	finish := recordedButMissingBucket(cmd, args, env, ed)
+	if finish {
+		fmt.Fprintf(cmd.ErrOrStderr(), "bucket %s is in %s but not in Capella yet (an earlier run did not finish); creating it now\n",
+			name, fileName(ed))
+	}
 	return Mutation{
 		Target:      "bucket/" + args[0] + "/" + name,
 		Question:    fmt.Sprintf("Add bucket %s to %s in %s and create it in Capella?", name, args[0], fileName(ed)),
@@ -470,30 +503,49 @@ func managedBucketAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *cape
 			if err != nil {
 				return err
 			}
-			if ed.FindBy(cl, "buckets", "name", name) != nil {
+			if b := ed.FindBy(cl, "buckets", "name", name); b != nil {
+				if finish {
+					given := capellafile.Obj{}
+					settings(given)
+					if ch("memory") {
+						given["memoryAllocationInMb"] = int64(flagInt(cmd, "memory"))
+					}
+					for k, v := range given {
+						ed.Set(b, []string{k}, v)
+					}
+				}
 				return nil
 			}
 			b := capellafile.Obj{"name": name, "memoryAllocationInMb": int64(flagInt(cmd, "memory"))}
-			for flag, key := range map[string]string{
-				"type": "type", "storage-backend": "storageBackend", "durability": "durabilityLevel",
-				"conflict-resolution": "bucketConflictResolution", "eviction-policy": "evictionPolicy"} {
-				if ch(flag) {
-					b[key] = flagString(cmd, flag)
-				}
-			}
-			for flag, key := range map[string]string{
-				"vbuckets": "vbuckets", "replicas": "replicas", "ttl": "timeToLiveInSeconds", "priority": "priority"} {
-				if ch(flag) {
-					b[key] = int64(flagInt(cmd, flag))
-				}
-			}
-			if ch("flush") {
-				b["flushEnabled"] = flagBool(cmd, "flush")
-			}
+			settings(b)
 			ed.Append(cl, "buckets", b)
 			return nil
 		},
 	}, nil
+}
+
+// recordedButMissingBucket reports whether bucket args[1] of cluster args[0] is in the file
+// while its cluster exists in Capella without it. Any lookup failure reports false, so the
+// usual plan decides.
+func recordedButMissingBucket(cmd *cobra.Command, args []string, env *envRuntime, ed *capellafile.Editor) bool {
+	if env == nil || env.runtime == nil {
+		return false
+	}
+	cl, err := clusterEntry(cmd, args, ed)
+	if err != nil || ed.FindBy(cl, "buckets", "name", args[1]) == nil {
+		return false
+	}
+	t, err := env.locateCluster(args[0], projectFlag(cmd))
+	if err != nil {
+		return false
+	}
+	pid, cid := t.ids()
+	if t.freeTier() {
+		_, _, err = env.Client.GetFreeBucket(env.Ctx, pid, cid, capellaapi.BucketID(args[1]))
+	} else {
+		_, _, err = env.Client.GetBucket(env.Ctx, pid, cid, capellaapi.BucketID(args[1]))
+	}
+	return errors.Is(err, capellaapi.ErrNotFound)
 }
 
 func managedBucketUpdate(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
@@ -608,9 +660,14 @@ func managedCollectionSet(add bool) managedBuild {
 				if err != nil {
 					return err
 				}
-				s, err := scopeEntry(ed, b, scope)
-				if err != nil {
-					return err
+				s := ed.FindBy(b, "scopes", "name", scope)
+				if s == nil && add && scope != resources.DefaultScope {
+					// As in capellactl, adding a collection to a new scope declares the scope too.
+					ed.Append(b, "scopes", capellafile.Obj{"name": scope})
+					s = ed.FindBy(b, "scopes", "name", scope)
+				}
+				if s == nil {
+					return notInFile("scope", scope, fileName(ed))
 				}
 				c := ed.FindBy(s, "collections", "name", name)
 				switch {
@@ -660,7 +717,23 @@ func managedCredential(create bool) managedBuild {
 			collections: flagStrings(cmd, "collection"), allBuckets: flagBool(cmd, "all-buckets"),
 		}
 		var access []any
-		if create || af.given() {
+		if !create && af.given() && af.privileges == "" {
+			// As in capellactl, an update that names only the resources keeps the privileges of
+			// the credential's one grant in the file.
+			privs, err := filePrivileges(cmd, args, ed)
+			if err != nil {
+				return Mutation{}, err
+			}
+			af.privileges = "read" // validated placeholder; replaced by the file's privileges below
+			entry, err := af.grant()
+			if err != nil {
+				return Mutation{}, err
+			}
+			entry.Privileges = privs
+			if access, err = accessToFile(entry); err != nil {
+				return Mutation{}, err
+			}
+		} else if create || af.given() {
 			entry, err := af.grant()
 			if err != nil {
 				return Mutation{}, err
@@ -700,6 +773,10 @@ func managedCredential(create bool) managedBuild {
 						entry["password"] = pw
 					}
 					ed.Append(cl, "databaseCredentials", entry)
+				case create && !sameFileAccess(ed.Child(c, "access"), access):
+					// create never rewrites a declared credential: changing access is an update.
+					return Errorf(ExitBlocked, fmt.Sprintf("change it with 'cbctl capella credential update %s %s'", args[0], name),
+						"credential %s is already in %s with different access", name, fileName(ed))
 				default:
 					if pw != "" {
 						ed.Set(c, []string{"password"}, pw)
@@ -712,6 +789,48 @@ func managedCredential(create bool) managedBuild {
 			},
 		}, nil
 	}
+}
+
+// filePrivileges returns the privileges of the one access grant of credential args[1] in the
+// file. A credential that is not in the file, or has several grants, is a usage error.
+func filePrivileges(cmd *cobra.Command, args []string, ed *capellafile.Editor) ([]string, error) {
+	cl, err := clusterEntry(cmd, args, ed)
+	if err != nil {
+		return nil, err
+	}
+	c := ed.FindBy(cl, "databaseCredentials", "name", args[1])
+	if c == nil {
+		return nil, notInFile("credential", args[1], fileName(ed))
+	}
+	var grants []struct {
+		Privileges []string `yaml:"privileges"`
+	}
+	if n := ed.Child(c, "access"); n != nil {
+		if err := n.Decode(&grants); err != nil {
+			return nil, Errorf(ExitConfigInvalid, "fix the access of the credential in "+fileName(ed), "reading the access of credential %s: %v", args[1], err)
+		}
+	}
+	switch len(grants) {
+	case 1:
+		return grants[0].Privileges, nil
+	case 0:
+		return nil, usageError("pass --privileges read, write or read+write", "credential %s has no access grant in %s", args[1], fileName(ed))
+	default:
+		return nil, usageError("pass --privileges with the resources to replace them with one grant, or edit "+fileName(ed),
+			"credential %s has several access grants in %s", args[1], fileName(ed))
+	}
+}
+
+// sameFileAccess reports whether the access node of a credential in the file grants exactly what
+// access does (privilege aliases and grouping do not matter).
+func sameFileAccess(node *yaml.Node, access []any) bool {
+	var declared any
+	if node != nil {
+		if err := node.Decode(&declared); err != nil {
+			return false
+		}
+	}
+	return len(resources.AccessChanges(access, declared)) == 0
 }
 
 // accessToFile converts one API access grant into its capella.yaml form.
@@ -1372,7 +1491,7 @@ func pickFileProject(cmd *cobra.Command, ed *capellafile.Editor) (string, *yaml.
 	}
 	node, ok := ed.FindProject(name)
 	if !ok {
-		return "", nil, notInFile("project", name, fileName(ed))
+		return "", nil, projectNotInFile(ed, name, func(p string) string { return "--project " + p })
 	}
 	return name, node, nil
 }
@@ -1399,9 +1518,23 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	if err != nil {
 		return Mutation{}, err
 	}
+	// Capella allows one free-tier cluster per organization: the wizard offers it only while it is
+	// free, and --free-tier is refused before anything is written when it is used.
+	freeUsedBy, freeKnown := "", false
+	lookupFree := func() {
+		if freeKnown || e == nil || e.runtime == nil || e.Client == nil {
+			return
+		}
+		if u, err := e.freeTierUsedBy(); err == nil {
+			freeUsedBy, freeKnown = u, true
+		}
+	}
 	if name == "" && e != nil && !e.Ephemeral {
 		if _, tty := e.terminalIn(); tty {
-			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, suggestCIDR(fileCIDRs(ed)))
+			lookupFree()
+			w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
+			w.offerFree = freeKnown && freeUsedBy == ""
+			spec, err := w.run(cmd, suggestCIDR(fileCIDRs(ed)))
 			if err != nil {
 				return Mutation{}, err
 			}
@@ -1417,6 +1550,12 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	groups := flagStrings(cmd, "group")
 	single := flagBool(cmd, "single-node")
 	free := flagBool(cmd, "free-tier")
+	if free {
+		lookupFree()
+		if freeUsedBy != "" {
+			return Mutation{}, freeTierInUse(freeUsedBy)
+		}
+	}
 	size := flagString(cmd, "size")
 	if len(groups) > 0 {
 		var given []string
