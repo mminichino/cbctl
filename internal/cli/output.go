@@ -57,7 +57,12 @@ func applyOutputFlags(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	logging.Current().SetDecider(newDecider(depsFromCmd(cmd), mode))
+	p := logging.Current()
+	p.SetDecider(newDecider(depsFromCmd(cmd), mode))
+	// D1: with -o json stdout holds only the JSON document, so [ok] and [info] lines go to stderr.
+	if f := cmd.Flags().Lookup("output"); f != nil {
+		p.SetJSON(f.Value.String() == "json")
+	}
 	return nil
 }
 

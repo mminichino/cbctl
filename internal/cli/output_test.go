@@ -320,3 +320,23 @@ func TestSecretsPrintedOnceUnredacted(t *testing.T) {
 		}
 	}
 }
+
+// TestJSONModeMovesStatusLinesToStderr (D1): with -o json the status lines leave stdout.
+func TestJSONModeMovesStatusLinesToStderr(t *testing.T) {
+	p, out, errBuf := func() (*output.Printer, *bytes.Buffer, *bytes.Buffer) {
+		d, o, e := fakeTermDeps(false, false)
+		return newPrinter(d), o, e
+	}()
+	defer logging.SetPrinter(logging.SetPrinter(p))
+	p.SetJSON(true)
+	logging.Success("done")
+	logging.Info("working")
+	if out.Len() != 0 || errBuf.String() != "[ok] - done\n[info] - working\n" {
+		t.Errorf("stdout=%q stderr=%q", out.String(), errBuf.String())
+	}
+	p.SetJSON(false)
+	logging.Info("again")
+	if out.String() != "[info] - again\n" {
+		t.Errorf("text mode stdout=%q", out.String())
+	}
+}
