@@ -132,6 +132,8 @@ Most commands accept:
 | `-p` / `--password` | `password` | Admin password |
 | `--ssl` / `--no-ssl` | `--no-ssl` | TLS for management/SDK |
 
+Every command also accepts the global `--color auto|always|never` (default `auto`; invalid value exits 3). Status labels (`[ok]`, `[info]`, `[warning]`, `[error]`) are colored per stream by `--color`, `NO_COLOR`, `TERM=dumb`, `CLICOLOR_FORCE`/`FORCE_COLOR`, `CLICOLOR` and the terminal check; stdout data (`true`/`false`, `-o json`, `cluster map`, one-time passwords) is never colored. Parse stdout by exit code or `-o json`, not by label text.
+
 Always pass explicit `--host`, credentials, and `--ssl`/`--no-ssl` in automation unless local defaults are intentional.
 
 ## Node spec (`cluster create`)

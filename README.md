@@ -247,6 +247,10 @@ cbctl capella doctor            # offline: list what is left from capellactl (--
 
 **Saved passwords and git.** Generated passwords are written under the credentials directory (mode 0600). When that directory is inside a git work tree and not ignored, generating a password exits 4 before anything is created; add `.cbctl/` to `.gitignore` or pass `--force-overwrite-secret`. `init` and `sync` add `.cbctl/` to the `.gitignore` next to `capella.yaml` when it is in a git work tree.
 
+### Color
+
+`--color auto|always|never` (all commands; default `auto`) controls ANSI color on the `[ok]`, `[warning]`, `[error]` and `[debug]` labels. Only the label word is styled, never the message. Each stream is decided on its own, in this order: `--color`, then `NO_COLOR` (non-empty: off), `TERM=dumb` (off), `CLICOLOR_FORCE` or `FORCE_COLOR` (set and not `0`: on; `FORCE_COLOR=0`: off), `CLICOLOR=0` (off), and otherwise on only when the stream is a terminal. Tables, `-o json` documents, `true`/`false`, `cluster map` and one-time passwords on stdout never carry color. `[ok]` and `[info]` lines go to stdout in text mode (stderr with `-o json`); warnings and errors go to stderr.
+
 ### Exit codes
 
 | Code | Meaning |

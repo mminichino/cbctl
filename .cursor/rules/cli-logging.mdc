@@ -3,66 +3,41 @@ description: Conventions for colored CLI log/message output in Go
 globs: "**/*.go"
 alwaysApply: false
 ---
+# CLI Output and Color Conventions
 
-# CLI Colored Logging Conventions
-
-When writing or modifying CLI output/logging code in this Go project, follow these conventions.
+All terminal output goes through `internal/output`. `internal/logging` is a thin shim over it (`logging.Info`, `Warning`, `Error`, `Debug`, `Success`, `Println`) so existing callers keep working. Do not call `fmt.Fprint*(os.Stderr, ...)` or `color.*` for labeled messages.
 
 ## Format
-
-All log-style messages use this format:
 
 ```
 [level] - message text
 ```
 
-- The brackets `[` `]` and the message text are **never colored**.
-- Only the level word itself (`info`, `warning`, `error`) is colored.
+- Only the label word is styled. The brackets, the ` - ` and the message are **never** colored.
+- Levels: `[ok]` (bold green), `[info]` (plain), `[warning]` (bold yellow), `[error]` (bold red), `[debug]` (dim).
+- Hint lines are `  → action` (Unicode until phase P6 switches to `output.GlyphsByColor`).
+- Escape codes are written by hand in `internal/output/label.go` (16-color SGR, reset right after the closing bracket). Do not add a color library; `fatih/color` is no longer a dependency.
 
-## Colors
+## Streams
 
-| Level     | Color  |
-|-----------|--------|
-| `info`    | Blue   |
-| `warning` | Yellow |
-| `error`   | Red    |
+- `[ok]` and `[info]` go to stdout in text mode and to stderr with `-o json`, so stdout holds only the JSON document.
+- `[warning]`, `[error]`, `[debug]`, hint lines and progress go to stderr.
+- Stdout data (`true`/`false`, `-o json`, `cluster map`, tables, one-time passwords) is never colored and never redacted when it is a one-time secret.
 
-## Implementation
+## Color decision (per stream, `output.Decider.Color`)
 
-Use `github.com/fatih/color` for colorization. Define `SprintFunc()` helpers per level and only wrap the level string, not the whole line:
+1. `--color never` off, `--color always` on.
+2. `NO_COLOR` non-empty: off.
+3. `TERM=dumb`: off.
+4. `CLICOLOR_FORCE` or `FORCE_COLOR` non-empty and not `0`: on (`FORCE_COLOR=0`: off).
+5. `CLICOLOR=0`: off.
+6. Otherwise on only if that stream is a terminal.
 
-```go
-var (
-	infoColor  = color.New(color.FgBlue).SprintFunc()
-	warnColor  = color.New(color.FgYellow).SprintFunc()
-	errorColor = color.New(color.FgRed).SprintFunc()
-)
-
-func logMsg(level, msg string, args ...interface{}) {
-	var coloredLevel string
-	switch level {
-	case "info":
-		coloredLevel = infoColor(level)
-	case "warning":
-		coloredLevel = warnColor(level)
-	case "error":
-		coloredLevel = errorColor(level)
-	default:
-		coloredLevel = level
-	}
-	fmt.Printf("[%s] - %s\n", coloredLevel, fmt.Sprintf(msg, args...))
-}
-
-func Info(msg string, args ...interface{})    { logMsg("info", msg, args...) }
-func Warning(msg string, args ...interface{}) { logMsg("warning", msg, args...) }
-func Error(msg string, args ...interface{})   { logMsg("error", msg, args...) }
-```
+Never reimplement terminal checks; use `output.Decider` (tests inject `Deps.IsTerminal`).
 
 ## Rules to enforce
 
-- Do not introduce a second colored-logging library (e.g. `lipgloss`, `termenv`, `aec`) — stick to `fatih/color` for consistency.
-- Do not color the message body, punctuation, or brackets — only the level word.
-- Centralize level-to-color mapping in one place (e.g. a `logging` or `ui` package) rather than inlining `color.New(...)` calls at call sites.
-- Respect `NO_COLOR` and non-TTY output. Rely on `fatih/color`'s built-in `color.NoColor` detection rather than reimplementing TTY checks, unless the project already has its own detection logic.
-- Keep level names lowercase (`info`, `warning`, `error`) to match the existing format exactly.
-- If a new level is added (e.g. `debug`, `fatal`), follow the same pattern: pick a semantic color, add it to the switch statement, and only colorize the level word.
+- Redact first (`redact.String`), then add escape codes.
+- Keep level names lowercase.
+- A new level needs an entry in `internal/output/label.go`, a golden pair in `internal/output/testdata/golden`, and a row in the README color section.
+- Tests assert exact bytes for color on and off; regenerate goldens with `go test ./internal/output -update` and review the diff.
