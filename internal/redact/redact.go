@@ -2,7 +2,6 @@
 package redact
 
 import (
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -104,18 +103,10 @@ func MaskTail(s string) string {
 		tail = tail[len(tail)-4:]
 	}
 	prefix := "••••"
-	if os.Getenv("NO_COLOR") != "" || !isStdoutTTY() {
+	if !unicodeMask() {
 		prefix = "****"
 	}
 	return prefix + tail
-}
-
-func isStdoutTTY() bool {
-	fi, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 // HasPrintableSecret reports whether s contains non-space printable runes (tests/helpers).

@@ -30,16 +30,18 @@ func registerCapellaClusterCommands(cmd *cobra.Command) {
 	cmd.AddCommand(newCapellaClusterBackupCmd())
 }
 
-// clusterSummary is one row of cluster list.
+// clusterSummary is one row of cluster list. ProjectName repeats Project under capellactl's key, so
+// scripts written for capellactl keep working.
 type clusterSummary struct {
-	Name      string `json:"name"`
-	ID        string `json:"id"`
-	Project   string `json:"project"`
-	ProjectID string `json:"projectId"`
-	Provider  string `json:"provider"`
-	Region    string `json:"region"`
-	Nodes     int    `json:"nodes"`
-	State     string `json:"state"`
+	Name        string `json:"name"`
+	ID          string `json:"id"`
+	Project     string `json:"project"`
+	ProjectName string `json:"projectName"`
+	ProjectID   string `json:"projectId"`
+	Provider    string `json:"provider"`
+	Region      string `json:"region"`
+	Nodes       int    `json:"nodes"`
+	State       string `json:"state"`
 }
 
 func newCapellaClusterListCmd() *cobra.Command {
@@ -68,12 +70,19 @@ func newCapellaClusterListCmd() *cobra.Command {
 				for i := range clusters {
 					c := &clusters[i]
 					items = append(items, clusterSummary{
-						Name: c.Name, ID: c.ID, Project: p.Name, ProjectID: p.ID,
+						Name: c.Name, ID: c.ID, Project: p.Name, ProjectName: p.Name, ProjectID: p.ID,
 						Provider: clusterProvider(c), Region: clusterRegion(c),
 						Nodes: totalNodes(c.ServiceGroups), State: c.CurrentState,
 					})
 				}
 			}
+			// By project, then by name, as capellactl lists them.
+			sort.SliceStable(items, func(i, j int) bool {
+				if items[i].Project != items[j].Project {
+					return items[i].Project < items[j].Project
+				}
+				return items[i].Name < items[j].Name
+			})
 			rt.Out.List(items)
 			rows := make([][]string, len(items))
 			for i, c := range items {
@@ -185,6 +194,39 @@ func newCapellaClusterGetCmd() *cobra.Command {
 
 // ---- options ---------------------------------------------------------------------------------
 
+// freeTierUser names the cluster that uses the organization's one free-tier cluster.
+func freeTierUser(cluster, project string) string {
+	return fmt.Sprintf("%s in project %s", cluster, project)
+}
+
+// freeTierUsedBy returns freeTierUser of the organization's free-tier cluster, or "" when the
+// free tier is still available.
+func (r *runtime) freeTierUsedBy() (string, error) {
+	projects, err := r.Client.ListProjects(r.Ctx)
+	if err != nil {
+		return "", fmt.Errorf("listing projects: %w", err)
+	}
+	for _, p := range projects {
+		clusters, err := r.Client.ListClusters(r.Ctx, p.ID)
+		if err != nil {
+			return "", fmt.Errorf("listing clusters in project %s: %w", p.Name, err)
+		}
+		for i := range clusters {
+			if isFreeCluster(&clusters[i]) {
+				return freeTierUser(clusters[i].Name, p.Name), nil
+			}
+		}
+	}
+	return "", nil
+}
+
+// freeTierInUse is the refusal to create a second free-tier cluster (Capella allows one per
+// organization).
+func freeTierInUse(usedBy string) error {
+	return blockedError("delete that cluster first, or create a provisioned cluster without --free-tier",
+		"the free tier is already used by %s", usedBy)
+}
+
 type freeTierOptions struct {
 	Available   bool                `json:"available"`
 	UsedBy      string              `json:"usedBy"`
@@ -237,7 +279,7 @@ func newCapellaClusterOptionsCmd() *cobra.Command {
 				for i := range clusters {
 					c := &clusters[i]
 					if isFreeCluster(c) && usedBy == "" {
-						usedBy = fmt.Sprintf("%s in project %s", c.Name, p.Name)
+						usedBy = freeTierUser(c.Name, p.Name)
 					}
 					if c.CloudProvider != nil {
 						regions[c.CloudProvider.Type+" "+c.CloudProvider.Region] = true

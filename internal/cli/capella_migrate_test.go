@@ -328,3 +328,111 @@ func TestSyncIgnoresCredentialsInGitRepo(t *testing.T) {
 	}
 	wantContains(t, stderr, "added .cbctl/ to")
 }
+
+// TestMigrationEndToEndDoctorClean follows docs/capella/migrating-from-capellactl.md "Steps" on a
+// machine set up the capellactl way and ends with `doctor` finding nothing and `plan` no changes.
+func TestMigrationEndToEndDoctorClean(t *testing.T) {
+	lf := newLegacyFixture(t, "")
+	f := lf.fake()
+	lf.write(filepath.Join(lf.legacy, "profiles.yaml"), "profiles:\n  default:\n    organizationId: "+f.OrgID+"\n")
+	if err := lf.lkr.Set("default", f.APIKey); err != nil {
+		t.Fatal(err)
+	}
+	lf.env["CAPELLACTL_QUIET"] = "1"
+	cfg := filepath.Join(lf.cwd, "capella.yaml")
+	lf.write(cfg, strings.Replace(envDoc, "cbctl/v1", "capellactl/v1", 1))
+	legacyCreds := filepath.Join(lf.cwd, ".capellactl", "credentials")
+	lf.write(filepath.Join(legacyCreds, "envclu.app.json"), "{}")
+
+	// The file is applied once with capellactl's settings, so Capella matches it.
+	if stdout, stderr, code := lf.run("capella", "apply", "--yes"); code != 0 {
+		t.Fatalf("initial apply: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+	stdout, _, code := lf.run("capella", "doctor", "--detailed-exitcode", "-o", "json")
+	if code != int(ExitBlocked) {
+		t.Fatalf("doctor before migrating: exit %d, want 4\n%s", code, stdout)
+	}
+
+	// Steps 1-2: dry run, then migrate.
+	if stdout, stderr, code := lf.run("configure", "migrate", "--dry-run"); code != 0 || !strings.Contains(stdout, "would import profile default") {
+		t.Fatalf("migrate --dry-run: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+	if stdout, stderr, code := lf.run("configure", "migrate"); code != 0 {
+		t.Fatalf("migrate: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+
+	// Step 3: doctor lists what is left; carry out each action it prints.
+	stdout, _, _ = lf.run("capella", "doctor", "-o", "json")
+	var rep DoctorReport
+	if err := json.Unmarshal([]byte(stdout), &rep); err != nil {
+		t.Fatalf("doctor json: %v\n%s", err, stdout)
+	}
+	kinds := map[string]bool{}
+	for _, it := range rep.Items {
+		kinds[it.Kind] = true
+		switch it.Kind {
+		case doctorLegacyEnv:
+			delete(lf.env, "CAPELLACTL_QUIET")
+			lf.env["CBCTL_QUIET"] = "1"
+		case doctorLegacyCredsDir:
+			if err := os.Rename(filepath.Join(lf.cwd, ".capellactl"), filepath.Join(lf.cwd, ".cbctl")); err != nil {
+				t.Fatal(err)
+			}
+		case doctorAPIVersion:
+			raw, err := os.ReadFile(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lf.write(cfg, strings.Replace(string(raw), "capellactl/v1", "cbctl/v1", 1))
+		default:
+			t.Errorf("after migrate, doctor still reports %s: %s (%s)", it.Kind, it.Detail, it.Action)
+		}
+	}
+
+	for _, k := range []string{doctorLegacyEnv, doctorLegacyCredsDir, doctorAPIVersion} {
+		if !kinds[k] {
+			t.Errorf("doctor after migrate did not report %s (the fixture sets it up): %+v", k, rep.Items)
+		}
+	}
+
+	// The capellactl keychain and profiles may now go away entirely.
+	lf.lkr = settings.NewMemKeyring()
+	lf.legacy = t.TempDir()
+	stdout, stderr, code := lf.run("capella", "doctor", "--detailed-exitcode")
+	if code != 0 || !strings.Contains(stdout, "No capellactl leftovers") {
+		t.Fatalf("doctor after the steps: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+	// Steps 4-5: the file validates and plans with no changes, using only cbctl settings.
+	if stdout, stderr, code := lf.run("capella", "validate"); code != 0 {
+		t.Fatalf("validate: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+	stdout, stderr, code = lf.run("capella", "plan", "--detailed-exitcode")
+	if code != 0 {
+		t.Fatalf("plan: exit %d, want 0 (no changes)\n%s\n%s", code, stdout, stderr)
+	}
+	if strings.Contains(stderr, "deprecated") || strings.Contains(stderr, "capellactl") {
+		t.Errorf("legacy warnings remain after migrating:\n%s", stderr)
+	}
+}
+
+// capellactl kept the organization name in the profile; it survives migrate and is shown by
+// `configure list` as capellactl showed it, "NAME (ID)".
+func TestMigrateKeepsOrganizationName(t *testing.T) {
+	lf := newLegacyFixture(t, "profiles:\n  prod:\n    organizationId: org-9\n    organizationName: Example Corp\n")
+	if stdout, stderr, code := lf.run("configure", "migrate"); code != 0 {
+		t.Fatalf("migrate: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+	stdout, stderr, code := lf.run("configure", "list")
+	if code != 0 || !strings.Contains(stdout, "prod  Example Corp (org-9)") {
+		t.Fatalf("list: exit %d\n%s\n%s", code, stdout, stderr)
+	}
+	stdout, _, _ = lf.run("configure", "list", "-o", "json")
+	var rows []map[string]string
+	if err := json.Unmarshal([]byte(stdout), &rows); err != nil || len(rows) != 1 ||
+		rows[0]["organization"] != "org-9" || rows[0]["organizationName"] != "Example Corp" {
+		t.Fatalf("list json = %s (%v)", stdout, err)
+	}
+	if out, _, code := lf.run("capella", "doctor", "--detailed-exitcode"); code != 0 {
+		t.Fatalf("doctor after migrate: exit %d\n%s", code, out)
+	}
+}

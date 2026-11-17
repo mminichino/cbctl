@@ -54,7 +54,12 @@ func runDirectClusterCreate(cmd *cobra.Command, args []string) error {
 				"the cluster name is required (no terminal for the wizard)")
 		}
 		w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
-		spec, err := w.run(cmd, suggestCIDR(usedList))
+		if !cmd.Flags().Changed("free-tier") {
+			if usedBy, err := rt.freeTierUsedBy(); err == nil {
+				w.noFree = usedBy != ""
+			}
+		}
+		spec, err := w.run(cmd, "", suggestCIDR(usedList))
 		if err != nil {
 			return err
 		}
@@ -62,6 +67,15 @@ func runDirectClusterCreate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		name = spec.Name
+	}
+	if flagBool(cmd, "free-tier") {
+		usedBy, err := rt.freeTierUsedBy()
+		if err != nil {
+			return err
+		}
+		if usedBy != "" {
+			return freeTierInUse(usedBy)
+		}
 	}
 	if slices.ContainsFunc(clusters, func(c capellaapi.Cluster) bool { return c.Name == name }) {
 		rt.report(map[string]any{"status": "exists", "cluster": name, "project": project.Name},

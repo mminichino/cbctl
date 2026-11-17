@@ -58,10 +58,16 @@ type baseRenderer struct {
 }
 
 func (b baseRenderer) Progress(dot string) {
-	if b.quiet || DefaultDeps().Env("CI") != "" || !terminalCheck(b.err) {
+	if b.quiet || !progressAllowed(DefaultDeps().Env) || !terminalCheck(b.err) {
 		return
 	}
 	fmt.Fprint(b.err, dot)
+}
+
+// progressAllowed reports whether the environment lets progress be drawn in place: not under CI,
+// and not on a terminal that declares itself dumb (TERM=dumb, e.g. an editor's output pane).
+func progressAllowed(env func(string) string) bool {
+	return env("CI") == "" && env("TERM") != "dumb"
 }
 
 type textRenderer struct{ baseRenderer }

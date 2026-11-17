@@ -8,6 +8,7 @@ run offline in seconds; the sandbox suite runs nightly in CI against a real Cape
 | Unit and CLI | `make test` (`go test -race ./internal/...`) | the in-memory fake (`internal/capellafake`) | every change |
 | Full local gate | `make check` | nothing | before every push |
 | Integration, fake | `make test-integration-fake` | the fake, through the built commands | every push (CI) |
+| Integration, Server | `make test-server-it` | a Couchbase Server container (Docker) | every push (CI `cover` job) |
 | Integration, sandbox | `make test-integration` | a Capella sandbox organization | nightly (CI) |
 
 ## The fake
@@ -92,7 +93,7 @@ so a failed apply is still torn down.
 1. A `dedupe` job (`cbdev ci dedupe`) skips the run when another run of the same commit is queued
    or in progress, when a manual dispatch follows a success on the same commit within 20 hours, or
    when the cron fired twice on one day. A scheduled run is never skipped for an earlier night's
-   success: the release gate needs one per night. If the run list cannot be read, it warns and runs.
+   success: the health report counts one per night. If the run list cannot be read, it warns and runs.
 2. A preflight fails on an empty secret or variable.
 3. The suite runs with `CBCTL_IT_REQUIRE_TARGET=1`.
 4. Whatever happened, a sweep deletes this run's projects (`janitor --prefix
@@ -102,8 +103,50 @@ so a failed apply is still torn down.
 
 A second run waits for the first (`concurrency: nightly-sandbox`, never cancelled mid-teardown).
 GitHub keeps only one pending run per group, so a dispatch can replace a waiting scheduled run;
-that night then has no scheduled run and the release gate's streak restarts. Re-dispatching a
+that night then has no scheduled run and the health report's streak restarts. Re-dispatching a
 failed night is an attempt of the same run and is not skipped.
+
+### Nightly health signal
+
+The nightly is a health signal for `main` (scheduled runs) and for any branch you dispatch it on
+(`gh workflow run nightly.yml --ref BRANCH`). It is **not a gate**: it is not a required check, and
+no merge, push, tag or release waits for it. A red nightly means "look at this", not "you may not
+ship".
+
+`cbdev ci release-gate --report-only` summarizes the streak: whether the last three nights each
+have a green scheduled nightly, on consecutive UTC dates, the newest on a given commit. A night
+counts only when its `integration` job actually ran (a run skipped by `dedupe` is ignored and its
+night breaks the streak); a re-run on the same day replaces that day's earlier attempt; if the run
+list cannot be read it prints `UNKNOWN`. A `v*` tag runs `.github/workflows/release.yml`, whose
+`nightly-health` job prints this report next to the release (`continue-on-error`, and goreleaser
+does not need it). Locally:
+
+```sh
+go run ./cmd/cbdev ci release-gate --commit "$(git rev-parse HEAD)" --report-only
+```
+
+Without `--report-only` the command exits 1 on a red or unknown streak, for a script that wants to
+act on it; no workflow in this repository does.
+
+## Coverage gate
+
+`make cover-gate` writes one `-coverpkg=./internal/...` profile from the unit suite and one from
+the Server Docker flow (`make cover-server`, which needs Docker), merges them and checks every
+package against its tier in `internal/ci/covergate/tiers.json`:
+
+| Tier | Packages | Minimum |
+|---|---|---|
+| core | `plan`, `engine`, `resources`, `config/capellafile`, `capellaapi`, `presets` | 90% |
+| security | `redact`, `secrets`, `settings` | 90% |
+| cli | `cli` | 85% |
+| importer | `importer` | 80% |
+| testinfra | `capellafake`, `clitest` | 85% |
+| tooling | `ci/...`, `docgen/...` (combined) | 70% |
+| server-legacy | `rest`, `server`, `capella` | 60% |
+
+A package in the table that no profile contains is reported `MISSING` and fails the gate, so a
+rename cannot drop it silently. Packages no tier claims are listed as untiered. CI runs the gate
+in the `cover` job and uploads the profiles.
 
 ## Cleaning up
 

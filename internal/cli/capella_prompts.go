@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -76,6 +77,172 @@ func installPrompts(capella *cobra.Command) {
 		}
 		return args, setFlag(cmd, "services", v, true)
 	})
+	wrapPrompt(find("bucket", "backup", "schedule", "set"), promptBucketSchedule)
+	wrapPrompt(find("bucket", "update"), promptBucketUpdate)
+	wrapPrompt(find("cluster", "update"), promptClusterUpdate)
+}
+
+// bucketScheduleFlags are the options of 'bucket backup schedule set'.
+var bucketScheduleFlags = []string{"day", "start-at", "incremental-every", "retention", "cost-optimized"}
+
+// promptBucketSchedule asks for each value of a bucket backup schedule, with the default shown,
+// when 'bucket backup schedule set' gets no option on a terminal (as capellactl did). Without a
+// terminal the defaults apply.
+func promptBucketSchedule(cmd *cobra.Command, args []string) ([]string, error) {
+	for _, f := range bucketScheduleFlags {
+		if cmd.Flags().Changed(f) {
+			return args, nil
+		}
+	}
+	if !canPrompt(cmd) {
+		return args, nil
+	}
+	w := promptOf(cmd)
+	def := bucketScheduleDefaults()
+	incs := make([]string, len(backupIncrements))
+	for i, n := range backupIncrements {
+		incs[i] = strconv.Itoa(n)
+	}
+	questions := []struct {
+		flag, prompt, def string
+		check             func(string) error
+	}{
+		{"day", "Day of the weekly full backup", fmt.Sprint(def["dayOfWeek"]), oneOf(backupDays)},
+		{"start-at", "Hour (UTC, 0-23) the backups start", fmt.Sprint(def["startAt"]), func(v string) error {
+			if n, err := strconv.Atoi(v); err != nil || n < 0 || n > 23 {
+				return fmt.Errorf("give an hour from 0 to 23")
+			}
+			return nil
+		}},
+		{"incremental-every", "Hours between incremental backups", fmt.Sprint(def["incrementalEvery"]), oneOf(incs)},
+		{"retention", "How long backups are kept", fmt.Sprint(def["retentionTime"]), oneOf(retentionValues())},
+		{"cost-optimized", "Cost-optimized retention (y/N)", "n", oneOf([]string{"y", "n", "yes", "no"})},
+	}
+	for _, q := range questions {
+		v, err := w.ask(q.prompt, q.def, q.check)
+		if err != nil {
+			return nil, err
+		}
+		if q.flag == "cost-optimized" {
+			v = strconv.FormatBool(v == "y" || v == "yes")
+		}
+		if err := cmd.Flags().Set(q.flag, v); err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
+}
+
+// bucketQuestion is one prompt of promptBucketUpdate and the flag its answer sets.
+type bucketQuestion struct {
+	flag, prompt, def string
+	check             func(string) error
+}
+
+// bucketUpdateSettings are the bucket update flags that change something.
+var bucketUpdateSettings = []string{"memory", "replicas", "durability", "ttl", "flush", "no-flush", "priority",
+	"cross-cluster-versioning", "no-cross-cluster-versioning"}
+
+// promptBucketUpdate asks, like capellactl, for the new settings of a bucket when none was
+// given and a terminal is attached: memory, and on a provisioned cluster also replicas,
+// durability and TTL (Capella chooses those on the free tier). Enter keeps the current value.
+func promptBucketUpdate(cmd *cobra.Command, args []string) ([]string, error) {
+	for _, n := range bucketUpdateSettings {
+		if cmd.Flags().Changed(n) {
+			return args, nil
+		}
+	}
+	if !canPrompt(cmd) || len(args) != 2 {
+		return args, nil // the command reports "nothing to update"
+	}
+	rt, err := newRuntime(cmd, cmdAPIFlags(cmd))
+	if err != nil {
+		return nil, err
+	}
+	t, err := rt.locateCluster(args[0], flagString(cmd, "project"))
+	if err != nil {
+		return nil, err
+	}
+	cur, _, err := rt.readBucket(t, args[1])
+	if err != nil {
+		return nil, err
+	}
+	w := promptOf(cmd)
+	fmt.Fprintf(w.out, "Press Enter to keep the current value of %s.\n", args[1])
+	whole := func(min, max int) func(string) error {
+		return func(v string) error {
+			if n, err := strconv.Atoi(v); err != nil || n < min || (max >= 0 && n > max) {
+				return fmt.Errorf("give a whole number from %d", min)
+			}
+			return nil
+		}
+	}
+	questions := []bucketQuestion{{"memory", "Memory (MB)", strconv.Itoa(cur.MemoryAllocationInMb), whole(1, -1)}}
+	if !t.freeTier() {
+		questions = append(questions,
+			bucketQuestion{"replicas", "Replicas", strconv.Itoa(cur.Replicas), whole(0, 3)},
+			bucketQuestion{"durability", "Durability", cur.DurabilityLevel, nonEmpty("give a durability level")},
+			bucketQuestion{"ttl", "TTL seconds (0: none)", strconv.Itoa(cur.TimeToLiveInSeconds), whole(0, -1)})
+	}
+	for _, q := range questions {
+		v, err := w.ask(q.prompt, q.def, q.check)
+		if err != nil {
+			return nil, err
+		}
+		if err := setFlag(cmd, q.flag, v, true); err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
+}
+
+// clusterUpdateOptions are the cluster update flags that change something.
+var clusterUpdateOptions = []string{"description", "support-plan", "support-timezone", "cpu", "ram", "disk-type",
+	"disk-size", "disk-iops", "disk-auto-expansion"}
+
+// promptClusterUpdate asks for the settings of "cluster update CLUSTER" given with no option, as
+// capellactl did; Enter keeps a value. Without a terminal the command's own "nothing to update"
+// error stands.
+func promptClusterUpdate(cmd *cobra.Command, args []string) ([]string, error) {
+	if len(args) != 1 || !canPrompt(cmd) || slices.ContainsFunc(clusterUpdateOptions, cmd.Flags().Changed) {
+		return args, nil
+	}
+	w := promptOf(cmd)
+	fmt.Fprintf(w.out, "Change %s (Press Enter to keep the current value)\n", args[0])
+	keepOr := func(check func(string) error) func(string) error {
+		return func(v string) error {
+			if v == "" {
+				return nil
+			}
+			return check(v)
+		}
+	}
+	whole := func(v string) error {
+		if n, err := strconv.Atoi(v); err != nil || n <= 0 {
+			return fmt.Errorf("give a whole number, or press Enter to keep the current value")
+		}
+		return nil
+	}
+	questions := []struct {
+		flag, prompt string
+		check        func(string) error
+	}{
+		{"description", "Description", func(string) error { return nil }},
+		{"support-plan", "Support plan (" + strings.Join(supportPlans, "/") + ")", oneOf(supportPlans)},
+		{"support-timezone", "Support timezone (" + strings.Join(supportTimezones, "/") + ")", oneOf(supportTimezones)},
+		{"cpu", "vCPUs per node (group running data)", whole},
+		{"ram", "RAM GB per node (group running data)", whole},
+	}
+	for _, q := range questions {
+		v, err := w.ask(q.prompt, "", keepOr(q.check))
+		if err != nil {
+			return nil, err
+		}
+		if err := setFlag(cmd, q.flag, v, v != ""); err != nil {
+			return nil, err
+		}
+	}
+	return args, nil
 }
 
 // wrapPrompt runs fill before cmd's RunE; fill returns the (completed) arguments.
@@ -238,4 +405,35 @@ func pickCloneSource(rt *runtime, w *clusterWizard, project string) (capellaapi.
 	}
 	n, _ := strconv.Atoi(v) // validated above
 	return choices[n-1].p, choices[n-1].c, nil
+}
+
+// askProject lists the projects of capella.yaml and asks which one a new cluster goes in; the
+// answer is a number from the list or a project name.
+func askProject(w *clusterWizard, names []string) (string, error) {
+	fmt.Fprintln(w.out, "Projects in capella.yaml:")
+	for i, n := range names {
+		fmt.Fprintf(w.out, "  %d. %s\n", i+1, n)
+	}
+	pick := func(v string) (string, bool) {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= len(names) {
+			return names[n-1], true
+		}
+		for _, n := range names {
+			if n == v {
+				return n, true
+			}
+		}
+		return "", false
+	}
+	v, err := w.ask("Project of the new cluster", "", func(v string) error {
+		if _, ok := pick(strings.TrimSpace(v)); !ok {
+			return fmt.Errorf("give a number from 1 to %d or a project name", len(names))
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	name, _ := pick(strings.TrimSpace(v)) // validated above
+	return name, nil
 }

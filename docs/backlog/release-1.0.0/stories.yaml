@@ -17,7 +17,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-001"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §3–§4"
     note: ""
@@ -27,7 +27,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-001"
-    status: Not started
+    status: Implemented
     phase: "Phase 1"
     ref: "phase-1 §2"
     note: ""
@@ -37,7 +37,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-003"
-    status: Not started
+    status: Implemented
     phase: "Phase 4"
     ref: "phase-4 §3"
     note: ""
@@ -47,7 +47,7 @@ stories:
     priority: P0
     points: 8
     depends: "CAP-002, CAP-003"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §6"
     note: ""
@@ -57,7 +57,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-005"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §6.4,§9.3"
     note: ""
@@ -67,7 +67,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-003, CAP-004"
-    status: Not started
+    status: Implemented
     phase: "Phase 1"
     ref: "phase-1 §2.10"
     note: ""
@@ -77,7 +77,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-002, CAP-003"
-    status: Not started
+    status: Implemented
     phase: "Phase 0"
     ref: "phase-0 §1.6 + phase-3 §8"
     note: ""
@@ -87,7 +87,7 @@ stories:
     priority: P0
     points: 2
     depends: "CAP-005, CAP-006"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.1"
     note: ""
@@ -97,7 +97,7 @@ stories:
     priority: P0
     points: 2
     depends: "CAP-009"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 project delete + phase-3 §9.4"
     note: ""
@@ -107,7 +107,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-007, CAP-009"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.2 + phase-2 cluster create"
     note: ""
@@ -117,7 +117,7 @@ stories:
     priority: P0
     points: 2
     depends: "CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.2"
     note: ""
@@ -127,7 +127,7 @@ stories:
     priority: P0
     points: 2
     depends: "CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.3"
     note: ""
@@ -137,7 +137,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-013"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster delete"
     note: ""
@@ -147,7 +147,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
     note: ""
@@ -157,7 +157,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-015"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
     note: ""
@@ -167,7 +167,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-015"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
     note: ""
@@ -177,7 +177,7 @@ stories:
     priority: P1
     points: 3
     depends: "CAP-016"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster scale/update + phase-3 §7.2.1"
     note: ""
@@ -187,7 +187,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-007, CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster power"
     note: ""
@@ -197,7 +197,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.4 + phase-2 cluster schedule"
     note: ""
@@ -207,7 +207,7 @@ stories:
     priority: P1
     points: 2
     depends: "CAP-020"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.4 + phase-2 cluster schedule"
     note: ""
@@ -217,7 +217,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.6 + phase-2 cidr"
     note: ""
@@ -227,7 +227,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-011"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
     note: ""
@@ -237,7 +237,7 @@ stories:
     priority: P0
     points: 2
     depends: "CAP-023, CAP-013"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
     note: ""
@@ -247,7 +247,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-023"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
     note: ""
@@ -257,7 +257,7 @@ stories:
     priority: P0
     points: 2
     depends: "CAP-025"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.7–§7.8 + phase-2 bucket/scope/collection"
     note: ""
@@ -267,7 +267,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-025, CAP-008"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.9"
     note: ""
@@ -277,7 +277,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-027, CAP-008"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.9"
     note: ""
@@ -287,7 +287,7 @@ stories:
     priority: P0
     points: 1
     depends: "CAP-027"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.9"
     note: ""
@@ -297,7 +297,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-009–CAP-029 (all P0 resource stories)"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §9.3–§9.5"
     note: ""
@@ -307,7 +307,7 @@ stories:
     priority: P1
     points: 3
     depends: "CAP-030"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §9.3–§9.5"
     note: ""
@@ -317,7 +317,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-030"
-    status: Not started
+    status: In progress
     phase: "Phase 4"
     ref: "phase-4 §5"
     note: ""
@@ -327,7 +327,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-030"
-    status: Not started
+    status: Implemented
     phase: "Phase 4"
     ref: "phase-4 §8"
     note: ""
@@ -337,7 +337,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-001, CAP-002"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §9.6 (guide)"
     note: ""
@@ -347,7 +347,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-002, CAP-003, CAP-009"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §11.3"
     note: ""
@@ -357,7 +357,7 @@ stories:
     priority: P0
     points: 8
     depends: "CAP-005, CAP-020, CAP-022, CAP-025, CAP-027"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §11.1"
     note: ""
@@ -367,7 +367,7 @@ stories:
     priority: P1
     points: 3
     depends: "CAP-003, CAP-008"
-    status: Not started
+    status: Implemented
     phase: "Phase 0"
     ref: "phase-0 §1.7–§1.8"
     note: ""
@@ -377,7 +377,7 @@ stories:
     priority: P0
     points: 8
     depends: "CAP-011, CAP-012, CAP-015, CAP-036"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §10"
     note: ""
@@ -387,7 +387,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-009, CAP-036, CAP-038"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 project create"
     note: ""
@@ -397,7 +397,7 @@ stories:
     priority: P0
     points: 8
     depends: "CAP-002, CAP-005, CAP-036, CAP-038, CAP-039"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 (multi-project)"
     note: ""
@@ -407,7 +407,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-011, CAP-038, CAP-040"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster options/free tier"
     note: ""
@@ -417,7 +417,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-006, CAP-038"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 §3.2 (-y, --quiet, --no-wait)"
     note: ""
@@ -435,7 +435,7 @@ stories:
     priority: P0
     points: 1
     depends: "—"
-    status: Not started
+    status: Implemented
     phase: "Phase 4"
     ref: "phase-4 §8.1 (NOTICE)"
     note: ""
@@ -453,7 +453,7 @@ stories:
     priority: P0
     points: 3
     depends: "CAP-027, CAP-038"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 credential"
     note: ""
@@ -463,7 +463,7 @@ stories:
     priority: P1
     points: 3
     depends: "CAP-036, CAP-037"
-    status: Not started
+    status: Implemented
     phase: "Phase 0"
     ref: "phase-0 configure + phase-3 §11.2"
     note: ""
@@ -473,7 +473,7 @@ stories:
     priority: P0
     points: 5
     depends: "CAP-009, CAP-012, CAP-036, CAP-038"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §7.1–§7.2 (ids)"
     note: ""
@@ -483,7 +483,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-011, CAP-023, CAP-025, CAP-036, CAP-038, CAP-048"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster clone + phase-3 §10"
     note: ""
@@ -501,7 +501,7 @@ stories:
     priority: P0
     points: 13
     depends: "CAP-011, CAP-015, CAP-038, CAP-049"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster create/group/disk-types"
     note: ""
@@ -511,7 +511,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-015, CAP-016, CAP-038, CAP-051"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster create/group/disk-types"
     note: ""
@@ -521,7 +521,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-011, CAP-038, CAP-051"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster create/group/disk-types"
     note: ""
@@ -531,7 +531,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-036, CAP-038, CAP-040"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §11.2"
     note: ""
@@ -549,7 +549,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-011, CAP-020, CAP-038"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 backups (+ phase-3 §7.5)"
     note: ""
@@ -559,7 +559,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-007, CAP-056"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 backups (+ phase-3 §7.5)"
     note: ""
@@ -569,7 +569,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-023, CAP-056"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 backups (+ phase-3 §7.5)"
     note: ""
@@ -579,7 +579,7 @@ stories:
     priority: P1
     points: 8
     depends: "CAP-007, CAP-058"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 backups (+ phase-3 §7.5)"
     note: ""
@@ -589,7 +589,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-017, CAP-041, CAP-051, CAP-052"
-    status: Not started
+    status: Implemented
     phase: "Phase 2"
     ref: "phase-2 cluster create/group/disk-types"
     note: ""
@@ -599,7 +599,7 @@ stories:
     priority: P1
     points: 3
     depends: "CAP-056, CAP-057, CAP-058, CAP-059, CAP-060"
-    status: Not started
+    status: Implemented
     phase: "Phase 4"
     ref: "phase-4 §8 (backup & disk guides)"
     note: ""
@@ -609,7 +609,7 @@ stories:
     priority: P1
     points: 5
     depends: "CAP-002, CAP-038, CAP-054"
-    status: Not started
+    status: Implemented
     phase: "Phase 3"
     ref: "phase-3 §4.1"
     note: ""
@@ -619,7 +619,7 @@ stories:
     priority: P1
     points: 8
     depends: "CAP-006, CAP-062"
-    status: Not started
+    status: Implemented
     phase: "Phase 0"
     ref: "phase-0–2 §2.8 + phase-3 §12"
     note: ""

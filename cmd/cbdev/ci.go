@@ -7,6 +7,7 @@ var ciCommands = map[string]groupFunc{
 	"scan-secrets": cmdCIScanSecrets,
 	"cover-gate":   cmdCICoverGate,
 	"dedupe":       cmdCIDedupe,
+	"notices":      cmdCINotices,
 }
 
 func runCI(args []string, stdout, stderr io.Writer) int {

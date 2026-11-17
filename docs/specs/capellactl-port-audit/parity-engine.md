@@ -4,6 +4,33 @@ Scope: declarative file, engine semantics, API v4 coverage, feature areas, cbctl
 Baseline: capellactl HEAD `6389d5a` (Python) vs cbctl `mm--capellactl-port` @ `b05642b` (Go). No critical gaps: every capellactl capability has a cbctl path. Read-only; no live Capella calls.
 Method: side-by-side source read, schema diff, offline `cbctl capella validate` of capellactl example files, `go build ./cmd/cbctl` + `--help` inspection.
 
+## 0. Re-verification before the merge to main (2026-11-17, release 0.6.0)
+
+The tables below are the snapshot at b05642b, kept as the record. Every row that was not MATCH was
+checked again on the branch tip. **No MISSING row remains.**
+
+| Row (snapshot status) | Now | Evidence |
+|---|---|---|
+| C3 `credentialsOutput` default (DIFFERENT) | `./.capellactl/credentials` used while `./.cbctl/credentials` is absent; `doctor` reports it; git-tracked dirs refused | `TestResolveCredentialsDir`, `TestMigrationEndToEndDoctorClean` |
+| C28 discovery env (DIFFERENT) | `CAPELLACTL_CONFIG` honoured with a warning | `TestCapellactlConfigEnvVar` |
+| C31 generated reference (PARTIAL, 13 rows) | MATCH: full field tree, regenerated and checked | `TestDocs_CAP033_AC3_ReferenceUpToDate`, `make docs-check` |
+| S6 / S7 / S8 profile env, home, keychain service (DIFFERENT) | legacy names, `profiles.yaml` and keychain service `capellactl` read as fallbacks with a warning; `configure migrate` copies them | `TestLegacyProfileAndKeychainFallback`, `TestConfigureMigrateCommand` |
+| S12 credential files (PARTIAL: errors swallowed) | MATCH: chmod failures warn once; a failed restore after a rejected rotation is reported with both errors | `secrets/files.go` (`chmodOrWarn`, `RestoreRotatedCredential`); `TestRotation_CAP028_*` |
+| E22 sync `apiVersion` (DIFFERENT) | MATCH: `sync` keeps `capellactl/v1`; `--api-version` chooses | `TestSyncKeepsCapellactlAPIVersion` |
+| E29 response size (PARTIAL) | MATCH: bounded read, typed error | `TestResponseTooLarge` |
+| E32 hidden `import` (DIFFERENT) | `capella import` with sync flags exits 3 naming `sync`; documented | `TestImportSyncHint` |
+| F3, F5–F8 operator docs (PARTIAL / MISSING) | MATCH: `docs/capella/{backup-restore,custom-clusters,terraform,migrating-from-scale-script,runbook}.md` | `make docs-check` |
+| F9 migration guide (MISSING) | MATCH: `docs/capella/migrating-from-capellactl.md`, `guide migrate`, `capella doctor` | `TestMigrationEndToEndDoctorClean` |
+| R1 legacy pre-port commands (DIFFERENT, unsafe) | hidden, deprecated, delegate to the v4 commands (`cluster destroy` → `cluster delete`, protection and `-y` honoured) | `TestLegacyDestroyDelegatesToDelete`, `TestDeprecateLegacyWarnsOnStderrOnly` |
+| R2 `panic` (PARTIAL) | INTENTIONALLY kept: embedded-data parse and command-tree wiring only (programmer errors at startup, allowed by the project rules) | `presets.go`, `capella.go`, `capella_legacy.go`, `capella_prompts.go` |
+
+Found while raising Server coverage and fixed in the same release: IPv6 literals in `--host` /
+node specs (`ParseHostPort`, URL bracketing, `clusterInit` hostname); a node spec's non-default
+management port dropped on multi-node `addNode`; `--ext-api` ignored when setting alternate
+addresses; a query service that never became ready after provisioner `create` was hidden (now a
+warning). Tests: `internal/rest/hostport_test.go`, `TestWarnIfQueryNotReady`,
+`TestCreateClusterMultiNodeRebalanceFailure`.
+
 ## 1. Executive summary
 
 - The declarative engine is a faithful port: plan/apply/drift/sync/destroy/prune, kind ordering, blocked actions, id pinning + `.bak`, 409 adoption, 412 retry, ambiguous-write recovery, full-jitter backoff, Retry-After, and the waiter poll curve all match.

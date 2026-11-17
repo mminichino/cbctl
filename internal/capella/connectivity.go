@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mminichino/cbctl/internal/engine"
 )
 
 const (
@@ -31,6 +33,15 @@ type HostPort struct {
 type Connectivity struct {
 	SRVLookupTimeout      time.Duration
 	SRVLookupPollInterval time.Duration
+	// Clock paces the polls and measures the deadlines; nil uses engine.RealClock.
+	Clock engine.Clock
+}
+
+func (c *Connectivity) clock() engine.Clock {
+	if c.Clock == nil {
+		return engine.RealClock{}
+	}
+	return c.Clock
 }
 
 // NewConnectivity returns connectivity checker defaults.
@@ -50,19 +61,20 @@ func (c *Connectivity) CheckConnectivity(ctx context.Context, connectString stri
 	if timeout <= 0 {
 		timeout = 60 * time.Second
 	}
-	targets := c.ResolveTargets(connectString, tls, true)
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	clk := c.clock()
+	targets := c.resolveTargets(ctx, connectString, tls, true)
+	deadline := clk.Now().Add(timeout)
+	for clk.Now().Before(deadline) {
 		for _, t := range targets {
 			if canConnect(ctx, t.Host, t.Port) {
 				return true
 			}
 		}
-		refreshed := c.ResolveTargets(connectString, tls, false)
+		refreshed := c.resolveTargets(ctx, connectString, tls, false)
 		if len(refreshed) > 0 {
 			targets = refreshed
 		}
-		remaining := time.Until(deadline)
+		remaining := deadline.Sub(clk.Now())
 		if remaining <= 0 {
 			break
 		}
@@ -70,27 +82,19 @@ func (c *Connectivity) CheckConnectivity(ctx context.Context, connectString stri
 		if sleep > remaining {
 			sleep = remaining
 		}
-		if !sleepCtx(ctx, sleep) {
+		if clk.Sleep(ctx, sleep) != nil {
 			return false
 		}
 	}
 	return false
 }
 
-// sleepCtx sleeps for d and reports false if ctx ended first.
-func sleepCtx(ctx context.Context, d time.Duration) bool {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-		return false
-	case <-t.C:
-		return true
-	}
-}
-
 // ResolveTargets resolves connect-string hosts to manager HostPorts.
 func (c *Connectivity) ResolveTargets(connectString string, tls bool, waitForSRV bool) []HostPort {
+	return c.resolveTargets(context.Background(), connectString, tls, waitForSRV)
+}
+
+func (c *Connectivity) resolveTargets(ctx context.Context, connectString string, tls bool, waitForSRV bool) []HostPort {
 	if c == nil {
 		c = NewConnectivity()
 	}
@@ -110,7 +114,7 @@ func (c *Connectivity) ResolveTargets(connectString string, tls bool, waitForSRV
 			continue
 		}
 		if srvCandidate != "" && h.host == srvCandidate {
-			targets = append(targets, c.resolveSRVTargets(h.host, tls, defaultPort, waitForSRV)...)
+			targets = append(targets, c.resolveSRVTargets(ctx, h.host, tls, defaultPort, waitForSRV)...)
 		} else {
 			targets = append(targets, HostPort{Host: h.host, Port: defaultPort})
 		}
@@ -121,13 +125,16 @@ func (c *Connectivity) ResolveTargets(connectString string, tls bool, waitForSRV
 	return targets
 }
 
-func (c *Connectivity) resolveSRVTargets(hostname string, tls bool, defaultPort int, waitForSRV bool) []HostPort {
-	deadline := time.Now()
+// resolveSRVTargets looks up SRV records, polling until SRVLookupTimeout when waitForSRV is set.
+// A cancelled ctx stops the polling and falls back to the bare hostname.
+func (c *Connectivity) resolveSRVTargets(ctx context.Context, hostname string, tls bool, defaultPort int, waitForSRV bool) []HostPort {
+	clk := c.clock()
+	deadline := clk.Now()
 	if waitForSRV {
-		deadline = time.Now().Add(c.SRVLookupTimeout)
+		deadline = deadline.Add(c.SRVLookupTimeout)
 	}
 	for {
-		names, err := LookupSRVHostnames(hostname, tls)
+		names, err := lookupSRVHostnames(hostname, tls)
 		if err == nil && len(names) > 0 {
 			out := make([]HostPort, 0, len(names))
 			for _, n := range names {
@@ -135,7 +142,7 @@ func (c *Connectivity) resolveSRVTargets(hostname string, tls bool, defaultPort 
 			}
 			return out
 		}
-		remaining := time.Until(deadline)
+		remaining := deadline.Sub(clk.Now())
 		if remaining <= 0 {
 			break
 		}
@@ -143,10 +150,15 @@ func (c *Connectivity) resolveSRVTargets(hostname string, tls bool, defaultPort 
 		if sleep > remaining {
 			sleep = remaining
 		}
-		time.Sleep(sleep)
+		if clk.Sleep(ctx, sleep) != nil {
+			break
+		}
 	}
 	return []HostPort{{Host: hostname, Port: defaultPort}}
 }
+
+// lookupSRVHostnames is LookupSRVHostnames; a variable so tests can avoid real DNS.
+var lookupSRVHostnames = LookupSRVHostnames
 
 // LookupSRVHostnames looks up _couchbases._tcp or _couchbase._tcp records.
 func LookupSRVHostnames(hostname string, tls bool) ([]string, error) {

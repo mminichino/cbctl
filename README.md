@@ -1,5 +1,8 @@
 # cbctl
 
+[![CI](https://github.com/mminichino/cbctl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mminichino/cbctl/actions/workflows/ci.yml)
+[![nightly](https://github.com/mminichino/cbctl/actions/workflows/nightly.yml/badge.svg?branch=main&event=schedule)](https://github.com/mminichino/cbctl/actions/workflows/nightly.yml)
+
 Couchbase Server CLI for provisioning and inspecting clusters and keyspaces.
 
 Capella cloud operations are available under `cbctl capella` (see [Capella](#capella)).
@@ -13,10 +16,10 @@ Capella cloud operations are available under `cbctl capella` (see [Capella](#cap
 curl -sL "https://github.com/mminichino/cbctl/releases/download/latest/cbctl_Darwin_arm64.tar.gz" \
   | tar xz
 sudo mv cbctl /usr/local/bin/
-cbctl --version
+cbctl --version            # cbctl capella --version prints the same
 
-# Pin a version (replace v0.2.0)
-# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.2.0/cbctl_Darwin_arm64.tar.gz" | tar xz
+# Pin a version (replace v0.6.0)
+# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.6.0/cbctl_Darwin_arm64.tar.gz" | tar xz
 ```
 
 See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures. Asset URLs use `/releases/download/<tag>/...` (tag before the filename).
@@ -218,12 +221,16 @@ Copy `.env.example` to `.env` for local keys (never committed). `cbctl` loads th
 
 ```bash
 cbctl configure --api-key-stdin --org-id <id>   # validate key, save profile + keychain
+cbctl configure --api-key-stdin --import        # ...then write capella.yaml from your projects (--no-import: never)
+cbctl configure                 # on a terminal: paste the key; offers to write capella.yaml from Capella when there is none
 cbctl configure show
 cbctl configure list
 cbctl configure remove --profile default -y
 cbctl configure migrate         # copy capellactl profiles + keychain API keys (--dry-run, --force, --remove-legacy)
 cbctl capella doctor            # offline: list what is left from capellactl (--detailed-exitcode exits 4)
 ```
+
+`configure` cleans a pasted key (quotes, `Bearer `, a byte-order mark, line breaks, paste markers) and says what it removed, never the key. A rejected key prints a checklist (the key's length and last 4 characters, the API host). Without an OS keychain the profile is saved and the key is not; set `CAPELLA_API_KEY`. After saving, on a terminal it offers to write `capella.yaml` with `sync`; without one it prints the `sync` command. An existing `capella.yaml` is never rewritten without `--import` or a yes, and `configure` warns when it is for another organization or declares a project the organization does not have.
 
 **Coming from capellactl.** [docs/capella/migrating-from-capellactl.md](docs/capella/migrating-from-capellactl.md) maps every command, setting, file and exit code (short version: `cbctl capella guide migrate`). Its settings keep working, each with a one-time `[warning]` on stderr:
 
@@ -282,6 +289,8 @@ Passwords never appear in the file: write `${VAR}` or `${file:PATH}` and `cbctl`
 
 Extra exit codes: 2 = changes found (`plan`/`drift --detailed-exitcode`, `sync --dry-run`), 3 = invalid config, 4 = blocked plan or confirmation without a terminal.
 
+Guides: [Getting started](docs/capella/getting-started.md), [Custom clusters](docs/capella/custom-clusters.md), [Backup and restore](docs/capella/backup-restore.md), [Runbook](docs/capella/runbook.md).
+
 ### Commands
 
 Capella commands live under `cbctl capella`:
@@ -290,7 +299,7 @@ Capella commands live under `cbctl capella`:
 # Create a cluster (no capella.yaml: directly in Capella; with one: edits the file and applies)
 cbctl capella cluster create dev-01 --size dev --provider aws --region us-east-1
 cbctl capella cluster create prod-01 --group data:3x8/32 --group index,query:2x8/32
-cbctl capella cluster create            # on a terminal: a short wizard asks for name, provider, region, size, CIDR
+cbctl capella cluster create            # on a terminal: a wizard asks for name, provider, size or service groups (compute and disk pickers), region, CIDR
 
 # capellactl spellings that keep working
 cbctl capella bucket create my-cluster orders          # = bucket add (stderr note)
@@ -303,7 +312,7 @@ cbctl configure --api-base-url https://cloudapi.cloud.couchbase.com   # = --api-
 cbctl capella --help
 ```
 
-On a terminal, missing values are asked for as capellactl did: `cluster create` without a name runs a wizard, `cluster clone` without arguments picks the source and asks for the region, name and project, `bucket add` asks for `--memory`, `project create` for a description and `cluster group add` for `--services`. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`).
+On a terminal, missing values are asked for as capellactl did: `cluster create` without a name runs a wizard, `cluster clone` without arguments picks the source and asks for the region, name and project, `bucket add` asks for `--memory`, `project create` for a description and `cluster group add` for `--services`, `bucket backup schedule set` without schedule flags for each schedule field. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`).
 
 `--timeout` takes a duration (`90m`, `1h30m`, units in any case) or a bare number of seconds (`90`); it must be positive and at most 24h. `CBCTL_QUIET` accepts `1/true/yes/on`. New buckets default to 1024 MB and Capella's default storage backend.
 
@@ -319,7 +328,7 @@ These pre-port commands are hidden from `--help`, still run, and print a warning
 | `capella bucket create NAME --database N` | `capella bucket add N NAME [--memory MB] [--replicas N]` |
 | `capella bucket exists NAME --database N` | `capella bucket get N NAME` |
 | `capella cluster create --database N ...` (legacy flags) | `capella cluster create N [--size ...]`, then `capella cidr create` / `capella credential create` |
-| `capella cluster apply N`, `capella project apply N` | `capella apply --target cluster/N` / `--target project/N` |
+| `capella cluster apply N [--project P]`, `capella project apply N` | `capella apply --target cluster/N` (`cluster/P/N`) / `--target project/N` |
 
 The legacy flags (`--database`, `--database-id`, `--org`, `--project-id`, `--user-email`, `--user-id`, `--allow-cidr`, `-u`) are hidden. They are safe by default: `--allow-cidr` has no default and `0.0.0.0/0` / `::/0` need `--allow-any-ip`; no database user is created unless `--username` and `--password-env VAR` or `--password-file PATH` are given; a literal `-p/--password` exits 3. Mixing legacy flags with `--size`/`--group` exits 3. `capella import` is the JSONL import; called without arguments or with sync flags (`--full`, `--stdout`, `--cluster`, ...) it exits 3 and points to `capella sync` (capellactl's `import`).
 
@@ -329,21 +338,21 @@ These commands use the Capella Management API v4 (`--token`/`CAPELLA_API_KEY`, `
 
 | Command | What it does |
 |---|---|
-| `project list\|get\|create\|update\|delete` | Projects. `delete` refuses a non-empty project unless `--cascade` deletes its clusters first (`--discard-snapshots` also drops their backups, `--no-wait` returns once the deletes are accepted). |
+| `project list\|get\|create\|update\|delete` | Projects. `list` adds an `IN FILE` column when there is a `capella.yaml`; `create` on a terminal without a `capella.yaml` writes one with the new project. `delete` refuses a non-empty project unless `--cascade` deletes its clusters first (`--discard-snapshots` also drops their backups, `--no-wait` returns once the deletes are accepted). |
 | `cidr list\|create\|delete CLUSTER CIDR` | Allowed CIDRs. A bare IP becomes `/32` (`/128`); `create` takes `--comment`, `--expires-at` (RFC 3339) and `--allow-any-ip` for `0.0.0.0/0`; at most 75 entries. Creating a present CIDR and deleting a missing one both succeed. |
 | `credential list\|get\|create\|update\|delete CLUSTER NAME` | Database credentials. Access is `--privileges read\|write\|read+write` on `--bucket` (with optional `--scope` and repeatable `--collection`) or `--all-buckets`. A generated 32-character password is printed once; supply your own with `--password-env VAR` or `--password-file PATH`. `update` replaces the access and/or sets a new password (`--rotate-password`). |
 | `bucket list\|get\|add\|update\|delete CLUSTER [NAME]` | Buckets (`bucket create\|exists` remain for the legacy flow). `add` takes `--type`, `--storage-backend`, `--vbuckets`, `--memory`, `--replicas`, `--durability`, `--ttl`, `--flush`, `--conflict-resolution`, `--eviction-policy`, `--priority` and is a no-op when the bucket exists. `update` changes memory, replicas, durability, TTL, flush, priority and cross-cluster versioning. Free-tier clusters only take `--memory` (and `--cross-cluster-versioning` on update). |
 | `scope list\|add\|delete CLUSTER BUCKET [NAME]` | Scopes. `add` is idempotent; `_default` and `_system` cannot be deleted. |
 | `collection list\|add\|update\|delete CLUSTER BUCKET SCOPE [NAME]` | Collections. `add` and `update` take `--max-ttl` (`update` needs Couchbase Server 7.6.0 or later); `_default` and system collections cannot be deleted. |
-| `cluster list\|get\|options\|disk-types` | Read-only. `list` shows every cluster of every project (`--project` limits it); `get CLUSTER` shows nodes, service groups, disks, support plan and connection string; `options` shows what you can deploy (free tier, providers, sizes, plans); `disk-types [--provider P]` lists the disk types with size and IOPS rules. |
+| `cluster list\|get\|options\|disk-types` | Read-only. `list` shows every cluster of every project, sorted by project then name (`--project` limits it; JSON has `project` and capellactl's `projectName`); `get CLUSTER` shows nodes, service groups, disks, support plan and connection string; `options` shows what you can deploy (free tier, providers, sizes, plans); `disk-types [--provider P]` lists the disk types with size and IOPS rules. |
 | `cluster scale CLUSTER` | Change a service group's node count: `--nodes N` or `--step +1\|-1` (mutually exclusive), `--group SERVICES` / `--all-groups`, `--min` / `--max`. Group limits are checked (first group 3-27, extra groups 2-24, at most 27 nodes); scaling in is refused when bucket memory or replicas would not fit (`--skip-capacity-check` overrides). Free tier is blocked (exit 4); a step that is already at its limit is a no-op. Waits until the cluster is healthy unless `--no-wait`. |
-| `cluster update CLUSTER` | Change `--description`, `--support-plan`, `--support-timezone`, and per group `--cpu`, `--ram`, `--disk-type`, `--disk-size`, `--disk-iops`, `--disk-auto-expansion` (`--group` picks the group). A free-tier cluster only takes `--description`. |
+| `cluster update CLUSTER` | Change `--description`, `--support-plan`, `--support-timezone`, and per group `--cpu`, `--ram`, `--disk-type`, `--disk-size`, `--disk-iops`, `--disk-auto-expansion` (`--group` picks the group). A free-tier cluster only takes `--description`. With no flags on a terminal it asks each value (Enter keeps it). A fixed-size Azure disk (P6…P60) takes no `--disk-size`/`--disk-iops`. |
 | `cluster power CLUSTER --on\|--off` | Turn a cluster off (storage and data are kept) or on again (`--with-app-service` also starts the linked App Service). Turning off asks for confirmation. |
 | `cluster protect CLUSTER --on\|--off` | Deletion protection. Turning it off asks for confirmation. |
 | `cluster delete CLUSTER` | Delete a cluster with its buckets and schedule; you confirm by typing the cluster name (or `--yes`). Snapshot backups are kept unless `--discard-snapshots`. Refused (exit 4) while deletion protection is on; a missing cluster is a no-op. |
 | `cluster clone SOURCE NEW_NAME --region R` | Deploy a copy of a provisioned cluster in another region or project (`--to-project`): same size, services and availability, plus buckets, scopes and collections (`--no-data-model` skips them). The network `--cidr` defaults to the first free `10.x.y.0/24` that does not overlap another cluster. `--with-cidrs` copies allowed CIDRs; `--with-credentials` recreates credentials with new generated passwords that are printed once. Documents, schedule, CMEK and private DNS are never copied. |
 | `cluster group list\|add\|remove` | Service groups (multi-dimensional scaling). `add CLUSTER --services S [--nodes 2-24] [--cpu --ram --disk-*]` copies unset options from the data group; `remove CLUSTER SERVICES` is a guarded scale-in (`--allow-service-removal`, `--skip-capacity-check`). |
-| `cluster schedule show\|set\|pause\|resume\|delete CLUSTER` | Weekly on/off schedule. `set --timezone TZ --weekdays HH:MM-HH:MM --weekend off` (also `--monday` ... `--sunday`; windows use `on`, `off` or `HH:MM-HH:MM` in 30-minute steps). `show` prints a weekly grid and the next transition; `pause --power-on` also turns a cluster on that the schedule had turned off. Provisioned clusters only. |
+| `cluster schedule show\|set\|pause\|resume\|delete CLUSTER` | Weekly on/off schedule. `set --timezone TZ --weekdays HH:MM-HH:MM --weekend off` (also `--monday` ... `--sunday`; windows use `on`, `off` or `HH:MM-HH:MM` in 30-minute steps; `24:00` ends a window at midnight; a week cannot be on every day, so delete the schedule to keep a cluster always on). `show` prints a weekly grid and the next transition; `pause --power-on` also turns a cluster on that the schedule had turned off. Provisioned clusters only. |
 | `cluster backup schedule show\|options\|set\|delete CLUSTER` | Cloud snapshot backup schedule: `set --every HOURS --retain 30d --start HH:MM --copy-to REGION` (or `--no-copies`); values are validated against `options` for the support plan. |
 | `cluster backup list\|create\|retain\|delete\|restore\|restores\|regions` | Snapshot backups. `create` waits until the backup is complete (`--no-wait`, `--retain`, `--copy-to`); `retain CLUSTER ID --retain 90d`; `restore CLUSTER ID` replaces all data (asks for confirmation; `--from-region` falls back to a copy); `restores` lists restores; `regions` lists copy regions. |
 | `bucket backup schedule show\|set\|delete CLUSTER BUCKET` | Weekly full plus incremental bucket backups: `set --day D --start-at H --incremental-every 1\|6\|12\|24 --retention 30days --cost-optimized`. |
@@ -371,6 +380,8 @@ cbctl capella cluster backup schedule set my-cluster --every 24 --retain 30d
 make build              # bin/cbctl
 make test-unit          # with -race (./internal/...)
 make test-integration-fake   # Capella integration suite against the in-memory fake
+make test-server-it     # Couchbase Server Docker flow (-tags=integration,server; needs Docker)
+make cover-gate         # tiered coverage gate over the unit suite + Server flow (needs Docker)
 make test-integration   # Capella integration suite against a sandbox org (CAPELLA_API_KEY, CAPELLA_ORG_ID; CBCTL_IT_CLUSTERS=1 adds billable clusters)
 make janitor PREFIX=cbctl-ci-   # delete leftover test projects (prefix of at least 4 characters, ending in -)
 make vet
@@ -380,4 +391,4 @@ make check              # everything CI runs, including lint
 
 CI (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main` and `mm--capellactl-port`. Workflow actions are pinned by commit SHA; Dependabot (`.github/dependabot.yml`) proposes weekly bumps.
 
-Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (4 characters or more, ending in `-`) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).
+Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The nightly Capella sandbox run (`nightly.yml`, scheduled on `main`, dispatchable on any branch) is a health signal, not a gate: no merge, push, tag or release waits for it. The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (4 characters or more, ending in `-`) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

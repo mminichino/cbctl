@@ -9,7 +9,7 @@ import (
 
 func TestDocsPortTable(t *testing.T) {
 	dir := t.TempDir()
-	src := writeFile(t, dir, "src.txt", "# list\ntests/scenario/test_a.py::test_one\tCAP001_AC1\ntests/unit/test_b.py::test_two\n")
+	src := writeFile(t, dir, "src.txt", "# list\ntests/scenario/test_a.py::test_one\tCAP999_AC99\ntests/unit/test_b.py::test_two\n")
 	good := writeFile(t, dir, "map.tsv", "tests/unit/test_b.py::*\tn/a\t\tPython-only\n")
 	bad := writeFile(t, dir, "bad.tsv", "tests/unit/test_b.py::test_two\tcovered\tTestDoesNotExistAnywhere\t\n")
 	doc := writeFile(t, dir, "port.md", "# Port\n")

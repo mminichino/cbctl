@@ -9,6 +9,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -548,8 +549,7 @@ func (f *bucketUpdateFlags) validate(changed func(string) bool) error {
 
 // any reports whether at least one setting was given.
 func (f *bucketUpdateFlags) any(changed func(string) bool) bool {
-	for _, n := range []string{"memory", "replicas", "durability", "ttl", "flush", "no-flush", "priority",
-		"cross-cluster-versioning", "no-cross-cluster-versioning"} {
+	for _, n := range bucketUpdateSettings {
 		if changed(n) {
 			return true
 		}
@@ -635,17 +635,28 @@ func newCapellaBucketDeleteCmd() *cobra.Command {
 			return err
 		}
 		name := args[1]
-		if _, _, err := rt.readBucket(t, name); err != nil {
+		b, _, err := rt.readBucket(t, name)
+		if err != nil {
+			var ce *CLIError
+			if errorAsCLI(err, &ce) && ce.Code == ExitConfigInvalid {
+				// Already gone: deleting again is a no-op, as in capellactl.
+				rt.report(bucketDoc{Cluster: t.Cluster.Name, Name: name, Status: "not found"},
+					"bucket %s/%s not found, nothing to do", t.Cluster.Name, name)
+				return nil
+			}
 			return err
 		}
 		if err := t.refuseIfProtected(); err != nil {
 			return err
 		}
-		question := fmt.Sprintf("Delete bucket %s and all its data from %s?", name, t.Cluster.Name)
-		if ok, err := rt.confirmDelete(question); err != nil || !ok {
+		pid, cid := t.ids()
+		details, derr := resources.BucketDeleteDetails(rt.Ctx, rt.Client, pid, cid, objOfJSON(b))
+		if derr != nil {
+			details = []string{name} // the credential list is informational; the delete still asks
+		}
+		if ok, err := rt.confirmNamedDelete("bucket", t.Cluster.Name+"/"+name, name, details); err != nil || !ok {
 			return err
 		}
-		pid, cid := t.ids()
 		id := capellaapi.BucketID(name)
 		if t.freeTier() {
 			err = rt.Client.DeleteFreeBucket(rt.Ctx, pid, cid, id)

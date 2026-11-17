@@ -249,6 +249,7 @@ func TestProgress(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("CI", tc.ci)
+			t.Setenv("TERM", "xterm-256color") // TERM=dumb also suppresses progress
 			old := terminalCheck
 			terminalCheck = func(any) bool { return tc.tty }
 			t.Cleanup(func() { terminalCheck = old })
@@ -276,8 +277,7 @@ func confirmRuntime(yes bool, stdin string) (*runtime, *bytes.Buffer) {
 }
 
 func TestConfirm(t *testing.T) {
-	// confirmRuntime uses DefaultDeps, which reads the process env. Clear CI so the blocked
-	// case asserts the non-CI action; CI-specific wording is covered by scenario_ci_test.go.
+	// confirmRuntime has no Deps, so noApprovalError reads the process env; CI runners set CI.
 	t.Setenv("CI", "")
 	tests := []struct {
 		name       string

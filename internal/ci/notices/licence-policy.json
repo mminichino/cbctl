@@ -1,0 +1,14 @@
+{
+  "_comment": "SPDX ids a Go module compiled into cbctl (Apache-2.0) may use (capellactl CAP-044). Copyleft licences such as GPL, LGPL and AGPL, and unknown licences, are not allowed. Changing this list needs the code owner's approval.",
+  "allowed": [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Unlicense"
+  ]
+}

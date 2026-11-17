@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,9 @@ type Scenario struct {
 	Dir     string            // t.TempDir(): cwd for the CLI and home of capella.yaml
 	Keyring *settings.MemKeyring
 	Prompts *ScriptedPrompter
+	// HTTPClient, when set, carries the CLI's Capella API calls (for example to inject a
+	// transport that fails in a way the fake cannot).
+	HTTPClient *http.Client
 
 	tty bool
 }
@@ -140,6 +144,7 @@ func (s *Scenario) deps(stdout, stderr io.Writer, stdin io.Reader) cli.Deps {
 		Keyring:        s.Keyring,
 		Clock:          s.Clock,
 		Prompter:       s.Prompts,
+		HTTPClient:     s.HTTPClient,
 		ResetRedaction: true,
 	}
 }

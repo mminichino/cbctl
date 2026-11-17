@@ -82,7 +82,7 @@ func TestScheduleUpdateAndEnsureAbsent(t *testing.T) {
 	e.apply(e.plan())
 	requireAllNoop(t, e.plan())
 
-	e.load(strings.Replace(fullYAML, "weekend: false", "weekend: true", 1))
+	e.load(strings.Replace(fullYAML, "weekend: false", "weekend: true\n      friday: \"08:00-18:00\"", 1))
 	p := e.plan()
 	requireType(t, p, "schedule", "one", plan.Update)
 	e.apply(p)

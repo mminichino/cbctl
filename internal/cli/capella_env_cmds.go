@@ -136,7 +136,8 @@ func newCapellaApplyCmd() *cobra.Command {
 		e.RC.AllowServiceGroupRemoval = grp
 		e.RC.SkipCapacityCheck = skipCap
 		e.TreeOptions = resources.Options{ForceOverwriteSecret: force}
-		p, err := makePlan(e.Ctx, e, plan.Options{Targets: targets, Prune: prune})
+		p, err := makePlan(e.Ctx, e, plan.Options{Targets: targets, Prune: prune,
+			NoDescendants: cmd.Annotations[noDescendantsAnnotation] != ""})
 		if err != nil {
 			return err
 		}
@@ -357,6 +358,62 @@ func (e *envRuntime) dataDeleteLines(a *plan.Action) []string {
 	default:
 		lines = append(lines, fmt.Sprintf("deletes collection %s with every document in it", a.Key))
 	}
+	return append(lines, e.dependentLines(a, bucket)...)
+}
+
+// dependentLines are the keyspace details and the credentials that lose access, as the delete
+// commands show them. They are informational: a read failure leaves them out.
+func (e *envRuntime) dependentLines(a, bucket *plan.Action) []string {
+	cluster := bucket.Parent
+	if cluster == nil || cluster.ID() == "" {
+		return nil
+	}
+	project := cluster.Ancestor("project")
+	if project == nil {
+		return nil
+	}
+	bucketName := ""
+	if d, ok := plan.AsObj(bucket.Desired); ok {
+		bucketName, _ = d["name"].(string)
+	}
+	nameOf := func(x *plan.Action) string {
+		if x.Observed != nil {
+			if n, _ := x.Observed.Body["name"].(string); n != "" {
+				return n
+			}
+		}
+		if d, ok := plan.AsObj(x.Desired); ok {
+			n, _ := d["name"].(string)
+			return n
+		}
+		return ""
+	}
+	var (
+		lines []string
+		err   error
+	)
+	switch a.Kind {
+	case "bucket":
+		var creds []string
+		creds, err = resources.DependentCredentials(e.Ctx, e.Client, project.ID(), cluster.ID(), bucketName)
+		if len(creds) > 0 {
+			lines = append(lines, "These credentials lose access to this bucket:")
+			for _, n := range creds {
+				lines = append(lines, "  "+n)
+			}
+		}
+	case "scope":
+		lines, err = resources.KeyspaceDeleteDetails(e.Ctx, e.Client, project.ID(), cluster.ID(), bucketName, bucket.ID(), nameOf(a), "")
+	default:
+		scope := a.Parent
+		if scope == nil {
+			return nil
+		}
+		lines, err = resources.KeyspaceDeleteDetails(e.Ctx, e.Client, project.ID(), cluster.ID(), bucketName, bucket.ID(), nameOf(scope), nameOf(a))
+	}
+	if err != nil {
+		return nil
+	}
 	return lines
 }
 
@@ -454,7 +511,7 @@ func (e *envRuntime) applyFailure(result *plan.ApplyResult, o applyOptions) erro
 			msg += "\n" + undone
 		}
 	}
-	action := failureAction(failed, result.Err, "Then run the command again; completed changes are not repeated.")
+	action := failureAction(failed, result.Err, "Run the command again; completed changes are not repeated.")
 	return &CLIError{Code: code, Message: msg, Action: action, Err: result.Err}
 }
 

@@ -14,6 +14,8 @@ func run(id int64, sha, event, status, conclusion string, at time.Time) RunRef {
 	return RunRef{ID: id, Attempt: 1, HeadSHA: sha, Event: event, Status: status, Conclusion: conclusion, CreatedAt: at}
 }
 
+func probe(r RunRef) RunRef { r.Probe = true; return r }
+
 func TestDecide(t *testing.T) {
 	self := run(10, "abc", "schedule", "in_progress", "", t0)
 	dispatch := run(10, "abc", "workflow_dispatch", "in_progress", "", t0)
@@ -36,6 +38,10 @@ func TestDecide(t *testing.T) {
 		{"schedule fired twice today", self, []RunRef{run(9, "abc", "schedule", "completed", "success", t0.Add(-time.Minute))}, true},
 		{"re-run attempt of itself", RunRef{ID: 10, Attempt: 2, HeadSHA: "abc", Event: "schedule", Status: "in_progress", CreatedAt: t0},
 			[]RunRef{run(10, "abc", "schedule", "completed", "failure", t0)}, false},
+		{"dispatch after a probe success", dispatch, []RunRef{probe(run(9, "abc", "workflow_dispatch", "completed", "success", t0.Add(-time.Hour)))}, false},
+		{"probe after a suite success", probe(dispatch), []RunRef{run(9, "abc", "schedule", "completed", "success", t0.Add(-time.Hour))}, false},
+		{"probe while the suite runs", probe(dispatch), []RunRef{run(9, "abc", "schedule", "in_progress", "", t0.Add(-time.Hour))}, true},
+		{"suite while a probe runs", self, []RunRef{probe(run(9, "abc", "workflow_dispatch", "in_progress", "", t0.Add(-time.Hour)))}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,5 +94,11 @@ func TestParseRuns(t *testing.T) {
 	}
 	if _, err := ParseRuns([]byte("not json")); err == nil {
 		t.Error("want a decode error")
+	}
+	for title, want := range map[string]bool{"probe: schedule": true, "nightly": false, "": false, "probes": false} {
+		raw := `{"workflow_runs":[{"id":1,"display_title":"` + title + `"}]}`
+		if runs, err := ParseRuns([]byte(raw)); err != nil || runs[0].Probe != want {
+			t.Errorf("title %q: Probe = %v (err %v), want %v", title, runs[0].Probe, err, want)
+		}
 	}
 }

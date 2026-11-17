@@ -192,7 +192,7 @@ func TestCollectionUpdate(t *testing.T) {
 		ctx := context.Background()
 		id, err := fx.Client.CreateCluster(ctx, fx.ProjectID, capellaapi.CreateClusterRequest{
 			Name: "old", CloudProvider: capellaapi.CloudProvider{Type: "aws", Region: "us-east-1"},
-			CouchbaseServer: &capellaapi.CouchbaseServer{Version: "7.2.4"},
+			CouchbaseServer: &capellaapi.CouchbaseServer{Version: "7.2"},
 			ServiceGroups:   []capellaapi.ServiceGroupRequest{{NumOfNodes: 3, Services: []string{"data"}}},
 		})
 		if err != nil {
@@ -241,7 +241,7 @@ func TestCollectionDelete(t *testing.T) {
 		}
 	})
 	t.Run("unknown", func(t *testing.T) {
-		wantExit(t, runResource(t, "collection", "delete", "clu", "orders", "inv", "ghost", "-y"), ExitConfigInvalid, "collection ghost not found")
+		wantContains(t, mustRun(t, "collection", "delete", "clu", "orders", "inv", "ghost", "-y").Stdout, "collection clu/orders/inv/ghost not found, nothing to do")
 	})
 	t.Run("delete", func(t *testing.T) {
 		res := mustRun(t, "collection", "delete", "clu", "orders", "inv", "items", "--yes")

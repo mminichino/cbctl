@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime/debug"
 	"sync"
 
 	"github.com/mminichino/cbctl/internal/engine"
@@ -50,7 +51,7 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 	clockFactory = func() engine.Clock { return clk }
 	defer func() { clockFactory = prevClock }()
 
-	prevTTY := ttyCheck
+	prevTTY, prevTerminal := ttyCheck, terminalCheck
 	isTTY := d.IsTTY
 	ttyCheck = func(v any) bool {
 		if r, ok := v.(io.Reader); ok {
@@ -58,12 +59,17 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 		}
 		return false
 	}
-	defer func() { ttyCheck = prevTTY }()
+	// Progress dots ask terminalCheck about stderr; route it through Deps too.
+	terminalCheck = ttyCheck
+	defer func() { ttyCheck, terminalCheck = prevTTY, prevTerminal }()
 
 	defer func() {
 		if rec := recover(); rec != nil {
-			msg := fmt.Sprintf("internal error: %v", rec)
-			fmt.Fprintln(d.Stderr, redact.String(msg))
+			// printError/printAction and logging.Debug redact, so neither the panic value nor
+			// the stack can print the API key or a registered secret.
+			printError(fmt.Sprintf("internal error: %v", rec))
+			printAction(unexpectedErrorAction)
+			logging.Debug("%s", debug.Stack())
 			code = int(ExitError)
 		}
 	}()

@@ -211,7 +211,7 @@ func schemaMessages(e *jsonschema.ValidationError, p Path, data Obj, printer *me
 		for _, m := range k.Missing {
 			sm := schemaMessage{path: p, msg: fmt.Sprintf("missing required field '%s'", m)}
 			if len(p) == 0 && m == "apiVersion" {
-				sm.fix = "add apiVersion: cbctl/v1"
+				sm.fix = "the file must start with apiVersion " + APIVersion + " ('cbctl capella init' writes a new file)"
 			}
 			out = append(out, sm)
 		}

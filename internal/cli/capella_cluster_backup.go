@@ -35,7 +35,11 @@ func newBackupScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schedule",
 		Short: "When the cluster is backed up and how long backups are kept",
-		Run:   func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
+		Long: "When the cluster is backed up and how long backups are kept. The schedule is recorded in capella.yaml.\n\n" +
+			"Examples:\n  cbctl capella cluster backup schedule options prod-01\n" +
+			"  cbctl capella cluster backup schedule set prod-01 --every 24 --retain 30d\n" +
+			"  cbctl capella cluster backup schedule show prod-01\n  cbctl capella cluster backup schedule delete prod-01",
+		Run: func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
 	}
 	cmd.AddCommand(newBackupScheduleShowCmd(), newBackupScheduleOptionsCmd(), newBackupScheduleSetCmd(), newBackupScheduleDeleteCmd())
 	return cmd
@@ -194,6 +198,8 @@ func newBackupScheduleShowCmd() *cobra.Command {
 			}
 			return nil
 		})
+	cmd.Long = "Show the cluster's backup schedule and when the next backup runs.\n\n" +
+		"Examples:\n  cbctl capella cluster backup schedule show prod-01\n  cbctl capella -o json cluster backup schedule show prod-01"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -242,6 +248,8 @@ func newBackupScheduleOptionsCmd() *cobra.Command {
 			}
 			return nil
 		})
+	cmd.Long = "Show what the cluster's support plan permits: backup intervals, retention and copy regions.\n\n" +
+		"Examples:\n  cbctl capella cluster backup schedule options prod-01\n  cbctl capella -o json cluster backup schedule options prod-01"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -406,6 +414,8 @@ func newBackupScheduleDeleteCmd() *cobra.Command {
 			rt.report(res, "deleted the backup schedule of %s", t.Cluster.Name)
 			return nil
 		})
+	cmd.Long = "Delete the cluster's backup schedule. Existing backups are kept until they expire.\n\n" +
+		"Examples:\n  cbctl capella cluster backup schedule delete prod-01\n  cbctl capella cluster backup schedule delete prod-01 --yes"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -504,12 +514,20 @@ func (rt *runtime) listProjectBackups(project string) error {
 		return strOf(items[i], "projectName") < strOf(items[j], "projectName")
 	})
 	rows := make([][]string, len(items))
+	several := len(projects) > 1
 	for i, c := range items {
 		newest, _ := c["mostRecentSnapshot"].(map[string]any)
 		oldest, _ := c["oldestSnapshot"].(map[string]any)
-		rows[i] = []string{strOf(c, "clusterName"), strOf(c, "projectName"), strOf(c, "region"), when(newest["createdAt"]), when(oldest["createdAt"]), strOf(c, "clusterId")}
+		rows[i] = []string{strOf(c, "clusterName"), strOf(c, "region"), when(newest["createdAt"]), when(oldest["createdAt"]), strOf(c, "clusterId")}
+		if several {
+			rows[i] = slices.Insert(rows[i], 1, strOf(c, "projectName"))
+		}
 	}
-	rt.Out.Table([]string{"CLUSTER", "PROJECT", "REGION", "NEWEST", "OLDEST", "CLUSTER ID"}, rows)
+	header := []string{"CLUSTER", "REGION", "NEWEST", "OLDEST", "CLUSTER ID"}
+	if several {
+		header = slices.Insert(header, 1, "PROJECT")
+	}
+	rt.Out.Table(header, rows)
 	return nil
 }
 
@@ -642,6 +660,8 @@ func newBackupRetainCmd() *cobra.Command {
 			rt.report(res, "backup %s of %s is now kept %s (was %s)", args[1], t.Cluster.Name, hoursText(hours), hoursText(was))
 			return nil
 		})
+	cmd.Long = "Keep one backup longer (or shorter), counted from when it was taken.\n\n" +
+		"Examples:\n  cbctl capella cluster backup retain prod-01 BACKUP_ID --retain 90d\n  cbctl capella cluster backup retain prod-01 BACKUP_ID --retain 2160h"
 	addProjectFlag(cmd, &project)
 	cmd.Flags().StringVar(&retain, "retain", "", "How long to keep it, counted from when it was taken: hours or days, e.g. 2160 or 90d (required)")
 	return cmd
@@ -682,6 +702,8 @@ func newBackupDeleteCmd() *cobra.Command {
 			rt.report(res, "deleted backup %s of %s", args[1], t.Cluster.Name)
 			return nil
 		})
+	cmd.Long = "Delete one backup of the cluster. You confirm by typing the cluster name (or pass --yes).\n\n" +
+		"Examples:\n  cbctl capella cluster backup delete prod-01 BACKUP_ID\n  cbctl capella cluster backup delete prod-01 BACKUP_ID --yes"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -783,6 +805,8 @@ func newBackupRestoresCmd() *cobra.Command {
 			rt.Out.Table([]string{"STARTED", "FINISHED", "SNAPSHOT", "STATUS", "ID"}, rows)
 			return nil
 		})
+	cmd.Long = "List the restores of the cluster, newest first.\n\n" +
+		"Examples:\n  cbctl capella cluster backup restores prod-01\n  cbctl capella -o json cluster backup restores prod-01"
 	addProjectFlag(cmd, &project)
 	return cmd
 }
@@ -811,6 +835,8 @@ func newBackupRegionsCmd() *cobra.Command {
 			rt.Out.Table([]string{"REGION"}, rows)
 			return nil
 		})
+	cmd.Long = "List the regions where copies of the cluster's backups can be kept (AWS and Azure).\n\n" +
+		"Examples:\n  cbctl capella cluster backup regions prod-01\n  cbctl capella cluster backup create prod-01 --copy-to us-west-2"
 	addProjectFlag(cmd, &project)
 	return cmd
 }

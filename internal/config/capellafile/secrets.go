@@ -102,7 +102,7 @@ func (r *secretResolver) resolveString(value string, p Path) (out string, keep b
 		}
 		if !wholeRefRe.MatchString(value) {
 			add("password must be a ${VAR} or ${file:PATH} reference, not a literal",
-				"set password: ${NAME} and export NAME, or use ${file:PATH}; omit password to have one generated")
+				"replace the literal with ${NAME} and export NAME, or use ${file:PATH}; omit password to have one generated")
 			return value, true
 		}
 	}

@@ -62,8 +62,9 @@ func (c *rctx) createCIDR() {
 		return
 	}
 	for _, e := range cl.cidrs {
-		if str(e.obj, "cidr") == cidr {
-			c.err(http.StatusConflict, "the CIDR "+cidr+" is already allowed")
+		if str(e.obj, "cidr") == cidr && !c.f.cidrDuplicates {
+			// What the live API answers (nightly run 44144706943), not 409.
+			c.err(http.StatusUnprocessableEntity, "Unable to add allowlist entry. The CIDR provided already exists for the cluster.")
 			return
 		}
 	}
@@ -249,7 +250,7 @@ func (c *rctx) createBucket() {
 		return
 	}
 	if cl.bucketByName(name) != nil {
-		c.err(http.StatusConflict, "a bucket named "+strconv.Quote(name)+" already exists")
+		c.exists("a bucket named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	b := cl.addBucket(name, body)
@@ -271,7 +272,7 @@ func (c *rctx) createFreeBucket() {
 		return
 	}
 	if cl.bucketByName(name) != nil {
-		c.err(http.StatusConflict, "a bucket named "+strconv.Quote(name)+" already exists")
+		c.exists("a bucket named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	fields := Obj{}
@@ -395,7 +396,7 @@ func (c *rctx) createScope() {
 		return
 	}
 	if b.findScope(name) != nil {
-		c.err(http.StatusConflict, "a scope named "+strconv.Quote(name)+" already exists")
+		c.exists("a scope named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	b.scopes = append(b.scopes, &scope{name: name})
@@ -451,10 +452,10 @@ func (c *rctx) createCollection() {
 		return
 	}
 	if _, r := s.findCollection(name); r != nil {
-		c.err(http.StatusConflict, "a collection named "+strconv.Quote(name)+" already exists")
+		c.exists("a collection named " + strconv.Quote(name) + " already exists")
 		return
 	}
-	obj := Obj{"name": name}
+	obj := Obj{"name": name, "maxTTL": 0} // Capella returns maxTTL (0: the bucket's TTL) when none was given
 	if v, ok := body["maxTTL"]; ok {
 		obj["maxTTL"] = v
 	}
@@ -546,7 +547,7 @@ func (c *rctx) createUser() {
 	}
 	for _, u := range cl.creds {
 		if str(u.obj, "name") == name {
-			c.err(http.StatusConflict, "a credential named "+strconv.Quote(name)+" already exists")
+			c.exists("a credential named " + strconv.Quote(name) + " already exists")
 			return
 		}
 	}

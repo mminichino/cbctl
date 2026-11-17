@@ -2,6 +2,7 @@ package rest
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -169,7 +170,8 @@ func ClusterInitHostname(host string) string {
 	if lower == "localhost" {
 		return "127.0.0.1"
 	}
-	if strings.Contains(lower, ".") {
+	// IP literals (including IPv6, which has no dot) are used as they are.
+	if strings.Contains(lower, ".") || net.ParseIP(host) != nil {
 		return host
 	}
 	return host + ".local"

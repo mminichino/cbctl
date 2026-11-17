@@ -35,8 +35,9 @@ The rule: `capellactl X` is `cbctl capella X`, except for these rows.
 | `capellactl help cluster scale` | `cbctl capella cluster scale --help` | `cbctl help capella cluster scale` also works |
 | `capellactl completion bash\|zsh\|fish` | `cbctl completion bash\|zsh\|fish\|powershell` | `cbctl capella completion` exits 3 and names the root command |
 | `capellactl project apply NAME` (hidden) | `cbctl capella apply --target project/NAME` | The old form still works, hidden, with a deprecation warning |
-| `capellactl cluster apply NAME` (hidden) | `cbctl capella apply --target cluster/NAME` | The old form still works, hidden, with a deprecation warning |
+| `capellactl cluster apply NAME` (hidden) | `cbctl capella apply --target cluster/NAME` | The old form still works, hidden, with a deprecation warning; `--project P` selects `cluster/P/NAME` |
 | `capellactl cluster schedule apply NAME` | `cbctl capella cluster schedule apply NAME` | Same as `apply --target schedule/NAME` |
+| `capellactl --version` | `cbctl capella --version` | Same text as `cbctl --version`: version, Management API version, licence |
 | `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`, `--no-cross-cluster-versioning`, `--no-protect` | Same | Accepted wherever the positive flag is, and also as `--flush=false` and so on |
 
 Prompts work as in capellactl when a terminal is attached: `cluster create` without a name runs
@@ -44,6 +45,17 @@ the wizard, `cluster clone` without arguments lets you pick the source, then ask
 the name and the target project, `bucket add` asks for `--memory`, `project create` asks for a
 description, and `cluster group add` asks for `--services`. Without a terminal a missing value
 exits 3 with `missing X: there is no terminal to ask for it`.
+
+Other differences in these commands:
+
+- Without a capella.yaml, `project create` creates the project at once; capellactl asked for
+  `--auto-approve`. With a capella.yaml it asks, as capellactl did (`-y` skips the question).
+- `project list` has the columns `NAME ID DESCRIPTION` (capellactl: `S.NO NAME DESCRIPTION CREATED
+  IN FILE ID`). `-o json` lists the projects in the same order.
+- `configure list` shows the organization as `NAME (ID)` and whether a key is stored, with no
+  config-file column.
+- `cluster protect --off` in file-managed mode writes `deletionProtection: false` into
+  capella.yaml; capellactl removed the field.
 
 ### Commands cbctl had before the port
 
@@ -89,8 +101,8 @@ names are set the cbctl name wins.
   settings. A profile that differs is a conflict and exits 4 unless you pass `--force`.
   `--remove-legacy` deletes each profile and key it copied from capellactl. API keys are never
   printed.
-- Without an OS keychain, capellactl saved the profile and warned. `cbctl configure` exits 3 and
-  saves nothing; set `CAPELLA_API_KEY` instead.
+- Without an OS keychain, `cbctl configure` saves the profile and warns, as capellactl did; the
+  key is never written to disk, so set `CAPELLA_API_KEY`.
 - `cbctl configure remove` asks before removing the profile. Without a terminal it needs `-y`.
 - When `./.cbctl/credentials` does not exist and `./.capellactl/credentials` does, cbctl uses the
   capellactl directory, so passwords saved earlier are found. An explicit `credentialsOutput` in
@@ -125,6 +137,9 @@ terminal to ask`. Every cbctl command prints `confirmation required but no termi
 Messages are prefixed `[error] -`, `[warning] -` and `→` for the suggested action, instead of
 `[ERROR]:`, `[WARNING]:` and `[ACTION]:`. Scripts that match on exit codes need only the two rows
 above; scripts that match on message text need the new prefixes.
+
+While waiting, a terminal shows progress dots without capellactl's spinner between them. As before,
+there are no dots off a terminal, with `CI` set, or with `TERM=dumb`.
 
 ## JSON output
 

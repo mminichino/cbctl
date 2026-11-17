@@ -583,7 +583,7 @@ cbctl capella cluster schedule apply $CLUSTER                       # apply only
 cbctl capella cluster schedule delete $CLUSTER                      # removes it from Capella and capella.yaml
 ```
 
-Windows are `HH:MM-HH:MM` with minutes `00` or `30` (`24:00` = end of day); a day is `on`, `off` or a window; a week cannot be off every day.
+Windows are `HH:MM-HH:MM` with minutes `00` or `30` (`24:00` = end of day); a day is `on`, `off` or a window; a week cannot be off every day, nor on every day (to keep a cluster always on, delete its schedule).
 
 Azure disks: the disk type sets the size and speed (`P6` default, `P10`, `P15`, `P20`, `P30` … `P60`); `Ultra` takes `--disk-size` and `--disk-iops`. AWS: `gp3` or `io2` with `--disk-size` and `--disk-iops`; Google Cloud: `pd-ssd`, whose speed follows its size. All of them: `cbctl capella cluster disk-types`.
 
@@ -683,7 +683,7 @@ cbctl capella drift --detailed-exitcode                  # exit 2 when Capella w
 cbctl capella guide ci                                    # GitHub Actions and GitLab CI examples
 ```
 
-Without a terminal, every command that changes something refuses (exit 1) unless `--auto-approve`/`-y` is given; there is no environment variable for approval. A question that needs an answer exits 3 and names the flag to pass.
+Without a terminal, every command that changes something refuses (exit 4) unless `--auto-approve`/`-y` is given; there is no environment variable for approval. A question that needs an answer exits 3 and names the flag to pass.
 
 ## Help
 

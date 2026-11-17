@@ -218,12 +218,8 @@ func TestResolveCredentialsDir(t *testing.T) {
 			}
 		})
 	}
-	// An absolute path needs a drive letter on Windows; "/abs/out" is rooted but not absolute there.
-	abs, base := "/abs/out", "/base"
-	if runtime.GOOS == "windows" {
-		abs, base = `C:\abs\out`, `C:\base`
-	}
-	if dir, _, _ := secrets.ResolveCredentialsDir(abs, base); dir != filepath.Clean(abs) {
-		t.Errorf("absolute = %q", dir)
+	abs := filepath.Join(t.TempDir(), "out") // absolute on every OS ("/abs/out" is not on Windows)
+	if dir, _, _ := secrets.ResolveCredentialsDir(abs, t.TempDir()); dir != filepath.Clean(abs) {
+		t.Errorf("absolute = %q, want %q", dir, abs)
 	}
 }

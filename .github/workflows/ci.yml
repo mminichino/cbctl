@@ -52,9 +52,40 @@ jobs:
         if: runner.os == 'Windows'
         run: go test ./internal/...
 
-      - name: Coverage gate
-        if: runner.os == 'Linux'
-        run: make cover-engine
+      - name: Binary smoke
+        run: go test -count=1 -run TestBinarySmoke ./cmd/cbctl/
+
+  # P-TST-18: tiered coverage over the unit suite plus the Server Docker flow (server-it).
+  cover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Unit coverage profile
+        run: make cover-profile
+
+      - name: Server Docker integration (server-it) coverage profile
+        run: make cover-server
+
+      - name: Tiered coverage gate
+        run: go run ./cmd/cbdev ci cover-gate --tiers default --profile .cover/unit.out --profile .cover/server.out
+
+      - name: Upload coverage profiles
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-profiles
+          path: .cover/
+          retention-days: 14
+          if-no-files-found: ignore
 
   integration-fake:
     runs-on: ubuntu-latest

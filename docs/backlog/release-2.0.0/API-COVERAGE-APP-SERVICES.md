@@ -10,12 +10,12 @@ The spec has **343 operations**. This document tracks the **73 App Services and 
 
 | Group | Operations | ✅ Done | Tracked in |
 |---|---|---|---|
-| Operational database, release 1.0.0 | 80 | 3 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
+| Operational database, release 1.0.0 | 80 | 80 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
 | Operational database, not needed (another operation gives the same data) | 1 | — | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
 | Operational database, release 1.5.0 | 139 | 0 | [1.5.0 report](../release-1.5.0/API-COVERAGE.md) |
 | App Services / App Endpoints, release 2.0.0 | 73 | 0 | [2.0.0 report](../release-2.0.0/API-COVERAGE-APP-SERVICES.md) |
 | AI (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools) | 50 | — | Not planned |
-| **Total in the spec** | **343** | **3** | |
+| **Total in the spec** | **343** | **80** | |
 
 No stories are written for 2.0.0 yet. Every row is ⏭️ **Not started**, and every command name is a proposal that follows the 1.0.0 conventions: noun-verb, declarative through `plan`/`apply`, and idempotent.
 

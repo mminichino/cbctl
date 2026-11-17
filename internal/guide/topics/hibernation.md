@@ -23,8 +23,10 @@ hibernation:
   friday: "08:00-14:30"       # per-day override
 ```
 
-Rules from the API: times on the hour or half hour; every day cannot be off. Quote `"on"`/`"off"`:
-unquoted YAML reads them as true/false (cbctl capella converts them, with a tip).
+Rules from the API: times on the hour or half hour; every day cannot be off, and every day cannot
+be on (to keep a cluster always on, delete its schedule). `24:00` ends a window at midnight
+(`"08:00-24:00"`), and `"00:00-24:00"` is the whole day on. Quote `"on"`/`"off"`: unquoted YAML
+reads them as true/false (cbctl capella converts them, with a tip).
 
 - Pause for a demo or incident: `cbctl capella cluster schedule pause NAME --power-on`, later `resume`.
   Both record `paused` in capella.yaml.

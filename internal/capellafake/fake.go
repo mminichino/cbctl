@@ -117,12 +117,18 @@ type Fake struct {
 	projects []*project
 	routes   []route
 
-	settle   int // polls a transitional state lasts
-	pageSize int // when > 0, caps perPage so tests can force multiple pages
-	failures []*failure
-	hooks    []*hook
-	lenient  bool // unknown routes are a plain 404 rather than a test failure
-	log      []Request
+	settle int // polls a transitional state lasts
+	// failNextBackup makes the next on-demand bucket backup end "failed".
+	failNextBackup bool
+	pageSize       int // when > 0, caps perPage so tests can force multiple pages
+	failures       []*failure
+	hooks          []*hook
+	lenient        bool // unknown routes are a plain 404 rather than a test failure
+	// cidrDuplicates lets a cluster hold the same CIDR twice (AllowDuplicateCIDRs).
+	cidrDuplicates bool
+	// failDeploy makes the next created cluster settle on deploymentFailed (FailDeployNext).
+	failDeploy bool
+	log        []Request
 }
 
 // res is a versioned resource; ver is the number in its ETag.
@@ -427,6 +433,7 @@ type failure struct {
 	left          int
 	dropAfterRead bool
 	applyThenDrop bool
+	applyThenFail bool
 	delay         time.Duration
 	before        func()
 }
@@ -536,6 +543,13 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 			f.dropConn(rec)
 			return
 		}
+		if fl.applyThenFail {
+			// Apply the real handler, discard its response and answer with the injected error
+			// (a concurrent writer created the resource first).
+			c.w = discardingWriter{}
+			f.serveRoute(c, r)
+			c.w = rec
+		}
 		for k, vs := range fl.headers {
 			for _, v := range vs {
 				rec.Header().Add(k, v)
@@ -641,6 +655,13 @@ func (c *rctx) errCode(status, code int, msg string) {
 }
 
 func (c *rctx) notFound(what string) { c.err(http.StatusNotFound, what+" not found") }
+
+// codeAlreadyExists is the Capella error code for a duplicate child resource (bucket, scope,
+// collection, credential, allowed CIDR).
+const codeAlreadyExists = 1010
+
+// exists answers 409 for a duplicate child resource with Capella's "already exists" code.
+func (c *rctx) exists(msg string) { c.errCode(http.StatusConflict, codeAlreadyExists, msg) }
 
 // json parses the request body once. An empty body is an empty object; a malformed one is
 // answered with 400 and false is returned.

@@ -26,9 +26,12 @@ func TestWorkflowsLint(t *testing.T) {
 	release := loadYAML(t, filepath.Join(wfDir, "release.yml"))
 	jobs, _ := release["jobs"].(map[string]any)
 	goreleaser, _ := jobs["goreleaser"].(map[string]any)
-	needs := goreleaser["needs"]
-	if !needsContains(needs, "gate") {
-		t.Fatalf("release.yml goreleaser job must need gate, got %#v", needs)
+	if goreleaser == nil {
+		t.Fatal("release.yml has no goreleaser job")
+	}
+	// The nightly is a health signal: goreleaser never waits for it.
+	if needs := goreleaser["needs"]; needsContains(needs, "nightly-health") || needsContains(needs, "gate") {
+		t.Fatalf("release.yml goreleaser job must not need the nightly report, got %#v", needs)
 	}
 
 	for _, name := range []string{"ci.yml", "release.yml"} {
@@ -103,6 +106,19 @@ func TestNightlyWorkflow(t *testing.T) {
 		}
 	}
 	runs := stepRuns(it)
+	// The probe dispatch: its name marks it for dedupe, its input reaches the shell only
+	// through env (no ${{ }} expansion inside run:), and the default runs the whole suite.
+	if !strings.Contains(asString(wf["run-name"]), "probe: ") {
+		t.Errorf("run-name = %v, want a probe dispatch named \"probe: KIND\" (dedupe.ProbeTitlePrefix)", wf["run-name"])
+	}
+	for _, want := range []string{`CBCTL_IT_PROBE: ${{ inputs.probe }}`, `"") go test -tags=integration -timeout 290m -v ./internal/integration/... ;;`} {
+		if !strings.Contains(raw, want) {
+			t.Errorf("nightly.yml must contain %q", want)
+		}
+	}
+	if strings.Contains(runs, "inputs.") {
+		t.Error("nightly.yml run: scripts must not expand inputs directly (use env)")
+	}
 	for _, want := range []string{
 		"::error::secret CAPELLA_SANDBOX_API_KEY is empty", // preflight
 		"CBCTL_IT_LOG=$GITHUB_WORKSPACE/",                  // absolute artifact paths

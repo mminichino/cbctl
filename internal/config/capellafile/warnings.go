@@ -44,7 +44,7 @@ func warningsAt(cfg *Config, now time.Time) []Notice {
 					out = append(out, Notice{
 						What: fmt.Sprintf("%s: deletionProtection is not set, so the cluster can be deleted by 'destroy' or 'cluster delete'",
 							where(cp)),
-						Action: fmt.Sprintf("Add deletionProtection: true to the cluster, or run 'cbctl capella cluster protect %s --project %s'.",
+						Action: fmt.Sprintf("Run 'cbctl capella cluster protect %s --project %s --on'; it records the setting in capella.yaml.",
 							clusterName, e.Name()),
 					})
 				}

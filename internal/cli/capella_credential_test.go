@@ -409,7 +409,7 @@ func TestCredentialDelete(t *testing.T) {
 		}
 	})
 	t.Run("unknown", func(t *testing.T) {
-		wantExit(t, runResource(t, "credential", "delete", "clu", "ghost", "-y"), ExitConfigInvalid, "credential ghost not found")
+		wantContains(t, mustRun(t, "credential", "delete", "clu", "ghost", "-y").Stdout, "credential clu/ghost not found, nothing to do")
 	})
 	t.Run("delete", func(t *testing.T) {
 		res := mustRun(t, "credential", "delete", "clu", "app_ro", "--yes")

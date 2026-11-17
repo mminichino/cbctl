@@ -169,7 +169,8 @@ func forwardToAdd(cmd *cobra.Command, args []string) error {
 	}
 	add.SetContext(cmd.Context())
 	if err := add.ValidateArgs(args); err != nil {
-		return &CLIError{Code: ExitConfigInvalid, Message: err.Error()}
+		return &CLIError{Code: ExitConfigInvalid, Message: err.Error(),
+			Action: fmt.Sprintf("run 'cbctl capella %s add --help' for usage", kind)}
 	}
 	return add.RunE(add, args)
 }

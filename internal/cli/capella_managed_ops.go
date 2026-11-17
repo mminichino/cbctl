@@ -15,7 +15,9 @@ import (
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/presets"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
 
@@ -213,7 +215,13 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 			return err
 		}
 		if err := spec.remove(cmd, args, probe); err != nil {
-			return err
+			// Not in the file: still act on Capella, so a rerun of a finished delete is a no-op
+			// ("not found, nothing to do") and a resource only Capella has can be deleted.
+			var ce *CLIError
+			if spec.kind == "cluster" || mf.noApply || !errorAsCLI(err, &ce) || ce.Code != ExitConfigInvalid || !strings.Contains(ce.Message, "is not in "+file) {
+				return err
+			}
+			return direct(cmd, args)
 		}
 		label := spec.label(args)
 		if mf.noApply {
@@ -255,7 +263,7 @@ func removeFromFile(cmd *cobra.Command, ed *capellafile.Editor, spec deleteSpec,
 	if err := spec.remove(cmd, args, ed); err != nil {
 		return err
 	}
-	text, err := ed.Text()
+	text, err := editedText(ed)
 	if err != nil {
 		return err
 	}
@@ -458,9 +466,35 @@ func managedCIDRCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *cap
 
 // ---- buckets, scopes, collections --------------------------------------------------------------
 
-func managedBucketAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
+func managedBucketAdd(cmd *cobra.Command, args []string, env *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	name := args[1]
 	ch := cmd.Flags().Changed
+	settings := func(b capellafile.Obj) {
+		for flag, key := range map[string]string{
+			"type": "type", "storage-backend": "storageBackend", "durability": "durabilityLevel",
+			"conflict-resolution": "bucketConflictResolution", "eviction-policy": "evictionPolicy"} {
+			if ch(flag) {
+				b[key] = flagString(cmd, flag)
+			}
+		}
+		for flag, key := range map[string]string{
+			"vbuckets": "vbuckets", "replicas": "replicas", "ttl": "timeToLiveInSeconds", "priority": "priority"} {
+			if ch(flag) {
+				b[key] = int64(flagInt(cmd, flag))
+			}
+		}
+		if ch("flush") {
+			b["flushEnabled"] = flagBool(cmd, "flush")
+		}
+	}
+	// A bucket in the file but not in Capella is an earlier create that did not finish. Like
+	// capellactl, the given settings go into its entry and the bucket is created, because a
+	// later update could not set the storage backend or type.
+	finish := recordedButMissingBucket(cmd, args, env, ed)
+	if finish {
+		fmt.Fprintf(cmd.ErrOrStderr(), "bucket %s is in %s but not in Capella yet (an earlier run did not finish); creating it now\n",
+			name, fileName(ed))
+	}
 	return Mutation{
 		Target:      "bucket/" + args[0] + "/" + name,
 		Question:    fmt.Sprintf("Add bucket %s to %s in %s and create it in Capella?", name, args[0], fileName(ed)),
@@ -470,30 +504,49 @@ func managedBucketAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *cape
 			if err != nil {
 				return err
 			}
-			if ed.FindBy(cl, "buckets", "name", name) != nil {
+			if b := ed.FindBy(cl, "buckets", "name", name); b != nil {
+				if finish {
+					given := capellafile.Obj{}
+					settings(given)
+					if ch("memory") {
+						given["memoryAllocationInMb"] = int64(flagInt(cmd, "memory"))
+					}
+					for k, v := range given {
+						ed.Set(b, []string{k}, v)
+					}
+				}
 				return nil
 			}
 			b := capellafile.Obj{"name": name, "memoryAllocationInMb": int64(flagInt(cmd, "memory"))}
-			for flag, key := range map[string]string{
-				"type": "type", "storage-backend": "storageBackend", "durability": "durabilityLevel",
-				"conflict-resolution": "bucketConflictResolution", "eviction-policy": "evictionPolicy"} {
-				if ch(flag) {
-					b[key] = flagString(cmd, flag)
-				}
-			}
-			for flag, key := range map[string]string{
-				"vbuckets": "vbuckets", "replicas": "replicas", "ttl": "timeToLiveInSeconds", "priority": "priority"} {
-				if ch(flag) {
-					b[key] = int64(flagInt(cmd, flag))
-				}
-			}
-			if ch("flush") {
-				b["flushEnabled"] = flagBool(cmd, "flush")
-			}
+			settings(b)
 			ed.Append(cl, "buckets", b)
 			return nil
 		},
 	}, nil
+}
+
+// recordedButMissingBucket reports whether bucket args[1] of cluster args[0] is in the file
+// while its cluster exists in Capella without it. Any lookup failure reports false, so the
+// usual plan decides.
+func recordedButMissingBucket(cmd *cobra.Command, args []string, env *envRuntime, ed *capellafile.Editor) bool {
+	if env == nil || env.runtime == nil {
+		return false
+	}
+	cl, err := clusterEntry(cmd, args, ed)
+	if err != nil || ed.FindBy(cl, "buckets", "name", args[1]) == nil {
+		return false
+	}
+	t, err := env.locateCluster(args[0], projectFlag(cmd))
+	if err != nil {
+		return false
+	}
+	pid, cid := t.ids()
+	if t.freeTier() {
+		_, _, err = env.Client.GetFreeBucket(env.Ctx, pid, cid, capellaapi.BucketID(args[1]))
+	} else {
+		_, _, err = env.Client.GetBucket(env.Ctx, pid, cid, capellaapi.BucketID(args[1]))
+	}
+	return errors.Is(err, capellaapi.ErrNotFound)
 }
 
 func managedBucketUpdate(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
@@ -608,9 +661,14 @@ func managedCollectionSet(add bool) managedBuild {
 				if err != nil {
 					return err
 				}
-				s, err := scopeEntry(ed, b, scope)
-				if err != nil {
-					return err
+				s := ed.FindBy(b, "scopes", "name", scope)
+				if s == nil && add && scope != resources.DefaultScope {
+					// As in capellactl, adding a collection to a new scope declares the scope too.
+					ed.Append(b, "scopes", capellafile.Obj{"name": scope})
+					s = ed.FindBy(b, "scopes", "name", scope)
+				}
+				if s == nil {
+					return notInFile("scope", scope, fileName(ed))
 				}
 				c := ed.FindBy(s, "collections", "name", name)
 				switch {
@@ -660,7 +718,23 @@ func managedCredential(create bool) managedBuild {
 			collections: flagStrings(cmd, "collection"), allBuckets: flagBool(cmd, "all-buckets"),
 		}
 		var access []any
-		if create || af.given() {
+		if !create && af.given() && af.privileges == "" {
+			// As in capellactl, an update that names only the resources keeps the privileges of
+			// the credential's one grant in the file.
+			privs, err := filePrivileges(cmd, args, ed)
+			if err != nil {
+				return Mutation{}, err
+			}
+			af.privileges = "read" // validated placeholder; replaced by the file's privileges below
+			entry, err := af.grant()
+			if err != nil {
+				return Mutation{}, err
+			}
+			entry.Privileges = privs
+			if access, err = accessToFile(entry); err != nil {
+				return Mutation{}, err
+			}
+		} else if create || af.given() {
 			entry, err := af.grant()
 			if err != nil {
 				return Mutation{}, err
@@ -700,6 +774,10 @@ func managedCredential(create bool) managedBuild {
 						entry["password"] = pw
 					}
 					ed.Append(cl, "databaseCredentials", entry)
+				case create && !sameFileAccess(ed.Child(c, "access"), access):
+					// create never rewrites a declared credential: changing access is an update.
+					return Errorf(ExitBlocked, fmt.Sprintf("change it with 'cbctl capella credential update %s %s'", args[0], name),
+						"credential %s is already in %s with different access", name, fileName(ed))
 				default:
 					if pw != "" {
 						ed.Set(c, []string{"password"}, pw)
@@ -712,6 +790,48 @@ func managedCredential(create bool) managedBuild {
 			},
 		}, nil
 	}
+}
+
+// filePrivileges returns the privileges of the one access grant of credential args[1] in the
+// file. A credential that is not in the file, or has several grants, is a usage error.
+func filePrivileges(cmd *cobra.Command, args []string, ed *capellafile.Editor) ([]string, error) {
+	cl, err := clusterEntry(cmd, args, ed)
+	if err != nil {
+		return nil, err
+	}
+	c := ed.FindBy(cl, "databaseCredentials", "name", args[1])
+	if c == nil {
+		return nil, notInFile("credential", args[1], fileName(ed))
+	}
+	var grants []struct {
+		Privileges []string `yaml:"privileges"`
+	}
+	if n := ed.Child(c, "access"); n != nil {
+		if err := n.Decode(&grants); err != nil {
+			return nil, Errorf(ExitConfigInvalid, "fix the access of the credential in "+fileName(ed), "reading the access of credential %s: %v", args[1], err)
+		}
+	}
+	switch len(grants) {
+	case 1:
+		return grants[0].Privileges, nil
+	case 0:
+		return nil, usageError("pass --privileges read, write or read+write", "credential %s has no access grant in %s", args[1], fileName(ed))
+	default:
+		return nil, usageError("pass --privileges with the resources to replace them with one grant, or edit "+fileName(ed),
+			"credential %s has several access grants in %s", args[1], fileName(ed))
+	}
+}
+
+// sameFileAccess reports whether the access node of a credential in the file grants exactly what
+// access does (privilege aliases and grouping do not matter).
+func sameFileAccess(node *yaml.Node, access []any) bool {
+	var declared any
+	if node != nil {
+		if err := node.Decode(&declared); err != nil {
+			return false
+		}
+	}
+	return len(resources.AccessChanges(access, declared)) == 0
 }
 
 // accessToFile converts one API access grant into its capella.yaml form.
@@ -883,6 +1003,9 @@ func managedClusterBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, e
 			if err != nil {
 				return err
 			}
+			if err := refuseFreeEntry(ed, cl); err != nil {
+				return err
+			}
 			b := childMap(ed, cl, "backupSchedule")
 			if (b == nil || ed.Child(b, "interval") == nil) && !ch("every") || (b == nil || ed.Child(b, "retention") == nil) && !ch("retain") {
 				return usageError("a new backup schedule needs --every HOURS and --retain DURATION",
@@ -915,11 +1038,17 @@ func managedClusterBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, e
 
 var backupDayValues = backupDays
 
+// refuseFreeEntry fails with ExitBlocked when the cluster entry is a free-tier cluster, which has
+// no backups (the same refusal as the direct commands).
+func refuseFreeEntry(ed *capellafile.Editor, cl *yaml.Node) error {
+	if t := ed.Child(cl, "tier"); t != nil && t.Kind == yaml.ScalarNode && t.Value == "free" {
+		return blockedError("create a provisioned cluster for data that needs backups ('cbctl capella cluster create')", "%s", freeNoBackups)
+	}
+	return nil
+}
+
 func managedBucketBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	ch := cmd.Flags().Changed
-	if !ch("day") && !ch("start-at") && !ch("incremental-every") && !ch("retention") && !ch("cost-optimized") {
-		return Mutation{}, usageError("add at least one schedule option, for example --retention 90days", "nothing to set: no schedule option was given")
-	}
 	if ch("day") && !slices.Contains(backupDayValues, flagString(cmd, "day")) {
 		return Mutation{}, usageError("use one of "+strings.Join(backupDayValues, ", "), "invalid --day %q", flagString(cmd, "day"))
 	}
@@ -942,14 +1071,30 @@ func managedBucketBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, ed
 			if err != nil {
 				return err
 			}
+			if err := refuseFreeEntry(ed, cl); err != nil {
+				return err
+			}
 			b, err := bucketEntry(ed, cl, bucket)
 			if err != nil {
 				return err
 			}
-			if s := childMap(ed, b, "backupSchedule"); s != nil {
+			s := childMap(ed, b, "backupSchedule")
+			isNew := s == nil || ed.Child(s, "ensure") != nil
+			if s != nil {
 				ed.Delete(s, "ensure")
 			}
 			put := func(k string, v any) { ed.SetOrdered(b, []string{"backupSchedule", k}, v, capellafile.BucketKeyOrder) }
+			if isNew {
+				// A new schedule records every value, so the file shows what Capella runs.
+				def := bucketScheduleDefaults()
+				for _, k := range []string{"dayOfWeek", "startAt", "incrementalEvery", "retentionTime", "costOptimizedRetention"} {
+					v := def[k]
+					if n, ok := v.(int); ok {
+						v = int64(n)
+					}
+					put(k, v)
+				}
+			}
 			if ch("day") {
 				put("dayOfWeek", flagString(cmd, "day"))
 			}
@@ -975,14 +1120,16 @@ func managedBackupDelete(kind string, bucketLevel bool) managedBuild {
 	return func(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 		target := kind + "/" + args[0]
 		what := "the backup schedule of " + args[0]
+		owner := "cluster " + args[0]
 		if bucketLevel {
 			target += "/" + args[1]
 			what = "the backup schedule of bucket " + args[1]
+			owner = "bucket " + args[1] + " of " + args[0]
 		}
 		return Mutation{
 			Target:      target,
 			Question:    fmt.Sprintf("Mark %s absent in %s and delete it in Capella?", what, fileName(ed)),
-			NoopMessage: fmt.Sprintf("there is no %s; nothing to do", what),
+			NoopMessage: owner + " has no backup schedule; nothing to do",
 			Edit: func(ed *capellafile.Editor) error {
 				cl, err := clusterEntry(cmd, args, ed)
 				if err != nil {
@@ -1042,11 +1189,19 @@ func (d diskChange) any() bool {
 	return d.diskType != "" || d.size != nil || d.iops != nil || d.autoExpansion != nil
 }
 
-// apply returns the group's new disk mapping. A new type starts from that type's defaults (size
-// and IOPS belong to the type); otherwise the given values change the current disk.
+// apply returns the group's new disk mapping. A new type starts from that type's defaults, but
+// keeps the current size where the type allows it (IOPS become the recommendation for the
+// size); otherwise the given values change the current disk.
 func (d diskChange) apply(provider string, current capellafile.Obj) capellafile.Obj {
-	if d.diskType != "" {
-		return diskToFile(makeDisk(provider, d.diskType, d.size, d.iops, d.autoExpansion))
+	if curType, _ := current["type"].(string); d.diskType != "" && d.diskType != curType {
+		size := d.size
+		if cur, ok := current["storage"].(int64); ok && size == nil && !fixedSizeDisk(provider, d.diskType) {
+			keep := int(cur)
+			if t, ok := presetDisk(provider, d.diskType); !ok || len(t.Sizes) == 0 || slices.Contains(t.Sizes, keep) {
+				size = &keep
+			}
+		}
+		return diskToFile(makeDisk(provider, d.diskType, size, d.iops, d.autoExpansion))
 	}
 	out := capellafile.Obj{}
 	for k, v := range current {
@@ -1139,7 +1294,16 @@ func managedClusterUpdate(cmd *cobra.Command, args []string, _ *envRuntime, ed *
 						current, _ = ed.Decode(dn)
 					}
 				}
-				ed.Set(gn, []string{"node", "disk"}, disk.apply(clusterProviderOf(ed, cl), current))
+				provider := clusterProviderOf(ed, cl)
+				newType := disk.diskType
+				if newType == "" {
+					newType, _ = current["type"].(string)
+				}
+				if fixedSizeDisk(provider, newType) && (disk.size != nil || disk.iops != nil) {
+					return usageError("choose a larger type with --disk-type (for example P20), or Ultra to set size and IOPS yourself",
+						"azure disk type %s has a size and IOPS set by the type", newType)
+				}
+				ed.Set(gn, []string{"node", "disk"}, disk.apply(provider, current))
 			}
 			return nil
 		},
@@ -1165,6 +1329,33 @@ func managedGroupAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capel
 	}
 	key := strings.Join(names, ",")
 	disk := diskChangeOf(cmd)
+	var picked capellafile.Obj
+	if canPrompt(cmd) {
+		if cl, err := clusterEntry(cmd, args, ed); err == nil {
+			if _, err := ed.Group(cl, key); err != nil { // a new group: ask what capellactl asks
+				w := promptOf(cmd)
+				if !ch("nodes") {
+					if nodes, err = w.askInt("Nodes", 2, func(n int) error {
+						if n < otherGroupMin || n > otherGroupMax {
+							return fmt.Errorf("an extra group has %d–%d nodes", otherGroupMin, otherGroupMax)
+						}
+						return nil
+					}); err != nil {
+						return Mutation{}, err
+					}
+				}
+				if disk.diskType == "" && disk.size == nil && disk.iops == nil {
+					provider := clusterProviderOf(ed, cl)
+					d, err := w.askDisk(provider, dataGroupDisk(ed, cl, provider))
+					if err != nil {
+						return Mutation{}, err
+					}
+					size, iops := intOrNil(d.size), intOrNil(d.iops)
+					picked = diskToFile(makeDisk(provider, d.diskType, size, iops, disk.autoExpansion))
+				}
+			}
+		}
+	}
 	return Mutation{
 		Target:      "cluster/" + args[0],
 		Question:    fmt.Sprintf("Add service group %s to %s in %s and apply it?", key, args[0], fileName(ed)),
@@ -1173,6 +1364,9 @@ func managedGroupAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capel
 			cl, err := clusterEntry(cmd, args, ed)
 			if err != nil {
 				return err
+			}
+			if v := ed.Child(cl, "tier"); v != nil && v.Value == "free" {
+				return blockedError("create a provisioned cluster for that ('cbctl capella cluster create')", "%s", freeTierBlocked)
 			}
 			if _, single, _ := fileGroups(cl); single {
 				return usageError("create a multiNode cluster to add groups", "singleNode clusters have exactly one service group")
@@ -1208,7 +1402,10 @@ func managedGroupAdd(cmd *cobra.Command, args []string, _ *envRuntime, ed *capel
 				compute["ram"] = int64(flagInt(cmd, "ram"))
 			}
 			node["compute"] = compute
-			if disk.any() {
+			switch {
+			case picked != nil:
+				node["disk"] = picked
+			case disk.any():
 				cur, _ := node["disk"].(map[string]any)
 				node["disk"] = disk.apply(clusterProviderOf(ed, cl), cur)
 			}
@@ -1270,7 +1467,7 @@ func addClusterCreateFlags(cmd *cobra.Command) {
 	f.Int("cpu", 0, "vCPUs per node (overrides the preset)")
 	f.Int("ram", 0, "RAM GB per node (overrides the preset)")
 	f.StringArray("group", nil, "Service group SERVICES:NODESxCPU/RAM[:DISK] (repeatable), for example data:3x8/32 or index,query:2x8/32:type=io2")
-	f.String("disk-type", "", "Disk type (default per provider)")
+	f.String("disk-type", "", "Disk type (default per provider; see 'cbctl capella cluster disk-types')")
 	f.Int("disk-size", 0, "Disk GB per node")
 	f.Int("disk-iops", 0, "Disk IOPS")
 	f.Bool("disk-auto-expansion", false, "Azure: let disk storage expand automatically")
@@ -1298,7 +1495,7 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 	parts := strings.Split(text, ":")
 	help := "write each --group as SERVICES:NODESxCPU/RAM[:DISK], for example data:3x8/32 or index,query:2x8/32:type=io2"
 	if len(parts) != 2 && len(parts) != 3 {
-		return nil, usageError(help, "%s: expected SERVICES:NODESxCPU/RAM[:DISK]", where)
+		return nil, usageError(help, "%s: expected SERVICES:NODESxCPU/RAM[:DISK], e.g. data:3x8/32", where)
 	}
 	services, err := parseServices(parts[0], where)
 	if err != nil {
@@ -1306,37 +1503,39 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 	}
 	m := groupSpecPattern.FindStringSubmatch(parts[1])
 	if m == nil {
-		return nil, usageError(help, "%s: expected NODESxCPU/RAM, for example 3x8/32 (got %q)", where, parts[1])
+		return nil, usageError(help, "%s: expected NODESxCPU/RAM, e.g. 3x8/32 (got '%s')", where, parts[1])
 	}
 	disk := base
 	if len(parts) == 3 {
 		for _, item := range strings.Split(parts[2], ",") {
 			k, v, ok := strings.Cut(strings.TrimSpace(item), "=")
 			k, v = strings.TrimSpace(k), strings.TrimSpace(v)
-			if !ok || v == "" {
-				return nil, usageError("use type=, size=, iops= or auto-expansion=, for example type=io2,size=200", "%s: invalid disk option %q", where, item)
+			if !ok || !slices.Contains([]string{"type", "size", "iops", "auto-expansion"}, k) {
+				return nil, usageError("use type=, size=, iops= or auto-expansion=, for example data:3x8/32:type=io2,size=200", "%s: unknown disk option '%s'", where, k)
 			}
 			switch k {
 			case "type":
+				if v == "" {
+					return nil, usageError("give a disk type, for example type=io2 ('cbctl capella cluster disk-types' lists them)", "%s: type= has no value", where)
+				}
 				disk.diskType = v
 			case "size", "iops":
 				var n int
-				if _, err := fmt.Sscanf(v, "%d", &n); err != nil || fmt.Sprint(n) != v {
-					return nil, usageError("give a whole number, for example size=200", "%s: %s must be a whole number (got %q)", where, k, v)
+				if _, err := fmt.Sscanf(v, "%d", &n); err != nil || fmt.Sprint(n) != v || n < 0 {
+					return nil, usageError("give a whole number, for example size=200", "%s: %s must be a whole number (got '%s')", where, k, v)
 				}
 				if k == "size" {
 					disk.size = &n
 				} else {
 					disk.iops = &n
 				}
-			case "auto-expansion":
+			default: // auto-expansion
+				v = strings.ToLower(v)
 				if v != "true" && v != "false" {
-					return nil, usageError("give auto-expansion=true or auto-expansion=false", "%s: auto-expansion is true or false (got %q)", where, v)
+					return nil, usageError("give auto-expansion=true or auto-expansion=false", "%s: auto-expansion is true or false (got '%s')", where, v)
 				}
 				b := v == "true"
 				disk.autoExpansion = &b
-			default:
-				return nil, usageError("use type=, size=, iops= or auto-expansion=", "%s: unknown disk option %q", where, k)
 			}
 		}
 	}
@@ -1356,7 +1555,9 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 	}, nil
 }
 
-// pickProject chooses the project of a new cluster: --project, else the file's only project.
+// pickFileProject chooses the project of a new cluster: --project, else the file's only project.
+// With several projects and a terminal it asks (as capellactl did) and records the answer as
+// --project, so later calls for the same invocation pick the same project.
 func pickFileProject(cmd *cobra.Command, ed *capellafile.Editor) (string, *yaml.Node, error) {
 	name := projectFlag(cmd)
 	if !cmd.Flags().Changed("project") {
@@ -1367,12 +1568,22 @@ func pickFileProject(cmd *cobra.Command, ed *capellafile.Editor) (string, *yaml.
 		case 1:
 			name = names[0]
 		default:
-			return "", nil, usageError("add --project NAME ("+strings.Join(names, ", ")+")", "%s declares several projects", fileName(ed))
+			if !canPrompt(cmd) {
+				return "", nil, usageError("add --project NAME ("+strings.Join(names, ", ")+")", "%s declares several projects", fileName(ed))
+			}
+			picked, err := askProject(promptOf(cmd), names)
+			if err != nil {
+				return "", nil, err
+			}
+			if err := cmd.Flags().Set("project", picked); err != nil {
+				return "", nil, fmt.Errorf("recording the project: %w", err)
+			}
+			name = picked
 		}
 	}
 	node, ok := ed.FindProject(name)
 	if !ok {
-		return "", nil, notInFile("project", name, fileName(ed))
+		return "", nil, projectNotInFile(ed, name, func(p string) string { return "--project " + p })
 	}
 	return name, node, nil
 }
@@ -1393,22 +1604,137 @@ func fileCIDRs(ed *capellafile.Editor) []string {
 	return out
 }
 
+// wizardAnswerFlags are the cluster create flags the wizard fills in; on a retry the ones the
+// user did not type are cleared and asked again.
+var wizardAnswerFlags = []string{"provider", "region", "size", "group", "cidr", "support-plan", "nodes", "cpu",
+	"ram", "disk-type", "disk-size", "disk-iops"}
+
+// wizardRunning marks cmd while wizardClusterCreate builds the mutation, so the nested
+// managedClusterCreate uses the answers instead of starting the wizard again.
+const wizardRunning = "cbctl.cluster-wizard"
+
+// wizardClusterCreate runs the cluster create wizard w and builds the mutation from its answers.
+// When the answers together make capella.yaml invalid (for example a single-node size with
+// --availability multi), it shows the problems and asks the provider, size and the rest again,
+// keeping the name and type, as capellactl did, at most wizardTries times; the last invalid
+// answer is reported by the usual validation.
+func wizardClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *capellafile.Editor, w *clusterWizard,
+	name, cidr string) (Mutation, error) {
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.Annotations[wizardRunning] = "1"
+	defer delete(cmd.Annotations, wizardRunning)
+	given := map[string]bool{}
+	for _, f := range wizardAnswerFlags {
+		given[f] = cmd.Flags().Changed(f)
+	}
+	spec, err := w.run(cmd, name, cidr)
+	if err != nil {
+		return Mutation{}, err
+	}
+	for attempt := 1; ; attempt++ {
+		if err := spec.apply(cmd); err != nil {
+			return Mutation{}, err
+		}
+		m, err := managedClusterCreate(cmd, args, e, ed)
+		if err != nil || attempt >= wizardTries {
+			return m, err
+		}
+		var invalid *CLIError
+		if verr := trialEdit(cmd, ed, m); !errors.As(verr, &invalid) || invalid.Code != ExitConfigInvalid {
+			return m, nil
+		}
+		printError(invalid.Message)
+		printAction("Please try again: choose the cloud provider and size again.")
+		if err := clearFlags(cmd, wizardAnswerFlags, given); err != nil {
+			return Mutation{}, err
+		}
+		if spec, err = w.details(cmd, spec, cidr); err != nil {
+			return Mutation{}, err
+		}
+	}
+}
+
+// trialEdit applies m to a fresh copy of the file and validates the result, writing nothing.
+func trialEdit(cmd *cobra.Command, ed *capellafile.Editor, m Mutation) error {
+	trial, err := capellafile.OpenEditor(ed.Path)
+	if err != nil {
+		return nil // the real edit reports it
+	}
+	if err := m.Edit(trial); err != nil {
+		return err
+	}
+	text, err := trial.Text()
+	if err != nil {
+		return nil // the real edit reports it
+	}
+	_, err = validateCandidateEnv(trial, text, envFrom(cmd))
+	return err
+}
+
+// clearFlags resets the named flags the user did not give to their defaults and unset state.
+func clearFlags(cmd *cobra.Command, names []string, given map[string]bool) error {
+	for _, n := range names {
+		f := cmd.Flags().Lookup(n)
+		if f == nil || given[n] {
+			continue
+		}
+		if sv, ok := f.Value.(pflag.SliceValue); ok {
+			if err := sv.Replace(nil); err != nil {
+				return fmt.Errorf("resetting --%s: %w", n, err)
+			}
+		} else if err := f.Value.Set(f.DefValue); err != nil {
+			return fmt.Errorf("resetting --%s: %w", n, err)
+		}
+		f.Changed = false
+	}
+	return nil
+}
+
 func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	ch := cmd.Flags().Changed
 	name, err := resolveClusterName(cmd, args, "name")
 	if err != nil {
 		return Mutation{}, err
 	}
-	if name == "" && e != nil && !e.Ephemeral {
+	// Capella allows one free-tier cluster per organization: the wizard does not offer it once it
+	// is used, and --free-tier is refused before anything is written when it is used.
+	freeUsedBy, freeKnown := "", false
+	lookupFree := func() {
+		if freeKnown || e == nil || e.runtime == nil || e.Client == nil {
+			return
+		}
+		if u, err := e.freeTierUsedBy(); err == nil {
+			freeUsedBy, freeKnown = u, true
+		}
+	}
+	// With a real capella.yaml, check it and what Capella runs before asking anything, as
+	// capellactl did: a file that is already invalid stops here, and the name and network are
+	// checked against the clusters only Capella knows.
+	var networks *capellaNetworks
+	fileProject := ""
+	if e != nil && !e.Ephemeral {
+		if _, err := validateCandidateEnv(ed, ed.Original, envFrom(e.cmd)); err != nil {
+			return Mutation{}, err
+		}
+		if p, _, err := pickFileProject(cmd, ed); err == nil {
+			fileProject = p
+			if networks, err = readCapellaNetworks(e, ed, p); err != nil {
+				return Mutation{}, err
+			}
+		}
+	}
+	// On a terminal, capellactl asks for what the flags leave open: everything when NAME is
+	// missing, and the type, size and the rest when NAME is given but nothing sizes the cluster.
+	if e != nil && !e.Ephemeral && cmd.Annotations[wizardRunning] == "" &&
+		(name == "" || !sizedByFlags(cmd) && !flagBool(cmd, "free-tier")) {
 		if _, tty := e.terminalIn(); tty {
-			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, suggestCIDR(fileCIDRs(ed)))
-			if err != nil {
-				return Mutation{}, err
-			}
-			if err := spec.apply(cmd); err != nil {
-				return Mutation{}, err
-			}
-			name = spec.Name
+			lookupFree()
+			w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
+			w.noFree = freeUsedBy != ""
+			w.cidrCheck = wizardCIDRCheck(fileCIDRs(ed), networks)
+			return wizardClusterCreate(cmd, args, e, ed, w, name, suggestCIDR(networks.used(fileCIDRs(ed))))
 		}
 	}
 	if name == "" {
@@ -1417,6 +1743,12 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	groups := flagStrings(cmd, "group")
 	single := flagBool(cmd, "single-node")
 	free := flagBool(cmd, "free-tier")
+	if free {
+		lookupFree()
+		if freeUsedBy != "" {
+			return Mutation{}, freeTierInUse(freeUsedBy)
+		}
+	}
 	size := flagString(cmd, "size")
 	if len(groups) > 0 {
 		var given []string
@@ -1485,13 +1817,43 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	if err != nil {
 		return Mutation{}, err
 	}
+	replace := false
 	if dup := hasClusterNamed(ed, projNode, name); dup {
-		return Mutation{}, blockedError("change it with 'cbctl capella cluster update' or 'cbctl capella cluster scale'",
-			"cluster %s already exists in %s", name, fileName(ed))
+		if !undeployedEntry(ed, project, name, networks) {
+			return Mutation{}, blockedError("change it with 'cbctl capella cluster update' or 'cbctl capella cluster scale'",
+				"cluster %s already exists in %s", name, fileName(ed))
+		}
+		replace = true
+	} else if networks != nil && networks.names[name] && project == fileProject {
+		return Mutation{}, blockedError("run 'cbctl capella sync' to bring it into "+fileName(ed)+", then change it with 'cbctl capella cluster update'",
+			"cluster %s already exists in project %s in Capella", name, project)
 	}
+	fileNets := fileCIDRs(ed)
+	if replace {
+		// The entry being replaced gives its range back.
+		if _, old, _ := ed.FindCluster(name, project); old != nil {
+			if cp := childMap(ed, old, "cloudProvider"); cp != nil {
+				if v := ed.Child(cp, "cidr"); v != nil {
+					fileNets = slices.DeleteFunc(fileNets, func(c string) bool { return c == v.Value })
+				}
+			}
+		}
+	}
+	used := networks.used(fileNets)
 	cidr := flagString(cmd, "cidr")
 	if cidr == "" {
-		cidr = suggestCIDR(fileCIDRs(ed))
+		cidr = suggestCIDR(used)
+	} else if networks != nil {
+		if err := networks.overlapError(cidr, suggestCIDR(used)); err != nil {
+			return Mutation{}, err
+		}
+	}
+	if other, ok := networks.elsewhereOverlap(cidr); ok && cmd.Flags().Changed("cidr") {
+		printNotice(stderrFrom(cmd), fmt.Sprintf("%s overlaps the network of cluster %s", cidr, other),
+			"none needed unless you will connect the two networks")
+	}
+	if replace {
+		printNotice(stderrFrom(cmd), fmt.Sprintf("%s is in %s but was never deployed to Capella; replacing it", name, fileName(ed)), "")
 	}
 	region := flagString(cmd, "region")
 	if region == "" {
@@ -1507,9 +1869,10 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	}
 	cluster["cloudProvider"] = capellafile.Obj{"type": provider, "region": region, "cidr": cidr}
 	var summary string
+	var after []string
 	if free {
 		cluster["tier"] = "free"
-		summary = "free tier"
+		summary = "free tier, network " + cidr
 	} else {
 		if layout == nil {
 			nodes, cpu, ram := preset.NumOfNodes, preset.CPU, preset.RAM
@@ -1566,24 +1929,95 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 			cluster["enablePrivateDNSResolution"] = true
 		}
 		total := int64(0)
+		var parts []string
+		var warnings []string
+		offered, known := presets.ComputeSizes()[provider]
 		for _, g := range layout {
-			total += g.(capellafile.Obj)["numOfNodes"].(int64)
+			obj := g.(capellafile.Obj)
+			n := obj["numOfNodes"].(int64)
+			total += n
+			comp := obj["node"].(capellafile.Obj)["compute"].(capellafile.Obj)
+			cpu, ram := comp["cpu"].(int64), comp["ram"].(int64)
+			key := joinAny(obj["services"])
+			parts = append(parts, fmt.Sprintf("%s %d × %d/%d", key, n, cpu, ram))
+			if known && !offered.Offered(presets.Size{CPU: int(cpu), RAM: int(ram)}, preset.ConfigurationType == "singleNode") {
+				warnings = append(warnings, fmt.Sprintf("! serviceGroups[%s]: %d vCPU/%d GB is not a known %s size; Capella may reject it (see 'cbctl capella cluster options')",
+					key, cpu, ram, provider))
+			}
 		}
-		summary = fmt.Sprintf("%d group(s), %d node(s)", len(layout), total)
+		if len(layout) > 1 {
+			summary = fmt.Sprintf("%d groups · %d nodes (%s)", len(layout), total, strings.Join(parts, " · "))
+		} else {
+			comp := layout[0].(capellafile.Obj)["node"].(capellafile.Obj)["compute"].(capellafile.Obj)
+			summary = fmt.Sprintf("%d × %d vCPU/%d GB", total, comp["cpu"], comp["ram"])
+		}
+		summary += fmt.Sprintf(", network %s, support %s", cidr, supportPlan)
+		after = append(after, warnings...)
 	}
+	after = append([]string{fmt.Sprintf("New cluster %s in project %s: %s %s, %s", name, project, provider, region, summary)}, after...)
 	return Mutation{
-		Target:    "cluster/" + name,
-		Question:  fmt.Sprintf("Add %s to %s and deploy it now?", name, fileName(ed)),
-		AfterPlan: []string{fmt.Sprintf("New cluster %s in project %s: %s %s, %s, network %s", name, project, provider, region, summary, cidr)},
+		Target:     "cluster/" + name,
+		Question:   fmt.Sprintf("Add %s to %s and deploy it now?", name, fileName(ed)),
+		AfterPlan:  after,
+		AfterApply: func(p *plan.Plan) { recordServerVersion(e, p, project, name) },
 		Edit: func(ed *capellafile.Editor) error {
 			_, pn, err := pickFileProject(cmd, ed)
 			if err != nil {
 				return err
 			}
+			if replace {
+				return replaceUndeployed(ed, project, cluster)
+			}
 			ed.AddCluster(pn, cluster)
 			return nil
 		},
 	}, nil
+}
+
+// dataGroupDisk is the disk of cl's data group (the default of a new group's disk), or nil.
+func dataGroupDisk(ed *capellafile.Editor, cl *yaml.Node, provider string) *capellaapi.Disk {
+	dg, err := ed.Group(cl, "")
+	if err != nil {
+		return nil
+	}
+	src, err := ed.Decode(dg)
+	if err != nil {
+		return nil
+	}
+	node, _ := src["node"].(map[string]any)
+	d, _ := node["disk"].(map[string]any)
+	if d == nil {
+		return nil
+	}
+	num := func(k string) *int {
+		if v, ok := d[k].(int64); ok {
+			return intPtr(int(v))
+		}
+		return nil
+	}
+	t, _ := d["type"].(string)
+	if t == "" {
+		return makeDisk(provider, "", num("storage"), num("iops"), nil)
+	}
+	return &capellaapi.Disk{Type: t, Storage: num("storage"), IOPS: num("iops")}
+}
+
+// intOrNil is &n, or nil when n is 0 (not set).
+func intOrNil(n int) *int {
+	if n == 0 {
+		return nil
+	}
+	return &n
+}
+
+// joinAny joins a YAML list of services with commas.
+func joinAny(v any) string {
+	list, _ := v.([]any)
+	out := make([]string, len(list))
+	for i, s := range list {
+		out[i] = fmt.Sprint(s)
+	}
+	return strings.Join(out, ",")
 }
 
 // dataFirst puts the first group that runs data first, so the 3-27 node rule of the first group
@@ -1640,8 +2074,9 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 		}
 	}
 	return Mutation{
-		Target:   "cluster/" + name,
-		Question: fmt.Sprintf("Add %s (a copy of %s) to %s and deploy it now?", name, source, fileName(ed)),
+		Target:    "cluster/" + name,
+		Question:  fmt.Sprintf("Add %s (a copy of %s) to %s and deploy it now?", name, source, fileName(ed)),
+		AfterPlan: []string{"not copied: " + strings.Join(managedNotCopied(cmd), ", ")},
 		Edit: func(ed *capellafile.Editor) error {
 			srcProj, src, err := ed.FindCluster(source, projectFlag(cmd))
 			var amb *capellafile.AmbiguousError
@@ -1675,7 +2110,21 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 			}
 			cidr := strings.TrimSpace(flagString(cmd, "cidr"))
 			if cidr == "" {
-				cidr = suggestCIDR(fileCIDRs(ed))
+				// Capella wants the network unique in the organization, not only in the file:
+				// avoid the live clusters of every project too, as cluster create does.
+				used := fileCIDRs(ed)
+				if e != nil && !e.Ephemeral {
+					targetName := ""
+					if v := ed.Child(target, "name"); v != nil {
+						targetName = v.Value
+					}
+					networks, err := readCapellaNetworks(e, ed, targetName)
+					if err != nil {
+						return err
+					}
+					used = networks.used(used)
+				}
+				cidr = suggestCIDR(used)
 			}
 			clone := capellafile.Obj{"name": name}
 			srcRegion := ""
@@ -1706,8 +2155,10 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 			case v != "":
 				clone["couchbaseServer"] = capellafile.Obj{"version": v}
 			default:
-				if cs, ok := obj["couchbaseServer"]; ok {
-					clone["couchbaseServer"] = cs
+				cs, _ := obj["couchbaseServer"].(map[string]any)
+				if v, _ := cs["version"].(string); v != "" {
+					// create takes a release line; the source's entry may record the patch it runs
+					clone["couchbaseServer"] = capellafile.Obj{"version": resources.ReleaseLine(v)}
 				}
 			}
 			if !flagBool(cmd, "no-data-model") {
@@ -1732,6 +2183,22 @@ func managedClusterClone(cmd *cobra.Command, args []string, e *envRuntime, ed *c
 			return nil
 		},
 	}, nil
+}
+
+// managedNotCopied is what a file-managed clone leaves behind, in the order the direct clone
+// reports it (notCopied). Region-bound settings (zones, CMEK, private DNS) are never written.
+func managedNotCopied(cmd *cobra.Command) []string {
+	out := []string{"documents", "on/off schedule"}
+	if flagBool(cmd, "no-data-model") {
+		out = append([]string{"data model"}, out...)
+	}
+	if !flagBool(cmd, "with-cidrs") {
+		out = append(out, "allowed CIDRs")
+	}
+	if !flagBool(cmd, "with-credentials") {
+		out = append(out, "database credentials")
+	}
+	return out
 }
 
 // hasClusterNamed reports whether project declares a cluster with this name.

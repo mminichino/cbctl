@@ -46,6 +46,8 @@ func newGroupListCmd() *cobra.Command {
 			return nil
 		})
 	addProjectFlag(cmd, &project)
+	cmd.Long = "List a cluster's service groups: services, nodes, compute and disk, and the cluster's total nodes.\n\n" +
+		"Examples:\n  cbctl capella cluster group list prod-01\n  cbctl capella -o json cluster group list prod-01"
 	return cmd
 }
 

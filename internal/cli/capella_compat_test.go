@@ -226,7 +226,7 @@ func TestClusterWizard(t *testing.T) {
 
 	t.Run("custom groups with a re-asked answer", func(t *testing.T) {
 		f.ResetLog()
-		in := "wiz-01\nmars\naws\n\ncustom\ndata:oops\ndata:3x4/16\nindex,query:2x4/16\n\n\ny\n"
+		in := "wiz-01\n\nmars\naws\ncustom\nm\ndata\n3\n1\n\n\n\ny\nindex,query\n2\n1\n\n\n\nn\n\n\n\ny\n"
 		res := runResourceIn(t, in, "cluster", "create", "--no-wait")
 		if res.Err != nil {
 			t.Fatalf("wizard: %v\n%s\n%s", res.Err, res.Stdout, res.Stderr)
@@ -254,7 +254,7 @@ func TestClusterWizard(t *testing.T) {
 	})
 
 	t.Run("three bad answers give up", func(t *testing.T) {
-		res := runResourceIn(t, "wiz-03\nx\ny\nz\n", "cluster", "create")
+		res := runResourceIn(t, "wiz-03\n\nx\ny\nz\n", "cluster", "create")
 		wantExit(t, res, ExitConfigInvalid, "no valid answer")
 	})
 }
@@ -345,6 +345,18 @@ func TestScheduleApplyIsTargetedApply(t *testing.T) {
 
 	res = mustRun(t, "cluster", "apply", "envclu", "--yes")
 	wantContains(t, res.Stderr, "deprecated", "apply --target cluster/NAME")
+	// capellactl's --project qualifies the cluster (cluster/PROJECT/NAME): the wrong project
+	// selects nothing, the right one applies the cluster.
+	mustRun(t, "cluster", "schedule", "set", "envclu", "--weekend", "08:00-12:00", "--no-apply", "--yes")
+	f.ResetLog()
+	runResource(t, "cluster", "apply", "envclu", "--project", "nope", "--yes")
+	if w := f.Writes(); len(w) != 0 {
+		t.Errorf("--project nope wrote %v", w)
+	}
+	mustRun(t, "cluster", "apply", "envclu", "--project", "envproj", "--yes")
+	if n := f.Count("PUT", "onOffSchedule") + f.Count("POST", "onOffSchedule"); n != 1 {
+		t.Errorf("--project envproj: schedule writes = %d, want 1", n)
+	}
 	mustRun(t, "project", "apply", "envproj", "--yes")
 }
 

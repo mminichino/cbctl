@@ -46,7 +46,7 @@ func newCapellaJanitorCmd() *cobra.Command {
 					"--prefix must end with '-' and have at least 4 characters (got %q)", p)
 			}
 			if timeoutMinutes <= 0 || totalMinutes < 0 {
-				return Errorf(ExitConfigInvalid, "", "--timeout-minutes must be positive and --max-total-minutes not negative")
+				return Errorf(ExitConfigInvalid, "Pass --timeout-minutes 1 or more and --max-total-minutes 0 or more.", "--timeout-minutes must be positive and --max-total-minutes not negative")
 			}
 			return nil
 		},
@@ -121,7 +121,7 @@ func (rt *runtime) runJanitor(o janitorOptions) error {
 		res.Status = "dry-run"
 		rt.report(res, "%d leftover project(s), 0 failed", len(found))
 		if o.failOnLeftovers {
-			return Errorf(ExitError, "", "%d leftover project(s) found", len(found))
+			return Errorf(ExitError, "Run the janitor without --dry-run to delete them.", "%d leftover project(s) found", len(found))
 		}
 		return nil
 	}
@@ -168,7 +168,7 @@ func (rt *runtime) runJanitor(o janitorOptions) error {
 	deleted := len(found) - failed - len(res.Skipped)
 	rt.report(res, "%d leftover project(s) deleted, %d failed, %d skipped", deleted, failed, len(res.Skipped))
 	if failed > 0 || len(res.Skipped) > 0 || o.failOnLeftovers {
-		return Errorf(ExitError, "", "%d leftover project(s) deleted, %d failed, %d skipped", deleted, failed, len(res.Skipped))
+		return Errorf(ExitError, "Run the janitor again; the projects listed above as failed or skipped are still there.", "%d leftover project(s) deleted, %d failed, %d skipped", deleted, failed, len(res.Skipped))
 	}
 	return nil
 }

@@ -44,6 +44,6 @@ func usage(w io.Writer) {
 groups:
   docs   port | port-list | extract-data | index | coverage | ac-coverage | reference | links | doc-map
   api    responses
-  ci     release-gate | scan-secrets | cover-gate | dedupe
+  ci     release-gate | scan-secrets | cover-gate | dedupe | notices
 `)
 }
