@@ -217,8 +217,10 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 		if err := spec.remove(cmd, args, probe); err != nil {
 			// Not in the file: still act on Capella, so a rerun of a finished delete is a no-op
 			// ("not found, nothing to do") and a resource only Capella has can be deleted.
+			// Clusters use the same path: a failed clone that rolled back the file must not
+			// break teardown with "cluster X is not in capella.yaml".
 			var ce *CLIError
-			if spec.kind == "cluster" || mf.noApply || !errorAsCLI(err, &ce) || ce.Code != ExitConfigInvalid || !strings.Contains(ce.Message, "is not in "+file) {
+			if mf.noApply || !errorAsCLI(err, &ce) || ce.Code != ExitConfigInvalid || !strings.Contains(ce.Message, "is not in "+file) {
 				return err
 			}
 			return direct(cmd, args)

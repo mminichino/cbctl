@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Managed `cluster delete` of a name missing from `capella.yaml` falls through to Capella, so a
+  failed clone that rolled back the file can still be torn down.
+
 ## [0.6.0] - 2026-11-17
 
 Folds capellactl into cbctl: every capellactl command is available under `cbctl capella`, and
