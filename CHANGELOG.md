@@ -53,6 +53,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cluster schedule apply`, `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`,
   `--no-cross-cluster-versioning`, `configure --api-base-url`, and
   `configure list|show --output-format legacy`.
+- capellactl behaviour the port had missed: `configure` on a terminal offers to write `capella.yaml`
+  from Capella when the folder has none (or says the organization has no projects yet);
+  `project create` on a terminal without a `capella.yaml` starts one with the new project; `project list` shows
+  an `IN FILE` column when there is a `capella.yaml`; `cluster list` sorts by project and name and
+  its JSON carries capellactl's `projectName`; `cluster create` with several projects in the file
+  and no `--project` asks which one on a terminal.
+
+### Fixed (capellactl port)
+
+- A managed edit of a single-project file (`project:` + `clusters:`) now writes it in the
+  `projects:` form, as `cbctl capella guide config` documents (the `.bak` keeps the old form).
+- `sync` writes advanced credentials' reference comments under their cluster's
+  `databaseCredentials`, not at the end of the file.
+- `configure` stores the key in the same keychain the other commands read.
 
 ### Deprecated
 

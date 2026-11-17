@@ -239,3 +239,34 @@ func pickCloneSource(rt *runtime, w *clusterWizard, project string) (capellaapi.
 	n, _ := strconv.Atoi(v) // validated above
 	return choices[n-1].p, choices[n-1].c, nil
 }
+
+// askProject lists the projects of capella.yaml and asks which one a new cluster goes in; the
+// answer is a number from the list or a project name.
+func askProject(w *clusterWizard, names []string) (string, error) {
+	fmt.Fprintln(w.out, "Projects in capella.yaml:")
+	for i, n := range names {
+		fmt.Fprintf(w.out, "  %d. %s\n", i+1, n)
+	}
+	pick := func(v string) (string, bool) {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= len(names) {
+			return names[n-1], true
+		}
+		for _, n := range names {
+			if n == v {
+				return n, true
+			}
+		}
+		return "", false
+	}
+	v, err := w.ask("Project of the new cluster", "", func(v string) error {
+		if _, ok := pick(strings.TrimSpace(v)); !ok {
+			return fmt.Errorf("give a number from 1 to %d or a project name", len(names))
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	name, _ := pick(strings.TrimSpace(v)) // validated above
+	return name, nil
+}

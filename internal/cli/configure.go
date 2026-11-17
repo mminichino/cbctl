@@ -52,8 +52,19 @@ func checkFormat(f *configureFlags) error {
 	return Errorf(ExitConfigInvalid, "", "--output-format must be cbctl or legacy (got %q)", f.format)
 }
 
-// keyringFactory builds the keyring used by configure. Tests replace it with MemKeyring.
-var keyringFactory = func() settings.Keyring { return settings.OSKeyring{} }
+// keyringFactory, when set, builds the keyring used by configure (tests replace it with
+// MemKeyring). Nil uses the invocation's Deps.Keyring, the keychain every other command reads.
+var keyringFactory func() settings.Keyring
+
+func configureKeyring(cmd *cobra.Command) settings.Keyring {
+	if keyringFactory != nil {
+		return keyringFactory()
+	}
+	if kr := depsFromCmd(cmd).Keyring; kr != nil {
+		return kr
+	}
+	return settings.OSKeyring{}
+}
 
 // newConfigureCmd builds `cbctl configure` (also attached under `capella`).
 func newConfigureCmd() *cobra.Command {
@@ -204,7 +215,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	if home == "" {
 		home = settings.HomeDir(d.Env)
 	}
-	kr := keyringFactory()
+	kr := configureKeyring(cmd)
 	if err := kr.Set(profile, key); err != nil {
 		return Errorf(ExitConfigInvalid, "set CAPELLA_API_KEY in your environment or .env instead", "no OS keychain available; %v", err)
 	}
@@ -241,7 +252,54 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		return enc.Encode(doc)
 	}
 	logging.Info("Saved profile %q (organization %s %s)", profile, orgName, orgID)
-	return nil
+	return offerDiscovery(ctx, cmd, key, orgID, base)
+}
+
+// readStdinLine reads one line through the invocation's shared stdin buffer, so the questions
+// after the key prompt still see the rest of the input.
+func readStdinLine(cmd *cobra.Command) (string, error) {
+	return shareStdin(cmd).(*bufferedStdin).ReadString('\n')
+}
+
+// offerDiscovery offers, on a terminal and when this folder has no capella.yaml yet, to write it
+// from Capella right away (a first 'cbctl capella sync'), as capellactl's configure did. An
+// organization without projects gets the next step instead.
+func offerDiscovery(ctx context.Context, cmd *cobra.Command, key, orgID, base string) error {
+	in := stdinFrom(cmd)
+	if b, ok := in.(*bufferedStdin); ok {
+		in = b.Underlying()
+	}
+	if !depsFromCmd(cmd).IsTTY(in) {
+		return nil
+	}
+	disc, err := discoverConfig(cmd)
+	if err != nil || disc.Exists {
+		return nil //nolint:nilerr // no folder to write into, or a file already there: nothing to offer
+	}
+	client, err := capellaapi.New(key, capellaapi.WithBaseURL(base), capellaapi.WithOrgID(orgID))
+	if err != nil {
+		return err
+	}
+	projects, err := client.ListProjects(ctx)
+	if err != nil {
+		return fmt.Errorf("listing projects: %w", err)
+	}
+	out := cmd.OutOrStdout()
+	if len(projects) == 0 {
+		fmt.Fprintln(out, "This organization has no projects yet. Next: cbctl capella project create NAME")
+		return nil
+	}
+	fmt.Fprint(stderrFrom(cmd), "Discover your projects and clusters and write capella.yaml now? [Y/n]: ")
+	line, err := readStdinLine(cmd)
+	if err != nil && line == "" {
+		fmt.Fprintln(stderrFrom(cmd))
+		return nil
+	}
+	if a := strings.ToLower(strings.TrimSpace(line)); a != "" && a != "y" && a != "yes" {
+		fmt.Fprintln(out, "Run 'cbctl capella sync' when you want capella.yaml.")
+		return nil
+	}
+	return runSync(cmd, &apiFlags{token: key, orgID: orgID, apiHost: base}, &syncFlags{})
 }
 
 func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
@@ -265,7 +323,7 @@ func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
 			}
 			return string(b), nil
 		}
-		line, err := bufio.NewReader(in).ReadString('\n')
+		line, err := readStdinLine(cmd)
 		if err != nil && line == "" {
 			return "", err
 		}
@@ -288,7 +346,7 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 	if err != nil {
 		return err
 	}
-	kr := keyringFactory()
+	kr := configureKeyring(cmd)
 	type row struct {
 		Profile      string `json:"profile"`
 		Organization string `json:"organization"`
@@ -399,7 +457,7 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 			return nil
 		}
 	}
-	_ = keyringFactory().Delete(profile)
+	_ = configureKeyring(cmd).Delete(profile) // best effort: the profile entry below is what matters
 	delete(profiles, profile)
 	if err := store.Save(profiles); err != nil {
 		return err

@@ -218,6 +218,7 @@ Copy `.env.example` to `.env` for local keys (never committed). `cbctl` loads th
 
 ```bash
 cbctl configure --api-key-stdin --org-id <id>   # validate key, save profile + keychain
+cbctl configure                 # on a terminal: paste the key; offers to write capella.yaml from Capella when there is none
 cbctl configure show
 cbctl configure list
 cbctl configure remove --profile default -y
@@ -329,13 +330,13 @@ These commands use the Capella Management API v4 (`--token`/`CAPELLA_API_KEY`, `
 
 | Command | What it does |
 |---|---|
-| `project list\|get\|create\|update\|delete` | Projects. `delete` refuses a non-empty project unless `--cascade` deletes its clusters first (`--discard-snapshots` also drops their backups, `--no-wait` returns once the deletes are accepted). |
+| `project list\|get\|create\|update\|delete` | Projects. `list` adds an `IN FILE` column when there is a `capella.yaml`; `create` on a terminal without a `capella.yaml` writes one with the new project. `delete` refuses a non-empty project unless `--cascade` deletes its clusters first (`--discard-snapshots` also drops their backups, `--no-wait` returns once the deletes are accepted). |
 | `cidr list\|create\|delete CLUSTER CIDR` | Allowed CIDRs. A bare IP becomes `/32` (`/128`); `create` takes `--comment`, `--expires-at` (RFC 3339) and `--allow-any-ip` for `0.0.0.0/0`; at most 75 entries. Creating a present CIDR and deleting a missing one both succeed. |
 | `credential list\|get\|create\|update\|delete CLUSTER NAME` | Database credentials. Access is `--privileges read\|write\|read+write` on `--bucket` (with optional `--scope` and repeatable `--collection`) or `--all-buckets`. A generated 32-character password is printed once; supply your own with `--password-env VAR` or `--password-file PATH`. `update` replaces the access and/or sets a new password (`--rotate-password`). |
 | `bucket list\|get\|add\|update\|delete CLUSTER [NAME]` | Buckets (`bucket create\|exists` remain for the legacy flow). `add` takes `--type`, `--storage-backend`, `--vbuckets`, `--memory`, `--replicas`, `--durability`, `--ttl`, `--flush`, `--conflict-resolution`, `--eviction-policy`, `--priority` and is a no-op when the bucket exists. `update` changes memory, replicas, durability, TTL, flush, priority and cross-cluster versioning. Free-tier clusters only take `--memory` (and `--cross-cluster-versioning` on update). |
 | `scope list\|add\|delete CLUSTER BUCKET [NAME]` | Scopes. `add` is idempotent; `_default` and `_system` cannot be deleted. |
 | `collection list\|add\|update\|delete CLUSTER BUCKET SCOPE [NAME]` | Collections. `add` and `update` take `--max-ttl` (`update` needs Couchbase Server 7.6.0 or later); `_default` and system collections cannot be deleted. |
-| `cluster list\|get\|options\|disk-types` | Read-only. `list` shows every cluster of every project (`--project` limits it); `get CLUSTER` shows nodes, service groups, disks, support plan and connection string; `options` shows what you can deploy (free tier, providers, sizes, plans); `disk-types [--provider P]` lists the disk types with size and IOPS rules. |
+| `cluster list\|get\|options\|disk-types` | Read-only. `list` shows every cluster of every project, sorted by project then name (`--project` limits it; JSON has `project` and capellactl's `projectName`); `get CLUSTER` shows nodes, service groups, disks, support plan and connection string; `options` shows what you can deploy (free tier, providers, sizes, plans); `disk-types [--provider P]` lists the disk types with size and IOPS rules. |
 | `cluster scale CLUSTER` | Change a service group's node count: `--nodes N` or `--step +1\|-1` (mutually exclusive), `--group SERVICES` / `--all-groups`, `--min` / `--max`. Group limits are checked (first group 3-27, extra groups 2-24, at most 27 nodes); scaling in is refused when bucket memory or replicas would not fit (`--skip-capacity-check` overrides). Free tier is blocked (exit 4); a step that is already at its limit is a no-op. Waits until the cluster is healthy unless `--no-wait`. |
 | `cluster update CLUSTER` | Change `--description`, `--support-plan`, `--support-timezone`, and per group `--cpu`, `--ram`, `--disk-type`, `--disk-size`, `--disk-iops`, `--disk-auto-expansion` (`--group` picks the group). A free-tier cluster only takes `--description`. |
 | `cluster power CLUSTER --on\|--off` | Turn a cluster off (storage and data are kept) or on again (`--with-app-service` also starts the linked App Service). Turning off asks for confirmation. |

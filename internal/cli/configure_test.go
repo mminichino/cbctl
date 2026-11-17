@@ -107,7 +107,7 @@ func TestConfigureShowJSONRedacts(t *testing.T) {
 	t.Setenv("CAPELLA_API_KEY", "env-secret-zzzz")
 	t.Setenv("CBCTL_HOME", t.TempDir())
 	keyringFactory = func() settings.Keyring { return settings.NewMemKeyring() }
-	t.Cleanup(func() { keyringFactory = func() settings.Keyring { return settings.OSKeyring{} } })
+	t.Cleanup(func() { keyringFactory = nil })
 
 	var out strings.Builder
 	rootCmd.SetArgs([]string{"configure", "show", "--profile", "default", "-o", "json"})
@@ -134,7 +134,7 @@ func TestConfigureShowConfigFileSource(t *testing.T) {
 	t.Setenv("CAPELLA_API_KEY", "env-secret-zzzz")
 	t.Setenv("CBCTL_CONFIG", "")
 	keyringFactory = func() settings.Keyring { return settings.NewMemKeyring() }
-	t.Cleanup(func() { keyringFactory = func() settings.Keyring { return settings.OSKeyring{} } })
+	t.Cleanup(func() { keyringFactory = nil })
 	store := settings.ProfileStore{Path: settings.ProfilesPath(home)}
 	if err := store.Save(map[string]settings.Profile{"default": {ConfigFile: "/work/prod.yaml"}}); err != nil {
 		t.Fatal(err)
