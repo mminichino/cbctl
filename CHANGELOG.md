@@ -27,6 +27,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   --allow-missing`.
 - `cbctl capella janitor --max-total-minutes`; the janitor continues past a failed cluster or project
   and lists projects whose creation time it cannot read. `.github/workflows/janitor.yml` runs it weekly.
+- `cbctl --version` prints a second line with the licence (`Licensed under Apache-2.0 · Copyright
+  Couchbase, Inc. and contributors`), as capellactl did; the first line is unchanged.
+- CI builds the real binary on Linux, macOS and Windows and smoke-tests it (`TestBinarySmoke`).
+- Capella credential create sends `credentialType: basic`, as capellactl did; the Capella fake answers a
+  duplicate bucket, scope, collection, credential or allowed CIDR with Capella's code 1010.
+- LICENSE is byte-identical to the Apache License 2.0 text again (final newline restored); the runbook's
+  CI/CD section gives the right exit code (4) for a change without a terminal or `-y`.
 
 ### Changed
 

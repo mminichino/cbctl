@@ -63,7 +63,7 @@ func (c *rctx) createCIDR() {
 	}
 	for _, e := range cl.cidrs {
 		if str(e.obj, "cidr") == cidr {
-			c.err(http.StatusConflict, "the CIDR "+cidr+" is already allowed")
+			c.exists("the CIDR " + cidr + " is already allowed")
 			return
 		}
 	}
@@ -249,7 +249,7 @@ func (c *rctx) createBucket() {
 		return
 	}
 	if cl.bucketByName(name) != nil {
-		c.err(http.StatusConflict, "a bucket named "+strconv.Quote(name)+" already exists")
+		c.exists("a bucket named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	b := cl.addBucket(name, body)
@@ -271,7 +271,7 @@ func (c *rctx) createFreeBucket() {
 		return
 	}
 	if cl.bucketByName(name) != nil {
-		c.err(http.StatusConflict, "a bucket named "+strconv.Quote(name)+" already exists")
+		c.exists("a bucket named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	fields := Obj{}
@@ -395,7 +395,7 @@ func (c *rctx) createScope() {
 		return
 	}
 	if b.findScope(name) != nil {
-		c.err(http.StatusConflict, "a scope named "+strconv.Quote(name)+" already exists")
+		c.exists("a scope named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	b.scopes = append(b.scopes, &scope{name: name})
@@ -451,7 +451,7 @@ func (c *rctx) createCollection() {
 		return
 	}
 	if _, r := s.findCollection(name); r != nil {
-		c.err(http.StatusConflict, "a collection named "+strconv.Quote(name)+" already exists")
+		c.exists("a collection named " + strconv.Quote(name) + " already exists")
 		return
 	}
 	obj := Obj{"name": name}
@@ -546,7 +546,7 @@ func (c *rctx) createUser() {
 	}
 	for _, u := range cl.creds {
 		if str(u.obj, "name") == name {
-			c.err(http.StatusConflict, "a credential named "+strconv.Quote(name)+" already exists")
+			c.exists("a credential named " + strconv.Quote(name) + " already exists")
 			return
 		}
 	}

@@ -11,8 +11,14 @@ import (
 	"github.com/mminichino/cbctl/internal/integration"
 )
 
+// lifecycleExtra is a whole environment. The schedule is always on (00:00-24:00, weekend on), so
+// it never turns the cluster off while the suite runs.
 const lifecycleExtra = `
-    deletionProtection: false
+    deletionProtection: true
+    hibernation:
+      timezone: US/Pacific
+      weekdays: "00:00-24:00"
+      weekend: "on"
     allowedCidrs:
       - cidr: 203.0.113.10/32
         comment: cbctl nightly
@@ -33,7 +39,16 @@ const lifecycleExtra = `
 credentialsOutput: ./.cbctl/credentials
 `
 
-// TestLifecycle_CAP032_AC1: validate → plan → apply → second apply (no writes) → drift clean → destroy.
+// lifecycleEdits change a bucket, a CIDR comment and the schedule's time zone.
+var lifecycleEdits = [][2]string{
+	{"memoryAllocationInMb: 256", "memoryAllocationInMb: 512"},
+	{"comment: cbctl nightly", "comment: cbctl nightly, edited"},
+	{"timezone: US/Pacific", "timezone: US/Eastern"},
+}
+
+// TestLifecycle_CAP032_AC1: validate → plan → apply → apply (zero writes) → drift clean → edit
+// (bucket memory, CIDR comment, schedule time zone) → apply writes all three → apply converges →
+// protect --off → destroy → project gone.
 func TestLifecycle_CAP032_AC1(t *testing.T) {
 	tg := integration.TargetFromEnv(t)
 	tg.RequireClusters(t)
@@ -43,7 +58,8 @@ func TestLifecycle_CAP032_AC1(t *testing.T) {
 
 	dir := t.TempDir()
 	cfg := filepath.Join(dir, "capella.yaml")
-	body := integration.SingleNodeConfig(project, "life1-"+tg.Run, integration.UniqueCIDR(tg.Run, 'l'), lifecycleExtra)
+	cluster := "life1-" + tg.Run
+	body := integration.SingleNodeConfig(project, cluster, integration.UniqueCIDR(tg.Run, 'l'), lifecycleExtra)
 	if err := os.WriteFile(cfg, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -66,9 +82,6 @@ func TestLifecycle_CAP032_AC1(t *testing.T) {
 		t.Fatalf("first apply created nothing (no write request lines); output:\n%s", r.Output)
 	}
 
-	if tg.Fake != nil {
-		tg.Fake.ResetLog()
-	}
 	r = tg.MustCLI(t, opts, "apply")
 	if !strings.Contains(r.Stdout, "No changes") {
 		t.Fatalf("second apply is not a no-op:\n%s", r.Output)
@@ -82,6 +95,41 @@ func TestLifecycle_CAP032_AC1(t *testing.T) {
 		t.Fatalf("drift not clean:\n%s", r.Output)
 	}
 
+	raw, err := os.ReadFile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	for _, e := range lifecycleEdits {
+		if !strings.Contains(text, e[0]) {
+			t.Fatalf("capella.yaml has no %q:\n%s", e[0], text)
+		}
+		text = strings.Replace(text, e[0], e[1], 1)
+	}
+	if err := os.WriteFile(cfg, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = tg.MustCLI(t, opts, "apply")
+	writes := r.Writes()
+	for _, part := range []string{"/buckets/", "/onOffSchedule", "/allowedcidrs"} {
+		found := false
+		for _, w := range writes {
+			if strings.Contains(w.Path, part) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("apply after the edits sent no write to %s; writes: %v", part, writes)
+		}
+	}
+
+	r = tg.MustCLI(t, opts, "apply")
+	if w := r.Writes(); len(w) != 0 {
+		t.Fatalf("the edits did not converge; a re-run wrote: %v\n%s", w, r.Output)
+	}
+
+	tg.MustCLI(t, opts, "cluster", "protect", cluster, "--off")
 	tg.MustCLI(t, opts, "destroy", "--discard-snapshots")
 
 	r = tg.CLIOpts(t, []integration.CLIOption{integration.NoApprove()}, "project", "list")
