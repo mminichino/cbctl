@@ -38,7 +38,6 @@ type shapeDoc struct {
 	When    time.Time             `json:"when"`
 	Quoted  int                   `json:"quoted,string"`
 	Skipped string                `json:"-"`
-	hidden  string
 }
 
 func TestUnmarshalStrictShapeErrors(t *testing.T) {
@@ -49,7 +48,7 @@ func TestUnmarshalStrictShapeErrors(t *testing.T) {
 	}{
 		{"unknown top-level key", "strr: x\n", "strr: unknown field (did you mean str?)"},
 		{"embedded field is known", "shared: x\nstr: y\n", ""},
-		{"skipped and hidden fields are unknown", "Skipped: x\n", "Skipped: unknown field"},
+		{"skipped fields are unknown", "Skipped: x\n", "Skipped: unknown field"},
 		{"string for object", "ptr: x\n", "expected an object, got a string"},
 		{"object for string", "str: {a: 1}\n", "expected a string, got an object"},
 		{"list for string", "str: [1]\n", "expected a string, got a list"},
