@@ -47,7 +47,9 @@ cbctl capella cluster create|update|scale|protect|delete|clone ... [--no-apply|-
 cbctl capella cluster group add|remove|cluster schedule set|delete|pause|resume|cluster backup schedule set|delete ... [--no-apply|--direct]
 cbctl capella bucket add|update|delete|bucket backup schedule set|delete|scope add|delete|collection add|update|delete ... [--no-apply|--direct]
 cbctl capella cidr create|delete|credential create|update|delete ... [--no-apply|--direct]   # passwords only as ${VAR}/${file:PATH} via --password-env/--password-file
-# Managed 'cluster create': --name N [--size dev|small|medium|large|custom] [--group SERVICES:NODESxCPU/RAM[:DISK]]... [--free-tier] [--provider] [--region] [--cidr] [--support-plan]
+# capellactl spellings: bucket create C B | scope create C B S | collection create C B S X (= add, stderr note); cluster schedule apply C (= apply --target schedule/C); help [TOPIC] (= guide, hidden)
+# Deprecated (hidden; warn on stderr): capella cluster exists|destroy|test, capella bucket create NAME --database|exists, cluster apply|project apply -> use cluster get / cluster delete / credential create + cluster test / bucket add / bucket get / apply --target KIND/NAME
+# Managed 'cluster create' [NAME] (NAME or --name; a different pair exits 3; wizard on a TTY when the name is missing; no capella.yaml = direct create): --name N [--size dev|small|medium|large|custom] [--group SERVICES:NODESxCPU/RAM[:DISK]]... [--free-tier] [--provider] [--region] [--cidr] [--support-plan]
 
 # Capella resources (auth: --token / CAPELLA_API_KEY, --org-id / CAPELLA_ORG_ID; <cluster> is a name, add --project NAME if ambiguous; -o json for one JSON document; -y skips confirmation)
 cbctl capella project list
@@ -225,6 +227,9 @@ Import JSON Lines into a keyspace.
 - `add` / `create` of something that exists (`scope add`, `collection add`, `bucket add`, `cidr create`, `credential create` with the same access) prints "already exists" and exits 0. `cidr delete` of a missing CIDR warns and exits 0.
 - `credential create` / `update --rotate-password` print a generated password once on stdout (`password: ...` in text, `"password"` in JSON); a password supplied by `--password-env` / `--password-file` is never printed. Never pass a password as a flag value.
 - `bucket|scope|collection delete` are refused (exit 4) while the cluster has deletion protection on; `scope delete` refuses `_default`/`_system` and `collection delete` refuses system collections (exit 3).
+- Legacy direct `cluster create` (any of `--database --database-id --org --project-id --user-email --user-id --allow-cidr -u --password-env --password-file`) warns, adds no allow-list entry unless `--allow-cidr` is given (`0.0.0.0/0` needs `--allow-any-ip`) and creates no database user unless `--username` plus `--password-env/--password-file` is given; a literal `-p` exits 3; mixing it with `--size/--group` exits 3. `cluster destroy` runs `cluster delete` (exit 4 without `-y` and a terminal, or under protection).
+- `--timeout` accepts `90` (seconds), `90S`, `5m`, `1h30m`; `0`, negative, unparsable or over 24h exit 3. `bucket add` defaults to `--memory 1024` and sends no `storageBackend` unless given.
+- `capella import` without arguments or with `--full --stdout --dry-run --cluster --cluster-id --file` exits 3 with a hint to use `capella sync`.
 - Free-tier clusters: `bucket add` takes only `--memory`; `bucket update` only `--memory` and `--cross-cluster-versioning`; other flags exit 3.
 - `collection update --max-ttl` needs Couchbase Server 7.6.0+ (exit 4 otherwise).
 - `project delete` refuses a non-empty project unless `--cascade`; cascade deletes the clusters first and waits unless `--no-wait`.
@@ -247,3 +252,4 @@ Import JSON Lines into a keyspace.
 7. Keep examples and scripts language-agnostic: show shell invocations of `cbctl`, not library internals.
 8. Prefer `keyspace create` when provisioning bucket+scope+collection together; use individual create commands only when one resource is needed.
 9. For Terraform-style multi-node bootstrap, use provisioner `cluster create` → `cluster join`/`add` per extra node → `cluster rebalance`. Prefer REST-targeted IPs (`--ip-address` / `--rally-ip-address`) so the same commands work remotely or on-node.
+10. Never use the deprecated Capella commands; use their replacements.

@@ -82,7 +82,18 @@ func installManagedModes(capella *cobra.Command) {
 	}
 
 	addClusterCreateFlags(find("cluster", "create"))
-	wrap(managedClusterCreate, "cluster", "create")
+	{
+		// The legacy flags always take the legacy direct path, even with a capella.yaml.
+		cmd := find("cluster", "create")
+		direct := cmd.RunE
+		managedCreate := managed(managedClusterCreate)
+		wrapManaged(cmd, addManagedFlags(cmd), func(c *cobra.Command, args []string) error {
+			if usesLegacyFlags(c) {
+				return direct(c, args)
+			}
+			return managedCreate(c, args)
+		})
+	}
 	wrap(managedClusterUpdate, "cluster", "update")
 	wrap(managedGroupAdd, "cluster", "group", "add")
 	wrap(managedGroupRemove, "cluster", "group", "remove")
@@ -1250,7 +1261,7 @@ func managedGroupRemove(cmd *cobra.Command, args []string, _ *envRuntime, ed *ca
 // the direct command stay.
 func addClusterCreateFlags(cmd *cobra.Command) {
 	f := cmd.Flags()
-	f.String("name", "", "Name of the new cluster (file-managed mode; --database is accepted too)")
+	f.String("name", "", "Name of the new cluster (or give NAME as the argument)")
 	f.String("provider", "", "Cloud provider: aws, gcp or azure (default aws)")
 	f.String("region", "", "Region (default per provider)")
 	f.String("cidr", "", "Cluster network CIDR (default: the first free 10.x.y.0/24)")
@@ -1382,14 +1393,26 @@ func fileCIDRs(ed *capellafile.Editor) []string {
 	return out
 }
 
-func managedClusterCreate(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
+func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	ch := cmd.Flags().Changed
-	name := flagString(cmd, "name")
-	if name == "" {
-		name = flagString(cmd, "database")
+	name, err := resolveClusterName(cmd, args, "name")
+	if err != nil {
+		return Mutation{}, err
+	}
+	if name == "" && e != nil && !e.Ephemeral {
+		if _, tty := e.terminalIn(); tty {
+			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, suggestCIDR(fileCIDRs(ed)))
+			if err != nil {
+				return Mutation{}, err
+			}
+			if err := spec.apply(cmd); err != nil {
+				return Mutation{}, err
+			}
+			name = spec.Name
+		}
 	}
 	if name == "" {
-		return Mutation{}, usageError("pass --name NAME", "the cluster name is required")
+		return Mutation{}, usageError("pass NAME or --name NAME", "the cluster name is required")
 	}
 	groups := flagStrings(cmd, "group")
 	single := flagBool(cmd, "single-node")

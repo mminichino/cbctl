@@ -162,7 +162,7 @@ func TestClusterNeverPrunedButListed(t *testing.T) {
 }
 
 func TestClusterDeleteActionCarriesState(t *testing.T) {
-	rec := newCluster()
+	rec := newCluster(Options{})
 	obs := plan.Observed{ID: "c1", Body: Obj{"name": "one", "currentState": "healthy"}}
 	a, err := rec.DeleteAction(t.Context(), nil, obs, nil)
 	if err != nil {

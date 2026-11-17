@@ -12,6 +12,9 @@ type Options struct {
 	// ForceOverwriteSecret lets a generated credential replace an existing secret file
 	// (apply --force-overwrite-secret).
 	ForceOverwriteSecret bool
+	// NoRenameHint drops the "did you mean to rename" warning on new clusters. Direct cluster
+	// create declares only the new cluster, so every other cluster would look undeclared.
+	NoRenameHint bool
 }
 
 // rootRec is the synthetic root of the tree. BuildPlan walks its children with the loaded
@@ -28,7 +31,7 @@ func BuildTreeWith(opts Options) plan.Reconciler {
 	collection := newCollection()
 	scope := newScope(collection)
 	bucket := newBucket(newBucketBackupSchedule(), scope)
-	cluster := newCluster(
+	cluster := newCluster(opts,
 		newDeletionProtection(),
 		newSchedule(),
 		newBackupSchedule(),

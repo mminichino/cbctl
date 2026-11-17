@@ -25,8 +25,9 @@ var (
 	vbucketCounts     = []int{128, 1024}
 )
 
-// defaultBucketMemoryMB is the memory quota of a new bucket when --memory is not given.
-const defaultBucketMemoryMB = 100
+// defaultBucketMemoryMB is the memory quota of a new bucket when --memory is not given. It is
+// capellactl's default, so scripts moving over create the same buckets.
+const defaultBucketMemoryMB = 1024
 
 // freeTierUnsupported is the message for bucket flags a free-tier cluster cannot take.
 const freeTierUnsupported = "not supported on free-tier clusters"
@@ -255,19 +256,24 @@ Examples:
 	addProjectFlag(cmd, &project)
 	fl := cmd.Flags()
 	fl.StringVar(&f.typ, "type", "couchbase", "Bucket type: couchbase|ephemeral")
-	fl.StringVar(&f.backend, "storage-backend", "", "Storage backend of a couchbase bucket: couchstore|magma (default couchstore)")
+	fl.StringVar(&f.backend, "storage-backend", "", "Storage backend of a couchbase bucket: couchstore|magma (default: Capella's)")
 	fl.IntVar(&f.vbuckets, "vbuckets", 0, "Number of vBuckets of a magma bucket: 128|1024")
 	fl.IntVar(&f.memory, "memory", defaultBucketMemoryMB, "Memory quota in MB")
 	fl.IntVar(&f.replicas, "replicas", 1, "Number of replicas, 0-3 (default 1, 0 on a single-node cluster)")
 	fl.StringVar(&f.durability, "durability", "none", "Durability level: none|majority|majorityAndPersistActive|persistToMajority")
 	fl.IntVar(&f.ttl, "ttl", 0, "Bucket time to live in seconds (0 means none)")
 	fl.BoolVar(&f.flush, "flush", false, "Allow flushing the bucket")
+	fl.Bool("no-flush", false, "Do not allow flushing the bucket (the default)")
+	_ = fl.MarkHidden("no-flush")
 	fl.StringVar(&f.conflict, "conflict-resolution", "seqno", "Conflict resolution: seqno|lww")
 	fl.StringVar(&f.eviction, "eviction-policy", "", "Eviction policy (couchbase: fullEviction|valueOnly, ephemeral: noEviction|nruEviction)")
 	fl.IntVar(&f.priority, "priority", 0, "Recovery priority (Couchbase Server 7.6 or later)")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		changed := cmd.Flags().Changed
+		if f.flush && flagBool(cmd, "no-flush") {
+			return usageError("keep one of them", "both --flush and --no-flush were given")
+		}
 		if err := f.validate(changed); err != nil {
 			return err
 		}
@@ -411,11 +417,9 @@ func (f *bucketAddFlags) request(name string, changed func(string) bool) capella
 		DurabilityLevel: f.durability, Replicas: f.replicas, Flush: f.flush, TimeToLiveInSeconds: f.ttl,
 		EvictionPolicy: f.eviction,
 	}
-	if f.typ == "couchbase" {
+	if f.typ == "couchbase" && changed("storage-backend") {
+		// Left out, Capella picks the backend its server version defaults to (like capellactl).
 		req.StorageBackend = f.backend
-		if req.StorageBackend == "" {
-			req.StorageBackend = "couchstore"
-		}
 	}
 	if changed("vbuckets") {
 		v := f.vbuckets

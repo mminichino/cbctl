@@ -115,19 +115,25 @@ func (b *Backend) CreateCluster(ctx context.Context, cfg *config.Config) (create
 	}
 	b.Cluster = cluster
 
+	// No access is opened by default: a CIDR is only allowed when the caller named one, and a
+	// database user is only made when the caller supplied both its name and password.
 	allowCIDR := cfg.Prop(config.PropCapellaAllowCIDR)
-	if allowCIDR == "" {
-		allowCIDR = config.DefaultCapellaAllowCIDR
-	}
-	if cluster.AllowedCIDR != nil {
+	if allowCIDR != "" && cluster.AllowedCIDR != nil {
 		if _, err := cluster.AllowedCIDR.CreateAllowedCIDR(allowCIDR); err != nil {
 			return false, err
 		}
 	}
-	if cluster.Credentials != nil {
+	hasUser := cfg.Username != "" && cfg.Password != ""
+	if hasUser && cluster.Credentials != nil {
 		if _, err := cluster.Credentials.CreateCredential(cfg.Username, cfg.Password, nil); err != nil {
 			return false, err
 		}
+	}
+	if allowCIDR == "" || !hasUser {
+		// Without an allowed CIDR and a database user the cluster cannot be reached from here,
+		// so the data-plane readiness checks are skipped.
+		logging.Info("Capella cluster %s created; skipping reachability checks (no --allow-cidr or database user)", b.Database)
+		return wasNew, nil
 	}
 
 	connectString, err := cluster.ConnectString()

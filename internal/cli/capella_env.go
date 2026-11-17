@@ -43,6 +43,9 @@ type envRuntime struct {
 	RC *plan.RunContext
 	// TreeOptions are passed to resources.BuildTreeWith.
 	TreeOptions resources.Options
+	// Ephemeral marks a throw-away capella.yaml (direct cluster create): messages do not name
+	// the file, because the user never sees it.
+	Ephemeral bool
 }
 
 // notFoundError is the failure when no capella.yaml can be found.

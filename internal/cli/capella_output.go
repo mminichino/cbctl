@@ -35,6 +35,9 @@ type Renderer interface {
 
 // terminalCheck reports whether v (an *os.File) is a terminal. Tests replace it.
 var terminalCheck = func(v any) bool {
+	if u, ok := v.(interface{ Underlying() io.Reader }); ok {
+		v = u.Underlying()
+	}
 	f, ok := v.(*os.File)
 	return ok && term.IsTerminal(int(f.Fd()))
 }

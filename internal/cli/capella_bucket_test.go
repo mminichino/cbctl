@@ -105,8 +105,8 @@ func TestBucketAdd(t *testing.T) {
 		res := mustRun(t, "bucket", "add", "clu", "orders")
 		wantContains(t, res.Stdout, "created bucket orders in clu ("+capellaapi.BucketID("orders")+")")
 		body := lastBody(fx, "POST", "/buckets")
-		if body["name"] != "orders" || body["type"] != "couchbase" || body["storageBackend"] != "couchstore" ||
-			body["memoryAllocationInMb"] != float64(100) || body["replicas"] != float64(1) ||
+		if body["name"] != "orders" || body["type"] != "couchbase" || body["storageBackend"] != nil ||
+			body["memoryAllocationInMb"] != float64(1024) || body["replicas"] != float64(1) ||
 			body["durabilityLevel"] != "none" || body["bucketConflictResolution"] != "seqno" {
 			t.Errorf("POST body = %v", body)
 		}

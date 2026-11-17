@@ -255,7 +255,7 @@ func newCapellaClusterScheduleCmd() *cobra.Command {
 		Short: "On/off schedule: Capella turns the cluster off outside the on-windows",
 		Run:   func(cmd *cobra.Command, _ []string) { _ = cmd.Help() },
 	}
-	cmd.AddCommand(newScheduleShowCmd(), newScheduleSetCmd(), newSchedulePauseCmd(), newScheduleResumeCmd(), newScheduleDeleteCmd())
+	cmd.AddCommand(newScheduleShowCmd(), newScheduleSetCmd(), newSchedulePauseCmd(), newScheduleResumeCmd(), newScheduleDeleteCmd(), newScheduleApplyCmd())
 	return cmd
 }
 

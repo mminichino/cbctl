@@ -270,22 +270,38 @@ Extra exit codes: 2 = changes found (`plan`/`drift --detailed-exitcode`, `sync -
 Capella commands live under `cbctl capella`:
 
 ```bash
-cbctl capella cluster create --token <token> --project <project> --database <name> \
-  --user-email <email> -u <dbuser> -p <dbpass>
+# Create a cluster (no capella.yaml: directly in Capella; with one: edits the file and applies)
+cbctl capella cluster create dev-01 --size dev --provider aws --region us-east-1
+cbctl capella cluster create prod-01 --group data:3x8/32 --group index,query:2x8/32
+cbctl capella cluster create            # on a terminal: a short wizard asks for name, provider, region, size, CIDR
 
-cbctl capella cluster exists --token <token> --project <project> --database <name> \
-  --user-email <email> -u <dbuser> -p <dbpass>
-
-cbctl capella cluster destroy --token <token> --project <project> --database <name> \
-  --user-email <email> -u <dbuser> -p <dbpass>
-
-cbctl capella bucket create <name> --token <token> --project <project> --database <name> \
-  --user-email <email> -u <dbuser> -p <dbpass>
+# capellactl spellings that keep working
+cbctl capella bucket create my-cluster orders          # = bucket add (stderr note)
+cbctl capella scope create my-cluster orders sales     # = scope add
+cbctl capella collection create my-cluster orders sales eu   # = collection add
+cbctl capella cluster schedule apply my-cluster -y     # = apply --target schedule/my-cluster
+cbctl capella help getting-started                     # = guide getting-started
 
 cbctl capella --help
 ```
 
-Common Capella flags: `--token`, `--api-host`, `--org` / `--org-id`, `--project` / `--project-id`, `--database` / `--database-id`, `--user-email` / `--user-id`, `--allow-cidr`.
+`--timeout` takes a duration (`90m`, `1h30m`, units in any case) or a bare number of seconds (`90`); it must be positive and at most 24h. `CBCTL_QUIET` accepts `1/true/yes/on`. New buckets default to 1024 MB and Capella's default storage backend.
+
+#### Deprecated commands
+
+These pre-port commands are hidden from `--help`, still run, and print a warning on stderr naming the replacement (stdout is unchanged, so `exists` still prints only `true`/`false`):
+
+| Deprecated | Use instead |
+|---|---|
+| `capella cluster exists --database N` | `capella cluster get N` (exit 3 when not found) |
+| `capella cluster destroy --database N` | `capella cluster delete N -y` (destroy runs the same code: needs `-y` without a terminal, refused under deletion protection) |
+| `capella cluster test --database N` | `capella credential create N USER ...`, then `cbctl cluster test --host <connection string> --ssl --bucket B -u USER -p ...` |
+| `capella bucket create NAME --database N` | `capella bucket add N NAME [--memory MB] [--replicas N]` |
+| `capella bucket exists NAME --database N` | `capella bucket get N NAME` |
+| `capella cluster create --database N ...` (legacy flags) | `capella cluster create N [--size ...]`, then `capella cidr create` / `capella credential create` |
+| `capella cluster apply N`, `capella project apply N` | `capella apply --target cluster/N` / `--target project/N` |
+
+The legacy flags (`--database`, `--database-id`, `--org`, `--project-id`, `--user-email`, `--user-id`, `--allow-cidr`, `-u`) are hidden. They are safe by default: `--allow-cidr` has no default and `0.0.0.0/0` / `::/0` need `--allow-any-ip`; no database user is created unless `--username` and `--password-env VAR` or `--password-file PATH` are given; a literal `-p/--password` exits 3. Mixing legacy flags with `--size`/`--group` exits 3. `capella import` is the JSONL import; called without arguments or with sync flags (`--full`, `--stdout`, `--cluster`, ...) it exits 3 and points to `capella sync` (capellactl's `import`).
 
 ### Capella resources
 

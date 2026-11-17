@@ -152,7 +152,9 @@ func TestNoFlagCollisions(t *testing.T) {
 
 func TestLegacyLeafFlagsUnchanged(t *testing.T) {
 	legacy := []string{"token", "api-host", "org", "org-id", "project", "project-id", "database", "database-id",
-		"user-email", "user-id", "allow-cidr", "username", "password"}
+		"user-email", "user-id", "allow-cidr", "allow-any-ip", "username", "password", "password-env", "password-file"}
+	bucketAdd := []string{"conflict-resolution", "direct", "durability", "eviction-policy", "flush", "memory", "no-apply", "no-flush",
+		"priority", "storage-backend", "ttl", "type", "vbuckets"}
 	tests := []struct {
 		path  []string
 		extra []string
@@ -161,13 +163,13 @@ func TestLegacyLeafFlagsUnchanged(t *testing.T) {
 			"disk-iops", "disk-size", "disk-type", "free-tier", "group", "name", "no-apply", "nodes", "private-dns", "provider",
 			"ram", "region", "server-version", "services", "single-node", "size", "support-plan", "support-timezone", "zone", "description"}},
 		{[]string{"cluster", "exists"}, nil},
-		{[]string{"cluster", "destroy"}, nil},
+		{[]string{"cluster", "destroy"}, []string{"discard-snapshots"}},
 		{[]string{"cluster", "test"}, []string{"bucket"}},
-		{[]string{"bucket", "create"}, []string{"quota", "replicas"}},
+		{[]string{"bucket", "create"}, append([]string{"quota", "replicas"}, bucketAdd...)},
 		{[]string{"bucket", "exists"}, nil},
-		{[]string{"scope", "create"}, []string{"bucket"}},
+		{[]string{"scope", "create"}, []string{"bucket", "direct", "no-apply"}},
 		{[]string{"scope", "exists"}, []string{"bucket"}},
-		{[]string{"collection", "create"}, []string{"bucket", "scope"}},
+		{[]string{"collection", "create"}, []string{"bucket", "scope", "direct", "no-apply", "max-ttl"}},
 		{[]string{"collection", "exists"}, []string{"bucket", "scope"}},
 	}
 	for _, tc := range tests {
@@ -240,8 +242,10 @@ func TestReadGlobalsValidation(t *testing.T) {
 		wantMsg string
 	}{
 		{"bad output", []string{"-o", "xml"}, `invalid output format "xml"`},
-		{"zero timeout", []string{"--timeout", "0"}, "--timeout must be positive"},
-		{"negative timeout", []string{"--timeout", "-5m"}, "--timeout must be positive"},
+		{"zero timeout", []string{"--timeout", "0"}, "must be positive"},
+		{"negative timeout", []string{"--timeout", "-5m"}, "must be positive"},
+		{"bad timeout", []string{"--timeout", "abc"}, "is not a duration"},
+		{"huge timeout", []string{"--timeout", "25h"}, "at most 24h"},
 		{"bad log level", []string{"--log-level", "loud"}, `invalid log level "loud"`},
 	}
 	for _, tc := range tests {
@@ -250,7 +254,7 @@ func TestReadGlobalsValidation(t *testing.T) {
 			if res.Err == nil || !strings.Contains(res.Err.Error(), tc.wantMsg) {
 				t.Fatalf("err = %v, want it to contain %q", res.Err, tc.wantMsg)
 			}
-			if got := exitCodeOf(t, res.Err); got != ExitConfigInvalid {
+			if got := exitCodeOf(t, asUsage(res.Err)); got != ExitConfigInvalid {
 				t.Errorf("exit code = %d, want %d", got, ExitConfigInvalid)
 			}
 		})
@@ -576,4 +580,17 @@ func TestDefaultClockFactory(t *testing.T) {
 	if _, ok := defaultClockFactory().(engine.RealClock); !ok {
 		t.Fatalf("default clock = %T, want engine.RealClock", defaultClockFactory())
 	}
+}
+
+// asUsage maps a raw pflag parse error the way the root's SetFlagErrorFunc does; runProbe builds
+// its own root without it.
+func asUsage(err error) error {
+	var ce *CLIError
+	if errors.As(err, &ce) {
+		return err
+	}
+	if strings.HasPrefix(err.Error(), "invalid argument ") {
+		return flagError(&cobra.Command{Use: "probe"}, err)
+	}
+	return err
 }

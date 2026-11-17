@@ -21,6 +21,7 @@ func newCapellaProjectCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaProjectCreateCmd())
 	cmd.AddCommand(newCapellaProjectUpdateCmd())
 	cmd.AddCommand(newCapellaProjectDeleteCmd())
+	cmd.AddCommand(newHiddenApplyAlias("project"))
 	return cmd
 }
 

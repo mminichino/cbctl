@@ -492,7 +492,7 @@ func (e *envRuntime) editIDs(actions []*plan.Action, what string, fn func(*capel
 	if path == "" {
 		path = e.Disc.Path
 	}
-	if len(actions) == 0 || path == "" {
+	if len(actions) == 0 || path == "" || e.Ephemeral {
 		return
 	}
 	if _, err := os.Stat(path); err != nil {

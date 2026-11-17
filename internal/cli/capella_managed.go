@@ -59,7 +59,7 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 	}
 	name := filepath.Base(ed.Path)
 	if !p.HasChanges() && len(p.Blocked()) == 0 {
-		if text != ed.Original {
+		if text != ed.Original && !e.Ephemeral {
 			backup, err := ed.Save(text)
 			if err != nil {
 				return nil, err
@@ -94,7 +94,11 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 		return nil, err
 	}
 	if !ok {
-		e.Out.Line("Cancelled; %s and Capella are unchanged.", name)
+		if e.Ephemeral {
+			e.Out.Line("Cancelled; nothing was changed.")
+		} else {
+			e.Out.Line("Cancelled; %s and Capella are unchanged.", name)
+		}
 		return nil, nil
 	}
 	previous := ed.Original
@@ -103,7 +107,9 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 		if err != nil {
 			return nil, err
 		}
-		e.note("%s updated (previous version kept as %s)", name, filepath.Base(backup))
+		if !e.Ephemeral {
+			e.note("%s updated (previous version kept as %s)", name, filepath.Base(backup))
+		}
 	}
 	if noApply {
 		e.Out.Line("Not applied (--no-apply). Run 'cbctl capella apply' to deploy it.")
@@ -117,7 +123,7 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 		var transport *capellaapi.TransportError
 		var ambiguous *capellaapi.AmbiguousWriteError
 		if r.Interrupted || errors.As(r.Err, &transport) || errors.As(r.Err, &ambiguous) ||
-			e.Client.WritesAccepted() != before || text == previous {
+			e.Client.WritesAccepted() != before || text == previous || e.Ephemeral {
 			return ""
 		}
 		if err := writeFileAtomic(ed.Path, previous); err != nil {

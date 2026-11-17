@@ -56,10 +56,57 @@ func addCapellaGlobalFlags(cmd *cobra.Command) {
 	pf.Bool("auto-approve", false, "Alias for --yes")
 	pf.BoolP("quiet", "q", false, "Only log warnings and errors, no progress output (env CBCTL_QUIET=1)")
 	pf.Bool("no-wait", false, "Return once the API accepts an asynchronous operation")
-	pf.Duration("timeout", defaultTimeout, "Maximum time to wait for asynchronous operations (for example 90m, 2h)")
+	t := capellaTimeout(defaultTimeout)
+	pf.Var(&t, "timeout", "Maximum time to wait for asynchronous operations (for example 90m, 2h, or 90 for seconds; at most 24h)")
 	pf.String("log-level", "info", "Log level: error|warn|info|debug")
 	pf.String("profile", "", "Configuration profile name")
 	pf.StringP("config", "c", "", "Path of capella.yaml (env CBCTL_CONFIG; default ./capella.yaml)")
+}
+
+// maxTimeout bounds --timeout; Capella operations that take longer are not worth waiting for.
+const maxTimeout = 24 * time.Hour
+
+// capellaTimeout is the --timeout value. It takes Go durations with case-insensitive units
+// ("90S", "1H30M") and a bare number of seconds ("90"), capellactl style.
+type capellaTimeout time.Duration
+
+// Set implements pflag.Value.
+func (t *capellaTimeout) Set(s string) error {
+	v := strings.ToLower(strings.TrimSpace(s))
+	if v != "" && strings.Trim(v, "0123456789") == "" {
+		v += "s"
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		return fmt.Errorf("%q is not a duration; use for example 90m, 2h or 90 (seconds)", s)
+	}
+	if d <= 0 {
+		return fmt.Errorf("must be positive (got %q)", s)
+	}
+	if d > maxTimeout {
+		return fmt.Errorf("must be at most 24h (got %q)", s)
+	}
+	*t = capellaTimeout(d)
+	return nil
+}
+
+// String implements pflag.Value; the text parses with time.ParseDuration (pflag.GetDuration).
+func (t *capellaTimeout) String() string { return time.Duration(*t).String() }
+
+// Type implements pflag.Value. It is "duration" so GetDuration keeps working.
+func (t *capellaTimeout) Type() string { return "duration" }
+
+// envQuiet reads CBCTL_QUIET: 1/true/yes/on mean quiet; empty, 0/false/no/off mean not quiet;
+// anything else warns and means not quiet.
+func envQuiet(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	case "", "0", "false", "no", "off":
+		return false
+	}
+	logging.Warning("CBCTL_QUIET=%q is not one of 1, true, yes, on, 0, false, no, off; not quiet", v)
+	return false
 }
 
 // readGlobals reads and validates the persistent flags as seen by cmd. A flag the command does
@@ -79,7 +126,7 @@ func readGlobals(cmd *cobra.Command) (globalFlags, error) {
 	if v, err := fs.GetBool("quiet"); err == nil {
 		g.Quiet = v
 	}
-	g.Quiet = g.Quiet || envFrom(cmd)("CBCTL_QUIET") == "1"
+	g.Quiet = g.Quiet || envQuiet(envFrom(cmd)("CBCTL_QUIET"))
 	if v, err := fs.GetBool("no-wait"); err == nil {
 		g.NoWait = v
 	}

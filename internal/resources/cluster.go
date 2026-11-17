@@ -298,13 +298,15 @@ func ServiceGroupChanges(desired, observed Obj) (changes []plan.Change, blocked 
 // clusterRec reconciles clusters, including free-tier ones (Data["free"]).
 type clusterRec struct {
 	plan.Base
-	seen map[string][]plan.Observed
+	seen     map[string][]plan.Observed
+	noRename bool
 }
 
-func newCluster(children ...plan.Reconciler) *clusterRec {
+func newCluster(opts Options, children ...plan.Reconciler) *clusterRec {
 	r := &clusterRec{
-		Base: plan.NewBase(kindCluster, plan.Flags{ListedWhenAsked: true}, children...),
-		seen: map[string][]plan.Observed{},
+		Base:     plan.NewBase(kindCluster, plan.Flags{ListedWhenAsked: true}, children...),
+		seen:     map[string][]plan.Observed{},
+		noRename: opts.NoRenameHint,
 	}
 	r.Bind(r)
 	return r
@@ -372,7 +374,7 @@ func (r *clusterRec) Observe(ctx context.Context, rc *plan.RunContext, parent *p
 // renameHint is the warning for a new cluster name next to exactly one undeclared cluster, which
 // is probably a rename.
 func (r *clusterRec) renameHint(desired Obj, parent *plan.Action) string {
-	if parent == nil || parent.ID() == "" || strOf(desired, "id") != "" {
+	if r.noRename || parent == nil || parent.ID() == "" || strOf(desired, "id") != "" {
 		return ""
 	}
 	declared := map[string]bool{}

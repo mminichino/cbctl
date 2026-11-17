@@ -114,7 +114,7 @@ func TestCoverHelpers_accessNamesBucket(t *testing.T) {
 
 func TestCoverHelpers_unmanagedLabelsAndDeletes(t *testing.T) {
 	t.Parallel()
-	parent := plan.NewAction(newCluster(), "cluster", "nova", plan.Noop)
+	parent := plan.NewAction(newCluster(Options{}), "cluster", "nova", plan.Noop)
 	parent.CreatedID = "cl-1"
 
 	bs := newBackupSchedule()
@@ -170,7 +170,7 @@ func TestCoverHelpers_unmanagedLabelsAndDeletes(t *testing.T) {
 
 func TestCoverHelpers_clusterContentsUnavailable(t *testing.T) {
 	t.Parallel()
-	a := plan.NewAction(newCluster(), "cluster", "nova", plan.Noop)
+	a := plan.NewAction(newCluster(Options{}), "cluster", "nova", plan.Noop)
 	if clusterContentsUnavailable(a) {
 		t.Fatal("empty state should be available")
 	}
@@ -191,7 +191,7 @@ func TestCoverHelpers_clusterContentsUnavailable(t *testing.T) {
 
 func TestCoverHelpers_childBlockAndEnsureReady(t *testing.T) {
 	t.Parallel()
-	r := newCluster()
+	r := newCluster(Options{})
 	a := plan.NewAction(r, "cluster", "nova", plan.Noop)
 	a.Data = map[string]any{"state": "turnedOff"}
 	a.CreatedID = "cl-1"
@@ -303,7 +303,7 @@ func TestCoverHelpers_projectID(t *testing.T) {
 	if projectID(p) != "p1" {
 		t.Fatalf("project self: %q", projectID(p))
 	}
-	c := plan.NewAction(newCluster(), "cluster", "nova", plan.Noop)
+	c := plan.NewAction(newCluster(Options{}), "cluster", "nova", plan.Noop)
 	c.Parent = p
 	if projectID(c) != "p1" {
 		t.Fatalf("ancestor: %q", projectID(c))
@@ -312,7 +312,7 @@ func TestCoverHelpers_projectID(t *testing.T) {
 
 func TestCoverHelpers_clusterMatch(t *testing.T) {
 	t.Parallel()
-	r := newCluster()
+	r := newCluster(Options{})
 	obs := []plan.Observed{
 		{ID: "c1", Body: Obj{"name": "nova"}},
 		{ID: "c2", Body: Obj{"name": "prod"}},
@@ -394,7 +394,7 @@ func TestCoverHelpers_nextOn(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateSchedule: %v", err)
 	}
-	r := newCluster()
+	r := newCluster(Options{})
 	a := plan.NewAction(r, kindCluster, "one", plan.Noop)
 	a.CreatedID = cid
 	proj := plan.NewAction(newProject(), kindProject, "sandbox", plan.Noop)
@@ -439,7 +439,7 @@ func TestCoverHelpers_moreEdges(t *testing.T) {
 		t.Fatalf("mds CreateSummary: %s", sum)
 	}
 
-	r := newCluster()
+	r := newCluster(Options{})
 	a := plan.NewAction(r, kindCluster, "x", plan.Noop)
 	a.Data = map[string]any{"state": "destroyFailed"}
 	rc := plan.NewRunContext(nil, nil)
