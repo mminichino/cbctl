@@ -272,29 +272,43 @@ func (r *cidrRec) Apply(ctx context.Context, rc *plan.RunContext, a *plan.Action
 	case plan.Delete:
 		return ignoreNotFound(rc.Client.DeleteAllowedCIDR(ctx, pid, cid, old))
 	case plan.Replace:
+		// A replace keeps the CIDR (it is the entry's key) and Capella refuses the same CIDR twice
+		// on a cluster (422 "The CIDR provided already exists for the cluster"; nightly 44144706943),
+		// so the old entry goes first. Access from the range stops until the new one is in.
 		cidr, comment, expires := CreateBody(d)
-		id, err := rc.Client.CreateAllowedCIDR(ctx, pid, cid, cidr, comment, expires)
-		if err != nil {
-			if !isConflict(err) {
-				return err
-			}
-			// Capella does not accept the same CIDR twice: delete first, then create.
-			rc.Warning(fmt.Sprintf("access from %s is briefly interrupted", cidr),
-				"None needed: Capella replaces the range, and access returns within seconds.")
-			if err := ignoreNotFound(rc.Client.DeleteAllowedCIDR(ctx, pid, cid, old)); err != nil {
-				return err
-			}
-			id, err = rc.Client.CreateAllowedCIDR(ctx, pid, cid, cidr, comment, expires)
-			if err != nil {
-				return err
-			}
-			a.CreatedID = id
-			return nil
-		}
+		rc.Warning(fmt.Sprintf("access from %s is briefly interrupted", cidr),
+			"None needed: Capella replaces the range, and access returns within seconds.")
 		if err := ignoreNotFound(rc.Client.DeleteAllowedCIDR(ctx, pid, cid, old)); err != nil {
 			return err
+		}
+		id, err := createAfterDelete(ctx, rc, func() (string, error) {
+			return rc.Client.CreateAllowedCIDR(ctx, pid, cid, cidr, comment, expires)
+		})
+		if err != nil {
+			return fmt.Errorf("allowed CIDR %s was removed but not added back: %w (run 'cbctl capella apply' again to add it)", cidr, err)
 		}
 		a.CreatedID = id
 	}
 	return nil
+}
+
+// cidrRecreateAttempts and cidrRecreateDelay bound the wait for a deleted entry to leave Capella:
+// a create right after the delete can still see the old entry and be refused as a duplicate.
+const (
+	cidrRecreateAttempts = 6
+	cidrRecreateDelay    = 5 * time.Second
+)
+
+// createAfterDelete runs create, retrying while Capella still reports the deleted entry as a
+// duplicate. Any other error, or the last refusal, is returned.
+func createAfterDelete(ctx context.Context, rc *plan.RunContext, create func() (string, error)) (string, error) {
+	for attempt := 1; ; attempt++ {
+		id, err := create()
+		if err == nil || attempt == cidrRecreateAttempts || !capellaapi.IsDuplicateCIDR(err) {
+			return id, err
+		}
+		if serr := rc.Clock.Sleep(ctx, cidrRecreateDelay); serr != nil {
+			return "", serr
+		}
+	}
 }

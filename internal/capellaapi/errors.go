@@ -169,3 +169,14 @@ func truncateUTF8(s string, n int) string {
 	}
 	return s[:n]
 }
+
+// IsDuplicateCIDR reports whether err is Capella refusing an allowed CIDR the cluster already
+// has: 409, or 422 "Unable to add allowlist entry. The CIDR provided already exists for the
+// cluster." (what the live API answers; nightly run 44144706943).
+func IsDuplicateCIDR(err error) bool {
+	if errors.Is(err, ErrConflict) {
+		return true
+	}
+	var ae *APIError
+	return errors.As(err, &ae) && ae.Status == 422 && strings.Contains(strings.ToLower(ae.Message), "already exists")
+}

@@ -156,6 +156,17 @@ capellactl is no longer supported. See [Migration](#migration).
 - Managed `cluster clone` picks its default network from every project's clusters in Capella,
   not only from `capella.yaml`, as `cluster create` already did. Capella refuses a range that is
   "not unique within this organization", and the fake now does too.
+- Changing an allowed CIDR's `comment` or `expiresAt` in `capella.yaml` now applies (nightly run
+  44144706943). Capella has no update for allowed CIDRs, so the entry is replaced. The replace
+  sent the new entry first and fell back to delete-then-create only on 409, but live Capella
+  refuses a CIDR the cluster already has with 422 ("The CIDR provided already exists for the
+  cluster"). A replace now deletes the old entry first, then creates the new one, retrying for up
+  to 30s while Capella still counts the deleted entry. If the create still fails, the error says
+  the entry was removed and that running `apply` again adds it back. Access from the range stops
+  briefly, and a warning says so. `cidr create` and `cluster clone --with-cidrs` treat that 422 as
+  "already allowed", as they did with 409. The fake now answers a duplicate CIDR with that 422.
+  Only allowed CIDRs are replaced. Every other kind is updated in place, so no other kind had
+  this problem.
 
 ### Deprecated
 

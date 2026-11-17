@@ -362,8 +362,9 @@ func TestCIDRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateAllowedCIDR(ctx, p, cl, "203.0.113.0/24", "", ""); !errors.Is(err, capellaapi.ErrConflict) {
-		t.Fatalf("duplicate: err = %v, want ErrConflict", err)
+	if _, err := c.CreateAllowedCIDR(ctx, p, cl, "203.0.113.0/24", "", ""); !capellaapi.IsDuplicateCIDR(err) ||
+		!errors.Is(err, capellaapi.ErrValidation) || !strings.Contains(err.Error(), "The CIDR provided already exists for the cluster") {
+		t.Fatalf("duplicate: err = %v, want Capella's 422", err)
 	}
 	if _, err := c.CreateAllowedCIDR(ctx, p, cl, "198.51.100.1/32", "", "2030-01-01T00:00:00Z"); err != nil {
 		t.Fatal(err)

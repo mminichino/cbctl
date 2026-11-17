@@ -42,6 +42,12 @@ func TestFake_CAP004_AC3_DuplicateChild409(t *testing.T) {
 			}
 			err := create()
 			var apiErr *capellaapi.APIError
+			if kind == "cidr" { // live Capella answers a duplicate CIDR with 422, not 409
+				if !capellaapi.IsDuplicateCIDR(err) || !errors.As(err, &apiErr) || apiErr.Status != http.StatusUnprocessableEntity {
+					t.Fatalf("duplicate cidr: err = %v, want Capella's 422", err)
+				}
+				return
+			}
 			if !errors.Is(err, capellaapi.ErrConflict) || !errors.As(err, &apiErr) {
 				t.Fatalf("duplicate %s: err = %v, want a 409 APIError", kind, err)
 			}

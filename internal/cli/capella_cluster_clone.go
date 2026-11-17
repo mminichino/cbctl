@@ -354,7 +354,7 @@ func (rt *runtime) copyCIDRs(src *clusterTarget, projectID, clusterID string, re
 		if c.Comment != "" {
 			comment = c.Comment + " " + comment
 		}
-		if _, err := rt.Client.CreateAllowedCIDR(rt.Ctx, projectID, clusterID, c.CIDR, comment, c.ExpiresAt); err != nil && !errors.Is(err, capellaapi.ErrConflict) {
+		if _, err := rt.Client.CreateAllowedCIDR(rt.Ctx, projectID, clusterID, c.CIDR, comment, c.ExpiresAt); err != nil && !capellaapi.IsDuplicateCIDR(err) {
 			return fmt.Errorf("creating allowed CIDR %s on the clone: %w", c.CIDR, err)
 		}
 		res.AllowedCIDR++

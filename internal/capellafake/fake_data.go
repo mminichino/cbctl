@@ -63,7 +63,8 @@ func (c *rctx) createCIDR() {
 	}
 	for _, e := range cl.cidrs {
 		if str(e.obj, "cidr") == cidr && !c.f.cidrDuplicates {
-			c.exists("the CIDR " + cidr + " is already allowed")
+			// What the live API answers (nightly run 44144706943), not 409.
+			c.err(http.StatusUnprocessableEntity, "Unable to add allowlist entry. The CIDR provided already exists for the cluster.")
 			return
 		}
 	}

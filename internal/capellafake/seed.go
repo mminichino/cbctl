@@ -349,8 +349,8 @@ func (f *Fake) FailNextBucketBackup() {
 	f.failNextBackup = true
 }
 
-// AllowDuplicateCIDRs makes POST allowedcidrs accept a CIDR the cluster already has, as some
-// Capella deployments do, so the create-then-delete replace path runs instead of the 409 fallback.
+// AllowDuplicateCIDRs makes POST allowedcidrs accept a CIDR the cluster already has. Live Capella
+// refuses it (422); tests use this to prove a replace deletes first even when it need not.
 func (f *Fake) AllowDuplicateCIDRs(on bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -885,7 +885,9 @@ func portCIDRComments(t *testing.T, s *clitest.Scenario) string {
 	return strings.Join(got, ",")
 }
 
-func TestAllowedCIDR_CAP022_AC3_ReplaceCreateThenDelete(t *testing.T) {
+// Capella refuses the same CIDR twice on a cluster (422), so a replace that keeps the CIDR
+// deletes the old entry first, even where duplicates would be accepted.
+func TestAllowedCIDR_CAP022_AC3_ReplaceDeletesFirst(t *testing.T) {
 	s := portReplaceSetup(t, true)
 	r := s.Run("capella", "plan")
 	portWantExit(t, r, 0)
@@ -893,9 +895,9 @@ func TestAllowedCIDR_CAP022_AC3_ReplaceCreateThenDelete(t *testing.T) {
 		`comment:  "a" → "b"`, "Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.")
 	r = s.Run("capella", "apply", "-y")
 	portWantExit(t, r, 0)
-	portLacks(t, portOut(r), "briefly interrupted")
-	w := portWantWritePaths(t, s.Fake, "POST "+portCIDRPath, "DELETE "+portCIDRPath+"/*")
-	if b := portBody(t, w[0]); b["comment"] != "b" {
+	wantContains(t, portOut(r), "access from 203.0.113.10/32 is briefly interrupted")
+	w := portWantWritePaths(t, s.Fake, "DELETE "+portCIDRPath+"/*", "POST "+portCIDRPath)
+	if b := portBody(t, w[1]); b["comment"] != "b" {
 		t.Errorf("create body = %v", b)
 	}
 	if got := portCIDRComments(t, s); got != "203.0.113.10/32=b" {
@@ -903,17 +905,57 @@ func TestAllowedCIDR_CAP022_AC3_ReplaceCreateThenDelete(t *testing.T) {
 	}
 }
 
-func TestAllowedCIDR_CAP022_AC3_ReplaceFallbackOn409(t *testing.T) {
+// Regression for nightly run 44144706943: a comment edit was applied as POST first and live
+// Capella answered 422 "The CIDR provided already exists for the cluster".
+func TestAllowedCIDR_CAP022_AC3_CommentEditDeleteThenPost(t *testing.T) {
 	s := portReplaceSetup(t, false)
 	r := s.Run("capella", "apply", "-y")
 	portWantExit(t, r, 0)
-	wantContains(t, portOut(r), "access from 203.0.113.10/32 is briefly interrupted")
-	w := portWantWritePaths(t, s.Fake, "POST "+portCIDRPath, "DELETE "+portCIDRPath+"/*", "POST "+portCIDRPath)
-	if w[0].Status != 409 || w[2].Status != 201 {
-		t.Errorf("statuses = %d, %d; want 409 then 201", w[0].Status, w[2].Status)
+	w := portWantWritePaths(t, s.Fake, "DELETE "+portCIDRPath+"/*", "POST "+portCIDRPath)
+	if w[0].Status != 204 || w[1].Status != 201 {
+		t.Errorf("statuses = %d, %d; want 204 then 201", w[0].Status, w[1].Status)
 	}
 	if got := portCIDRComments(t, s); got != "203.0.113.10/32=b" {
 		t.Errorf("CIDRs after replace = %s", got)
+	}
+	s.Fake.ResetCalls()
+	r = s.Run("capella", "apply", "-y")
+	portWantExit(t, r, 0)
+	wantContains(t, r.Stdout, "No changes. Capella matches capella.yaml.")
+	clitest.AssertNoWrites(t, s.Fake)
+}
+
+// Right after the delete Capella can still count the old entry; the create is retried.
+func TestAllowedCIDR_CAP022_AC3_ReplaceRetriesWhileOldEntryLingers(t *testing.T) {
+	s := portReplaceSetup(t, false)
+	s.Fake.FailNextOpts("POST", portCIDRPath, capellafake.FaultOptions{Status: 422, Times: 2,
+		Message: "Unable to add allowlist entry. The CIDR provided already exists for the cluster."})
+	r := s.Run("capella", "apply", "-y")
+	portWantExit(t, r, 0)
+	w := portWantWritePaths(t, s.Fake, "DELETE "+portCIDRPath+"/*", "POST "+portCIDRPath, "POST "+portCIDRPath, "POST "+portCIDRPath)
+	if w[1].Status != 422 || w[3].Status != 201 {
+		t.Errorf("statuses = %d, %d; want 422 then 201", w[1].Status, w[3].Status)
+	}
+	if got := portCIDRComments(t, s); got != "203.0.113.10/32=b" {
+		t.Errorf("CIDRs after replace = %s", got)
+	}
+}
+
+// A create that fails after the delete says the entry is gone and that apply adds it back.
+func TestAllowedCIDR_CAP022_AC3_ReplaceCreateFailsAfterDelete(t *testing.T) {
+	s := portReplaceSetup(t, false)
+	s.Fake.FailNextOpts("POST", portCIDRPath, capellafake.FaultOptions{Status: 400, Message: "bad comment"})
+	r := s.Run("capella", "apply", "-y")
+	portWantExit(t, r, 1)
+	wantContains(t, portOut(r), "allowed CIDR 203.0.113.10/32 was removed but not added back",
+		"run 'cbctl capella apply' again to add it")
+	if got := portCIDRComments(t, s); got != "" {
+		t.Errorf("CIDRs after failed replace = %q, want none", got)
+	}
+	r = s.Run("capella", "apply", "-y")
+	portWantExit(t, r, 0)
+	if got := portCIDRComments(t, s); got != "203.0.113.10/32=b" {
+		t.Errorf("CIDRs after re-apply = %s", got)
 	}
 }
 
