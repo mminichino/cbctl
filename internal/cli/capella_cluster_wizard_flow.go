@@ -65,12 +65,16 @@ func (w *clusterWizard) run(cmd *cobra.Command, name, cidr string) (ClusterSpec,
 		return spec, nil
 	}
 	if !ch("cidr") {
-		if spec.CIDR, err = w.ask("Network CIDR", cidr, func(v string) error {
-			if _, err := netip.ParsePrefix(v); err != nil {
-				return fmt.Errorf("give a CIDR such as 10.0.0.0/24")
+		check := w.cidrCheck
+		if check == nil {
+			check = func(v string) error {
+				if _, err := netip.ParsePrefix(v); err != nil {
+					return fmt.Errorf("give a CIDR such as 10.0.0.0/24")
+				}
+				return nil
 			}
-			return nil
-		}); err != nil {
+		}
+		if spec.CIDR, err = w.ask("Network CIDR", cidr, check); err != nil {
 			return spec, err
 		}
 	}

@@ -43,6 +43,8 @@ type clusterWizard struct {
 	out io.Writer
 	// noFree skips the cluster type question: the organization's free-tier cluster is in use.
 	noFree bool
+	// cidrCheck validates the typed network (default: any CIDR); a bad answer is asked again.
+	cidrCheck func(string) error
 }
 
 func newClusterWizard(in io.Reader, out io.Writer) *clusterWizard {
