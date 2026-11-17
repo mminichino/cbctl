@@ -45,6 +45,17 @@ the name and the target project, `bucket add` asks for `--memory`, `project crea
 description, and `cluster group add` asks for `--services`. Without a terminal a missing value
 exits 3 with `missing X: there is no terminal to ask for it`.
 
+Other differences in these commands:
+
+- Without a capella.yaml, `project create` creates the project at once; capellactl asked for
+  `--auto-approve`. With a capella.yaml it asks, as capellactl did (`-y` skips the question).
+- `project list` has the columns `NAME ID DESCRIPTION` (capellactl: `S.NO NAME DESCRIPTION CREATED
+  IN FILE ID`). `-o json` lists the projects in the same order.
+- `configure list` shows the organization ID and whether a key is stored; capellactl showed the
+  organization name and a keychain column.
+- `cluster protect --off` in file-managed mode writes `deletionProtection: false` into
+  capella.yaml; capellactl removed the field.
+
 ### Commands cbctl had before the port
 
 cbctl had its own Capella commands before the port. They are kept for one release, hidden, and
@@ -89,8 +100,8 @@ names are set the cbctl name wins.
   settings. A profile that differs is a conflict and exits 4 unless you pass `--force`.
   `--remove-legacy` deletes each profile and key it copied from capellactl. API keys are never
   printed.
-- Without an OS keychain, capellactl saved the profile and warned. `cbctl configure` exits 3 and
-  saves nothing; set `CAPELLA_API_KEY` instead.
+- Without an OS keychain, `cbctl configure` saves the profile and warns, as capellactl did; the
+  key is never written to disk, so set `CAPELLA_API_KEY`.
 - `cbctl configure remove` asks before removing the profile. Without a terminal it needs `-y`.
 - When `./.cbctl/credentials` does not exist and `./.capellactl/credentials` does, cbctl uses the
   capellactl directory, so passwords saved earlier are found. An explicit `credentialsOutput` in

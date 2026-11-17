@@ -107,7 +107,7 @@ func TestProject_CAP009_AC2_CreateRefusesExistingName(t *testing.T) {
 	s.Fake.SeedProject("alpha")
 	s.Fake.ResetCalls()
 	r := s.Run("capella", "project", "create", "alpha", "--direct")
-	wantExit(t, r, cli.ExitError)
+	wantExit(t, r, cli.ExitBlocked)
 	wantContains(t, r.Stderr, "project alpha already exists")
 	clitest.AssertNoWrites(t, s.Fake)
 }

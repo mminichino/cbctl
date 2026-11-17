@@ -26,6 +26,8 @@ type configureFlags struct {
 	apiHost     string
 	apiKeyStdin bool
 	configFile  string
+	doImport    bool
+	noImport    bool
 	yes         bool
 	output      string
 	format      string
@@ -52,8 +54,18 @@ func checkFormat(f *configureFlags) error {
 	return Errorf(ExitConfigInvalid, "", "--output-format must be cbctl or legacy (got %q)", f.format)
 }
 
-// keyringFactory builds the keyring used by configure. Tests replace it with MemKeyring.
-var keyringFactory = func() settings.Keyring { return settings.OSKeyring{} }
+// keyringFactory, when set, builds the keyring used by configure instead of Deps.Keyring. Tests
+// that drive the package-level rootCmd replace it with a MemKeyring.
+var keyringFactory func() settings.Keyring
+
+// configureKeyring is the keychain configure stores API keys in: the invocation's Deps.Keyring
+// (the OS keychain by default), unless a test replaced keyringFactory.
+func configureKeyring(cmd *cobra.Command) settings.Keyring {
+	if keyringFactory != nil {
+		return keyringFactory()
+	}
+	return depsFromCmd(cmd).Keyring
+}
 
 // newConfigureCmd builds `cbctl configure` (also attached under `capella`).
 func newConfigureCmd() *cobra.Command {
@@ -70,6 +82,8 @@ func newConfigureCmd() *cobra.Command {
 	cmd.Flags().StringVar(&f.apiHost, "api-host", "", "Capella API host or URL")
 	cmd.Flags().BoolVar(&f.apiKeyStdin, "api-key-stdin", false, "Read API key from stdin")
 	cmd.Flags().StringVar(&f.configFile, "config-file", "", "Path of the capella.yaml this profile uses")
+	cmd.Flags().BoolVar(&f.doImport, "import", false, "After saving, discover your projects and clusters and write capella.yaml (asked on a terminal)")
+	cmd.Flags().BoolVar(&f.noImport, "no-import", false, "After saving, do not offer to write capella.yaml")
 	cmd.Flags().StringVarP(&f.output, "output", "o", "text", "Output format: text|json")
 	// capellactl spelled --api-host as --api-base-url; accept it without listing it in help.
 	cmd.Flags().SetNormalizeFunc(func(_ *pflag.FlagSet, name string) pflag.NormalizedName {
@@ -116,16 +130,24 @@ func newConfigureCmd() *cobra.Command {
 
 func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags) error {
 	d := depsFromCmd(cmd)
+	if f.doImport && f.noImport {
+		return usageError("use either --import or --no-import", "--import and --no-import are mutually exclusive")
+	}
 	profile := activeProfile(cmd, f.profile)
-	key, err := readAPIKey(cmd, f.apiKeyStdin)
+	// One reader for every answer: a second bufio.Reader would lose what the first buffered.
+	in := bufio.NewReader(stdinFrom(cmd))
+	raw, err := readAPIKey(cmd, in, f.apiKeyStdin)
 	if err != nil {
 		return err
 	}
-	key = settings.SanitizeAPIKey(key)
+	key, fixes := settings.CleanAPIKey(raw)
 	if key == "" {
 		return Errorf(ExitConfigInvalid, "pass --api-key-stdin or run in a terminal", "no API key supplied")
 	}
 	redact.Register(key)
+	for _, fix := range fixes {
+		fmt.Fprintf(stderrFrom(cmd), "note: %s from the pasted key\n", fix)
+	}
 
 	apiHost := ""
 	if cmd.Flags().Changed("api-host") {
@@ -152,10 +174,10 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	orgs, err := client.ListOrganizations(ctx)
 	if err != nil {
 		if errors.Is(err, capellaapi.ErrUnauthorized) {
-			return Errorf(ExitError, "use the key's token, not its ID, and check the key's IP allow-list", "the API key was rejected (401)")
+			return Errorf(ExitError, rejectionChecklist(key, base), "the API key was rejected by Capella (401); nothing was saved")
 		}
 		if errors.Is(err, capellaapi.ErrForbidden) {
-			return Errorf(ExitError, "use the key's token, not its ID, and check the key's IP allow-list", "the API key was rejected (403)")
+			return Errorf(ExitError, rejectionChecklist(key, base), "the API key was rejected by Capella (403); nothing was saved")
 		}
 		return err
 	}
@@ -179,13 +201,13 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		orgName = orgs[0].Name
 	} else if len(orgs) == 0 {
 		return Errorf(ExitConfigInvalid, "", "no organizations visible to this API key")
-	} else if d.IsTTY(stdinFrom(cmd)) {
-		in, errOut := stdinFrom(cmd), stderrFrom(cmd)
+	} else if !f.apiKeyStdin && d.IsTTY(stdinFrom(cmd)) {
+		errOut := stderrFrom(cmd)
 		for i, o := range orgs {
 			fmt.Fprintf(errOut, "%d) %s (%s)\n", i+1, o.Name, o.ID)
 		}
 		fmt.Fprint(errOut, "Select organization number: ")
-		line, _ := bufio.NewReader(in).ReadString('\n')
+		line, _ := in.ReadString('\n')
 		var n int
 		if _, err := fmt.Sscanf(strings.TrimSpace(line), "%d", &n); err != nil || n < 1 || n > len(orgs) {
 			return Errorf(ExitConfigInvalid, "pass --org-id", "invalid organization selection")
@@ -193,25 +215,32 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		orgID = orgs[n-1].ID
 		orgName = orgs[n-1].Name
 	} else {
+		// With --api-key-stdin, stdin held the key, so there is nothing left to answer a question.
 		var b strings.Builder
 		for _, o := range orgs {
 			fmt.Fprintf(&b, "%s (%s)\n", o.Name, o.ID)
 		}
-		return Errorf(ExitConfigInvalid, "pass --org-id", "several organizations:\n%s", strings.TrimSpace(b.String()))
+		return Errorf(ExitConfigInvalid, "run 'cbctl configure --org-id ID' with the ID of the one to use",
+			"this key sees several organizations; nothing was saved:\n%s", strings.TrimSpace(b.String()))
 	}
 
 	home := d.Home
 	if home == "" {
 		home = settings.HomeDir(d.Env)
 	}
-	kr := keyringFactory()
-	if err := kr.Set(profile, key); err != nil {
-		return Errorf(ExitConfigInvalid, "set CAPELLA_API_KEY in your environment or .env instead", "no OS keychain available; %v", err)
+	kr := configureKeyring(cmd)
+	// Without a keychain the profile (organization, API host) is still saved, as in capellactl:
+	// the key is never written to disk, so it must come from CAPELLA_API_KEY.
+	keyStored := kr.Set(profile, key) == nil
+	undoKey := func() {
+		if keyStored {
+			_ = kr.Delete(profile) // best effort: the save failed, so nothing must be left half-saved
+		}
 	}
 	store := settings.ProfileStore{Path: settings.ProfilesPath(home)}
 	profiles, err := store.Load()
 	if err != nil {
-		_ = kr.Delete(profile)
+		undoKey()
 		return err
 	}
 	if profiles == nil {
@@ -223,7 +252,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	}
 	profiles[profile] = settings.Profile{OrganizationID: orgID, APIBaseURL: base, ConfigFile: configFile}
 	if err := store.Save(profiles); err != nil {
-		_ = kr.Delete(profile)
+		undoKey()
 		return err
 	}
 
@@ -241,12 +270,43 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 		return enc.Encode(doc)
 	}
 	logging.Info("Saved profile %q (organization %s %s)", profile, orgName, orgID)
-	return nil
+	if keyStored {
+		logging.Info("API key stored in the OS keychain")
+	} else {
+		logging.Warning("no OS keychain available; set CAPELLA_API_KEY in your environment instead (the key was not saved)")
+	}
+	interactive := !f.apiKeyStdin && d.IsTTY(stdinFrom(cmd))
+	return configureFollowUp(ctx, cmd, f, in, followUp{key: key, base: base, orgID: orgID, orgName: orgName, interactive: interactive})
 }
 
-func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
+// rejectionChecklist is what to check when Capella rejects the key. It names the key's length and
+// last characters, never the key.
+func rejectionChecklist(key, base string) string {
+	tail := "?"
+	if len(key) >= 8 {
+		tail = key[len(key)-4:]
+	}
+	lines := []string{
+		fmt.Sprintf("The key received has %d characters and ends in …%s. Check that:", len(key), tail),
+		"  1. this machine's public IP is in the API key's allowed IP list (Capella UI → Organization settings →",
+		"     API Keys → your key). Find your IP with: curl -s https://checkip.amazonaws.com",
+		"  2. you copied the API Key Token (shown once when the key is created), not the API Key ID or name;",
+		"  3. the key has not expired or been deleted;",
+		fmt.Sprintf("  4. the API URL is right (now: %s; change with --api-host).", base),
+	}
+	if len(key) >= 1000 {
+		lines = append(lines, "  Note: the key is 1000+ characters; the terminal may have cut it. Use --api-key-stdin.")
+	}
+	lines = append(lines,
+		"Test the key without cbctl (prints 200 when it works):",
+		fmt.Sprintf(`  curl -s -o /dev/null -w '%%{http_code}\n' -H "Authorization: Bearer $CAPELLA_API_KEY" %s/v4/organizations`, base),
+		"Avoid pasting into the hidden prompt: pbpaste | cbctl configure --api-key-stdin")
+	return strings.Join(lines, "\n")
+}
+
+func readAPIKey(cmd *cobra.Command, in *bufio.Reader, fromStdin bool) (string, error) {
 	d := depsFromCmd(cmd)
-	in := stdinFrom(cmd)
+	src := stdinFrom(cmd)
 	errOut := stderrFrom(cmd)
 	if fromStdin {
 		raw, err := io.ReadAll(in)
@@ -255,9 +315,9 @@ func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
 		}
 		return string(raw), nil
 	}
-	if d.IsTTY(in) {
+	if d.IsTTY(src) {
 		fmt.Fprint(errOut, "Capella API key (input hidden): ")
-		if f, ok := in.(*os.File); ok {
+		if f, ok := src.(*os.File); ok {
 			b, err := term.ReadPassword(int(f.Fd()))
 			fmt.Fprintln(errOut)
 			if err != nil {
@@ -265,11 +325,11 @@ func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
 			}
 			return string(b), nil
 		}
-		line, err := bufio.NewReader(in).ReadString('\n')
+		line, err := in.ReadString('\n')
 		if err != nil && line == "" {
 			return "", err
 		}
-		return strings.TrimSpace(line), nil
+		return line, nil
 	}
 	return "", Errorf(ExitConfigInvalid, "pass --api-key-stdin or run in a terminal", "no API key supplied")
 }
@@ -288,7 +348,7 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 	if err != nil {
 		return err
 	}
-	kr := keyringFactory()
+	kr := configureKeyring(cmd)
 	type row struct {
 		Profile      string `json:"profile"`
 		Organization string `json:"organization"`
@@ -384,8 +444,14 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 	if err != nil {
 		return err
 	}
+	kr := configureKeyring(cmd)
 	if _, ok := profiles[profile]; !ok {
-		logging.Warning("profile %q not found", profile)
+		// A keychain entry left without its profile is still removed.
+		if _, err := kr.Get(profile); err == nil && kr.Delete(profile) == nil {
+			logging.Info("Removed the keychain entry of profile %q", profile)
+			return nil
+		}
+		logging.Info("profile %q: nothing to remove", profile)
 		return nil
 	}
 	if !f.yes {
@@ -399,10 +465,15 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 			return nil
 		}
 	}
-	_ = keyringFactory().Delete(profile)
+	_, getErr := kr.Get(profile)
+	hadKey := getErr == nil && kr.Delete(profile) == nil
 	delete(profiles, profile)
 	if err := store.Save(profiles); err != nil {
 		return err
+	}
+	if hadKey {
+		logging.Info("Removed profile %q (keychain entry deleted)", profile)
+		return nil
 	}
 	logging.Info("Removed profile %q", profile)
 	return nil

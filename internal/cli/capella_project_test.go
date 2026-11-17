@@ -92,11 +92,11 @@ func TestProjectCreate(t *testing.T) {
 	})
 	t.Run("already exists", func(t *testing.T) {
 		res := runResource(t, "project", "create", "alpha")
-		wantExit(t, res, ExitError, "project alpha already exists")
+		wantExit(t, res, ExitBlocked, "project alpha already exists")
 	})
 	t.Run("conflict from Capella", func(t *testing.T) {
 		f.FailNext("POST", `/projects$`, 409, 1)
-		wantExit(t, runResource(t, "project", "create", "gamma"), ExitError, "project gamma already exists")
+		wantExit(t, runResource(t, "project", "create", "gamma"), ExitBlocked, "project gamma already exists")
 	})
 	t.Run("API failure", func(t *testing.T) {
 		f.FailNext("POST", `/projects$`, 422, 1)
@@ -199,11 +199,11 @@ func TestProjectDelete(t *testing.T) {
 		f := resEnv(t)
 		f.SeedProject("alpha")
 		fakeTTY(t)
-		res := runResourceIn(t, "yes\n", "project", "delete", "alpha")
+		res := runResourceIn(t, "alpha\n", "project", "delete", "alpha")
 		if res.Err != nil {
 			t.Fatal(res.Err)
 		}
-		wantContains(t, res.Stderr, "[y/N]")
+		wantContains(t, res.Stderr, "Type the project name to confirm deletion (alpha)")
 		wantContains(t, res.Stdout, "deleted project alpha")
 	})
 	t.Run("not empty", func(t *testing.T) {
@@ -216,7 +216,11 @@ func TestProjectDelete(t *testing.T) {
 	})
 	t.Run("not found", func(t *testing.T) {
 		resEnv(t)
-		wantExit(t, runResource(t, "project", "delete", "missing", "-y"), ExitConfigInvalid, "not found")
+		// A project already gone is a no-op (capellactl CAP-010 AC2), not an error.
+		res := mustRun(t, "project", "delete", "missing", "-y")
+		if !strings.Contains(res.Stdout+res.Stderr, "project missing not found; nothing to do") {
+			t.Errorf("output = %q / %q", res.Stdout, res.Stderr)
+		}
 	})
 }
 

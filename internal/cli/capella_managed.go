@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
@@ -299,6 +300,11 @@ func managedProjectCreate(description *string) func(*cobra.Command, []string) er
 	return func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		mf := managedFlagsOf(cmd)
+		cleanup, err := startNamedConfig(cmd)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
 		e, ed, err := newManagedEnv(cmd)
 		if err != nil {
 			return err
@@ -324,6 +330,31 @@ func managedProjectCreate(description *string) func(*cobra.Command, []string) er
 		}, mf.noApply)
 		return err
 	}
+}
+
+// emptyConfig is the file 'project create' starts from when --config names a missing file.
+const emptyConfig = "apiVersion: cbctl/v1\nprojects: []\n"
+
+// startNamedConfig lets 'project create' record a first project in a file that --config (or
+// CBCTL_CONFIG) names but that does not exist yet, as capellactl does. The returned cleanup
+// removes the file again when the command recorded nothing in it (refused, cancelled, failed).
+func startNamedConfig(cmd *cobra.Command) (func(), error) {
+	disc, err := discoverConfig(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if disc.Exists || !disc.Explicit() {
+		return func() {}, nil
+	}
+	if err := os.WriteFile(disc.Path, []byte(emptyConfig), 0o644); err != nil {
+		return nil, fmt.Errorf("creating %s: %w", displayPathWith(disc.Path, cmd), err)
+	}
+	return func() {
+		if b, rerr := os.ReadFile(disc.Path); rerr == nil && string(b) == emptyConfig {
+			// Best effort: a leftover empty file is harmless and validates.
+			_ = os.Remove(disc.Path)
+		}
+	}, nil
 }
 
 func managedProjectUpdate(description *string) func(*cobra.Command, []string) error {
@@ -373,7 +404,12 @@ func managedProjectDelete(direct func(*cobra.Command, []string) error) func(*cob
 		}
 		file := filepath.Base(ed.Path)
 		if _, ok := ed.FindProject(name); !ok {
-			return notInFile("project", name, file)
+			if mf.noApply {
+				return notInFile("project", name, file)
+			}
+			// capella.yaml has nothing to remove: act on Capella only (a project already gone is a
+			// no-op there, so a rerun after the delete succeeds).
+			return direct(cmd, args)
 		}
 		if mf.noApply {
 			rt := &runtime{cmd: cmd}
@@ -438,6 +474,11 @@ func managedClusterProtect(onFlag *bool, project *string) func(*cobra.Command, [
 		}
 		word := "on"
 		question := fmt.Sprintf("Turn deletion protection on for %s in %s and Capella?", name, filepath.Base(ed.Path))
+		if on {
+			// Turning protection on only makes things safer: like the direct command (and
+			// capellactl) it needs no confirmation.
+			e.Yes = true
+		}
 		if !on {
 			word = "off"
 			question = fmt.Sprintf("Turn off deletion protection for %s? The cluster and its buckets can then be deleted.", name)

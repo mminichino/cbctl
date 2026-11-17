@@ -136,7 +136,8 @@ func newCapellaApplyCmd() *cobra.Command {
 		e.RC.AllowServiceGroupRemoval = grp
 		e.RC.SkipCapacityCheck = skipCap
 		e.TreeOptions = resources.Options{ForceOverwriteSecret: force}
-		p, err := makePlan(e.Ctx, e, plan.Options{Targets: targets, Prune: prune})
+		p, err := makePlan(e.Ctx, e, plan.Options{Targets: targets, Prune: prune,
+			NoDescendants: cmd.Annotations[noDescendantsAnnotation] != ""})
 		if err != nil {
 			return err
 		}

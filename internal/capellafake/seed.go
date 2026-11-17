@@ -334,3 +334,26 @@ func (f *Fake) RemoveProject(projectID string) bool {
 	}
 	return false
 }
+
+// AllowDuplicateCIDRs makes POST allowedcidrs accept a CIDR the cluster already has, as some
+// Capella deployments do, so the create-then-delete replace path runs instead of the 409 fallback.
+func (f *Fake) AllowDuplicateCIDRs(on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.cidrDuplicates = on
+}
+
+// SeedCIDR adds an active allowed CIDR to a cluster and returns its ID. comment may be empty.
+func (f *Fake) SeedCIDR(clusterID, cidr, comment string, fields ...Field) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, cl := f.findClusterAnywhere(clusterID)
+	if cl == nil {
+		f.t.Fatalf("capellafake: SeedCIDR: unknown cluster %q", clusterID)
+	}
+	obj := Obj{"id": uuid.NewString(), "cidr": cidr, "comment": comment, "expiresAt": "", "status": "active",
+		"type": "permanent", "audit": f.audit(1)}
+	applyFields(obj, fields)
+	cl.cidrs = append(cl.cidrs, &res{ver: 1, obj: obj})
+	return str(obj, "id")
+}
