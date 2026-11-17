@@ -277,6 +277,8 @@ func confirmRuntime(yes bool, stdin string) (*runtime, *bytes.Buffer) {
 }
 
 func TestConfirm(t *testing.T) {
+	// confirmRuntime has no Deps, so noApprovalError reads the process env; CI runners set CI.
+	t.Setenv("CI", "")
 	tests := []struct {
 		name       string
 		yes, tty   bool

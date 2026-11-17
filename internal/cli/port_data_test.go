@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1182,8 +1183,12 @@ func TestRotation_CAP028_AC2_GeneratedSavedWithBackup(t *testing.T) {
 		t.Fatalf(".bak = %q", got)
 	}
 	for _, p := range []string{old, old + ".bak"} {
-		if st, err := os.Stat(p); err != nil || st.Mode().Perm() != 0o600 {
-			t.Fatalf("%s mode %v (%v)", filepath.Base(p), st.Mode().Perm(), err)
+		st, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("%s: %v", filepath.Base(p), err)
+		}
+		if runtime.GOOS != "windows" && st.Mode().Perm() != 0o600 { // Windows has no Unix modes
+			t.Fatalf("%s mode %v", filepath.Base(p), st.Mode().Perm())
 		}
 	}
 	wantContains(t, dataOut(r), "password rotated for orders_app", "password saved to")

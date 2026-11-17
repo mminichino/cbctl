@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -123,7 +124,7 @@ func TestCredentialFiles_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+	if fi, err := os.Stat(path); err != nil || (runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600) {
 		t.Errorf("mode = %v, %v", fi.Mode().Perm(), err)
 	}
 	_, err = WriteGeneratedCredential(dir, "c1", "app", "id-1", "Secret-pw-5678", false)
@@ -140,7 +141,9 @@ func TestCredentialFiles_Errors(t *testing.T) {
 	if _, err := WriteGeneratedCredential(filepath.Join(blocker, "sub"), "c1", "app", "id", "Secret-pw-1234", false); err == nil {
 		t.Error("wrote under a file")
 	}
-	if _, err := Preflight(filepath.Join(blocker, "sub"), "c1", "app", false); err == nil {
+	// On Windows a path under a regular file stats as not-exist, so Preflight passes there and the
+	// write itself fails (asserted above).
+	if _, err := Preflight(filepath.Join(blocker, "sub"), "c1", "app", false); err == nil && runtime.GOOS != "windows" {
 		t.Error("Preflight under a file passed")
 	}
 	// The target path is a directory: the rename fails and no temp file is left.

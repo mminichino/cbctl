@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -455,7 +456,7 @@ func TestConfigure_CAP037_AC1_SavesProfileAndKeychain(t *testing.T) {
 	}
 	wantContains(t, string(raw), org2)
 	portLacks(t, string(raw), s.Fake.APIKey)
-	if fi, err := os.Stat(path); err != nil || fi.Mode().Perm() != 0o600 {
+	if fi, err := os.Stat(path); err != nil || (runtime.GOOS != "windows" && fi.Mode().Perm() != 0o600) {
 		t.Errorf("profiles.yaml mode = %v, %v; want 0600", fi.Mode().Perm(), err)
 	}
 	calls := s.Fake.Calls("GET", "/v4/organizations")

@@ -218,7 +218,8 @@ func TestResolveCredentialsDir(t *testing.T) {
 			}
 		})
 	}
-	if dir, _, _ := secrets.ResolveCredentialsDir("/abs/out", "/base"); dir != filepath.Clean("/abs/out") {
-		t.Errorf("absolute = %q", dir)
+	abs := filepath.Join(t.TempDir(), "out") // absolute on every OS ("/abs/out" is not on Windows)
+	if dir, _, _ := secrets.ResolveCredentialsDir(abs, t.TempDir()); dir != filepath.Clean(abs) {
+		t.Errorf("absolute = %q, want %q", dir, abs)
 	}
 }

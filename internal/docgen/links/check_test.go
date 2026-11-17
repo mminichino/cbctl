@@ -72,7 +72,7 @@ func TestCheckFileCases(t *testing.T) {
 func TestCheckFileUnreadable(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "missing.md")
 	issues := CheckFile(p)
-	if len(issues) != 1 || issues[0].Line != 1 || !strings.Contains(issues[0].Msg, "no such file") {
+	if len(issues) != 1 || issues[0].Line != 1 || !strings.Contains(issues[0].Msg, "missing.md") {
 		t.Fatalf("got %v", issues)
 	}
 }
