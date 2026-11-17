@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/spf13/cobra"
@@ -46,13 +47,49 @@ func newCapellaProjectListCmd() *cobra.Command {
 			return nil
 		}
 		rows := make([][]string, 0, len(projects))
+		recorded, haveFile := projectsInFile(cmd)
 		for _, p := range projects {
-			rows = append(rows, []string{p.Name, p.ID, p.Description})
+			row := []string{p.Name, p.ID, p.Description}
+			if haveFile {
+				mark := "-"
+				if recorded(p) {
+					mark = "yes"
+				}
+				row = append(row, mark)
+			}
+			rows = append(rows, row)
 		}
-		rt.Out.Table([]string{"NAME", "ID", "DESCRIPTION"}, rows)
+		header := []string{"NAME", "ID", "DESCRIPTION"}
+		if haveFile {
+			header = append(header, "IN FILE")
+		}
+		rt.Out.Table(header, rows)
 		return nil
 	}
 	return cmd
+}
+
+// projectsInFile reports, when a capella.yaml is found, which Capella projects it records (by
+// pinned id, or by name for an entry without one). A file that cannot be read or is not a cbctl
+// file counts as no file: the list itself does not depend on it.
+func projectsInFile(cmd *cobra.Command) (recorded func(capellaapi.Project) bool, ok bool) {
+	disc, err := discoverConfig(cmd)
+	if err != nil || !disc.Exists {
+		return nil, false
+	}
+	_, old, isCbctl, err := readOldFile(disc.Path)
+	if err != nil || !isCbctl {
+		return nil, false
+	}
+	ids, names := map[string]bool{}, map[string]bool{}
+	for _, e := range (&capellafile.Config{Raw: old}).Projects() {
+		if id := objStr(e.Data, "id"); id != "" {
+			ids[id] = true
+		} else {
+			names[e.Name()] = true
+		}
+	}
+	return func(p capellaapi.Project) bool { return ids[p.ID] || names[p.Name] }, true
 }
 
 func newCapellaProjectGetCmd() *cobra.Command {
@@ -121,7 +158,7 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 		}
 		rt.report(capellaapi.Project{ID: id, Name: name, Description: description},
 			"created project %s (%s)", name, id)
-		return nil
+		return startFileWith(cmd, af, id)
 	}
 	return cmd
 }
@@ -131,6 +168,24 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 func projectExistsError(name string) error {
 	return Errorf(ExitBlocked, fmt.Sprintf("run 'cbctl capella sync --project %s' to add it to capella.yaml, or choose another name", name),
 		"project %s already exists", name)
+}
+
+// startFileWith writes capella.yaml for a project just created on a terminal when the folder has
+// none yet, so a new organization's first project is recorded as in capellactl and the guide
+// (later commands then edit the file). Scripts (no terminal), --direct and -o json leave the
+// folder alone.
+func startFileWith(cmd *cobra.Command, af *apiFlags, projectID string) error {
+	if managedFlagsOf(cmd).direct || !canPrompt(cmd) {
+		return nil
+	}
+	if g, err := readGlobals(cmd); err != nil || g.Output == "json" {
+		return nil //nolint:nilerr // JSON output stays one document; globals already parsed by the command
+	}
+	disc, err := discoverConfig(cmd)
+	if err != nil || disc.Exists {
+		return nil //nolint:nilerr // no folder to write into, or a file already there
+	}
+	return runSync(cmd, af, &syncFlags{projectIDs: []string{projectID}})
 }
 
 // findProject returns the project with this exact name, or nil when it is not listed or the

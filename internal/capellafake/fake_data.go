@@ -454,7 +454,7 @@ func (c *rctx) createCollection() {
 		c.exists("a collection named " + strconv.Quote(name) + " already exists")
 		return
 	}
-	obj := Obj{"name": name}
+	obj := Obj{"name": name, "maxTTL": 0} // Capella returns maxTTL (0: the bucket's TTL) when none was given
 	if v, ok := body["maxTTL"]; ok {
 		obj["maxTTL"] = v
 	}

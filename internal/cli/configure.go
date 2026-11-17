@@ -64,7 +64,10 @@ func configureKeyring(cmd *cobra.Command) settings.Keyring {
 	if keyringFactory != nil {
 		return keyringFactory()
 	}
-	return depsFromCmd(cmd).Keyring
+	if kr := depsFromCmd(cmd).Keyring; kr != nil {
+		return kr
+	}
+	return settings.OSKeyring{}
 }
 
 // newConfigureCmd builds `cbctl configure` (also attached under `capella`).

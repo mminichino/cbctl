@@ -36,13 +36,25 @@ type Mutation struct {
 
 const defaultNoop = "No changes: capella.yaml and Capella already match."
 
+// editedText encodes the edited file. A file that changes is written in the projects: form, so the
+// single-project form is converted on its first write (CAP-040 AC2); an unchanged file is left
+// as it is.
+func editedText(ed *capellafile.Editor) (string, error) {
+	text, err := ed.Text()
+	if err != nil || text == ed.Original {
+		return text, err
+	}
+	ed.EnsureProjects()
+	return ed.Text()
+}
+
 // ChangeAndApply edits the file, validates the candidate, plans the change, asks, saves the file
 // and applies the plan. It returns the plan, or nil when nothing ran.
 func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, m Mutation, noApply bool) (*plan.Plan, error) {
 	if err := m.Edit(ed); err != nil {
 		return nil, err
 	}
-	text, err := ed.Text()
+	text, err := editedText(ed)
 	if err != nil {
 		return nil, fmt.Errorf("encoding %s: %w", filepath.Base(ed.Path), err)
 	}
@@ -438,7 +450,7 @@ func managedProjectDelete(direct func(*cobra.Command, []string) error) func(*cob
 func removeProjectFromFile(cmd *cobra.Command, ed *capellafile.Editor, name string, announce bool) error {
 	file := filepath.Base(ed.Path)
 	ed.RemoveProject(name)
-	text, err := ed.Text()
+	text, err := editedText(ed)
 	if err != nil {
 		return err
 	}

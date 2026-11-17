@@ -260,9 +260,9 @@ func TestProjectCreate_CAP039_AC1_Interactive(t *testing.T) {
 		if b := portBody(t, w[0]); b["name"] != "nova-qa" || b["description"] != "QA environment" {
 			t.Errorf("body = %v", b)
 		}
-		if _, err := os.Stat(filepath.Join(s.Dir, "capella.yaml")); err == nil {
-			t.Error("direct project create wrote capella.yaml")
-		}
+		// With no capella.yaml in the folder, a terminal project create starts one (capellactl ac1).
+		data := s.ReadFile("capella.yaml")
+		wantContains(t, data, "nova-qa")
 	})
 	t.Run("managed asks the description and confirms", func(t *testing.T) {
 		s := newScenario(t)

@@ -66,7 +66,7 @@ func configureFollowUp(ctx context.Context, cmd *cobra.Command, f *configureFlag
 			return nil
 		}
 	}
-	return runSync(cmd, &apiFlags{token: fu.key, orgID: fu.orgID}, &syncFlags{force: disc.Exists})
+	return runSync(cmd, &apiFlags{token: fu.key, orgID: fu.orgID, apiHost: fu.base}, &syncFlags{force: disc.Exists})
 }
 
 // checkExistingFile warns when capella.yaml belongs to another organization or declares projects
@@ -80,7 +80,7 @@ func checkExistingFile(ctx context.Context, cmd *cobra.Command, f *configureFlag
 			name, fileOrg, label, fu.orgID, name, fileOrg), fmt.Sprintf("Either rewrite it for %s with 'cbctl capella sync --force' (the current file is kept as %s.bak), "+
 			"or keep it and save a key for %s in its own profile with 'cbctl configure --profile NAME'.", label, name, fileOrg))
 		if fu.interactive && !f.noImport && askYesNo(cmd, in, fmt.Sprintf("Back up %s and re-import it for %s?", name, label), false) {
-			return runSync(cmd, &apiFlags{token: fu.key, orgID: fu.orgID}, &syncFlags{force: true})
+			return runSync(cmd, &apiFlags{token: fu.key, orgID: fu.orgID, apiHost: fu.base}, &syncFlags{force: true})
 		}
 		return nil
 	}

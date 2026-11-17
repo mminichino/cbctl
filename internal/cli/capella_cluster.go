@@ -30,16 +30,18 @@ func registerCapellaClusterCommands(cmd *cobra.Command) {
 	cmd.AddCommand(newCapellaClusterBackupCmd())
 }
 
-// clusterSummary is one row of cluster list.
+// clusterSummary is one row of cluster list. ProjectName repeats Project under capellactl's key, so
+// scripts written for capellactl keep working.
 type clusterSummary struct {
-	Name      string `json:"name"`
-	ID        string `json:"id"`
-	Project   string `json:"project"`
-	ProjectID string `json:"projectId"`
-	Provider  string `json:"provider"`
-	Region    string `json:"region"`
-	Nodes     int    `json:"nodes"`
-	State     string `json:"state"`
+	Name        string `json:"name"`
+	ID          string `json:"id"`
+	Project     string `json:"project"`
+	ProjectName string `json:"projectName"`
+	ProjectID   string `json:"projectId"`
+	Provider    string `json:"provider"`
+	Region      string `json:"region"`
+	Nodes       int    `json:"nodes"`
+	State       string `json:"state"`
 }
 
 func newCapellaClusterListCmd() *cobra.Command {
@@ -68,12 +70,19 @@ func newCapellaClusterListCmd() *cobra.Command {
 				for i := range clusters {
 					c := &clusters[i]
 					items = append(items, clusterSummary{
-						Name: c.Name, ID: c.ID, Project: p.Name, ProjectID: p.ID,
+						Name: c.Name, ID: c.ID, Project: p.Name, ProjectName: p.Name, ProjectID: p.ID,
 						Provider: clusterProvider(c), Region: clusterRegion(c),
 						Nodes: totalNodes(c.ServiceGroups), State: c.CurrentState,
 					})
 				}
 			}
+			// By project, then by name, as capellactl lists them.
+			sort.SliceStable(items, func(i, j int) bool {
+				if items[i].Project != items[j].Project {
+					return items[i].Project < items[j].Project
+				}
+				return items[i].Name < items[j].Name
+			})
 			rt.Out.List(items)
 			rows := make([][]string, len(items))
 			for i, c := range items {

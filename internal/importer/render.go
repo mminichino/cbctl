@@ -93,6 +93,26 @@ func commentText(s string) string {
 
 // applyMarkers rewrites marker keys of a node tree into YAML comments.
 func applyMarkers(n *yaml.Node, comments map[string]string) {
+	if trailing := markNode(n, comments); len(trailing) > 0 {
+		footLast(n, trailing)
+	}
+}
+
+// footLast attaches trailing comments of a list to its last item, for a list that is not the
+// value of a mapping key (yaml.v3 then writes them at the end of the document).
+func footLast(n *yaml.Node, trailing []string) {
+	if len(n.Content) == 0 {
+		n.HeadComment = joinComments(append([]string{n.HeadComment}, trailing...))
+		return
+	}
+	last := n.Content[len(n.Content)-1]
+	last.FootComment = joinComments(append([]string{last.FootComment}, trailing...))
+}
+
+// markNode is applyMarkers for one node. For a non-empty list whose last entries are commented
+// out it returns those comments, so the caller can put them under the list's key: as the foot
+// comment of the last item yaml.v3 would write them at the end of the document.
+func markNode(n *yaml.Node, comments map[string]string) []string {
 	switch n.Kind {
 	case yaml.DocumentNode:
 		for _, c := range n.Content {
@@ -107,7 +127,9 @@ func applyMarkers(n *yaml.Node, comments map[string]string) {
 				pending = append(pending, comments[k.Value])
 				continue
 			}
-			applyMarkers(v, comments)
+			if trailing := markNode(v, comments); len(trailing) > 0 {
+				k.FootComment = joinComments(append([]string{k.FootComment}, trailing...))
+			}
 			if len(pending) > 0 {
 				k.HeadComment = joinComments(append(pending, k.HeadComment))
 				pending = nil
@@ -157,14 +179,13 @@ func applyMarkers(n *yaml.Node, comments map[string]string) {
 		n.Content = content
 		if len(pending) > 0 {
 			if len(content) > 0 {
-				last := content[len(content)-1]
-				last.FootComment = joinComments(append([]string{last.FootComment}, pending...))
-			} else {
-				n.Kind, n.Tag, n.Style = yaml.SequenceNode, "!!seq", yaml.FlowStyle
-				n.HeadComment = joinComments(pending)
+				return pending
 			}
+			n.Kind, n.Tag, n.Style = yaml.SequenceNode, "!!seq", yaml.FlowStyle
+			n.HeadComment = joinComments(pending)
 		}
 	}
+	return nil
 }
 
 func onlyMarkers(m *yaml.Node) bool {

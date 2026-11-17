@@ -255,7 +255,7 @@ func removeFromFile(cmd *cobra.Command, ed *capellafile.Editor, spec deleteSpec,
 	if err := spec.remove(cmd, args, ed); err != nil {
 		return err
 	}
-	text, err := ed.Text()
+	text, err := editedText(ed)
 	if err != nil {
 		return err
 	}
@@ -1383,7 +1383,9 @@ func parseGroupSpec(text, provider string, base diskChange) (capellafile.Obj, er
 	}, nil
 }
 
-// pickProject chooses the project of a new cluster: --project, else the file's only project.
+// pickFileProject chooses the project of a new cluster: --project, else the file's only project.
+// With several projects and a terminal it asks (as capellactl did) and records the answer as
+// --project, so later calls for the same invocation pick the same project.
 func pickFileProject(cmd *cobra.Command, ed *capellafile.Editor) (string, *yaml.Node, error) {
 	name := projectFlag(cmd)
 	if !cmd.Flags().Changed("project") {
@@ -1394,7 +1396,17 @@ func pickFileProject(cmd *cobra.Command, ed *capellafile.Editor) (string, *yaml.
 		case 1:
 			name = names[0]
 		default:
-			return "", nil, usageError("add --project NAME ("+strings.Join(names, ", ")+")", "%s declares several projects", fileName(ed))
+			if !canPrompt(cmd) {
+				return "", nil, usageError("add --project NAME ("+strings.Join(names, ", ")+")", "%s declares several projects", fileName(ed))
+			}
+			picked, err := askProject(promptOf(cmd), names)
+			if err != nil {
+				return "", nil, err
+			}
+			if err := cmd.Flags().Set("project", picked); err != nil {
+				return "", nil, fmt.Errorf("recording the project: %w", err)
+			}
+			name = picked
 		}
 	}
 	node, ok := ed.FindProject(name)

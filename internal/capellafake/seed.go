@@ -99,11 +99,7 @@ func (f *Fake) SeedScope(clusterID, bucket, scopeName string, collections map[st
 	}
 	s := &scope{name: scopeName}
 	for name, ttl := range collections {
-		obj := Obj{"name": name}
-		if ttl != 0 {
-			obj["maxTTL"] = ttl
-		}
-		s.colls = append(s.colls, &res{ver: 1, obj: obj})
+		s.colls = append(s.colls, &res{ver: 1, obj: Obj{"name": name, "maxTTL": ttl}}) // Capella always returns maxTTL
 	}
 	b.scopes = append(b.scopes, s)
 }
