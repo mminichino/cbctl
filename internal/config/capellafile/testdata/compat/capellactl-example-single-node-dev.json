@@ -1,0 +1,75 @@
+{
+  "apiVersion": "capellactl/v1",
+  "clusters": [
+    {
+      "allowedCidrs": [
+        {
+          "cidr": "203.0.113.10/32",
+          "comment": "Developer laptop (replace with your IP)"
+        }
+      ],
+      "availability": {
+        "type": "single"
+      },
+      "buckets": [
+        {
+          "memoryAllocationInMb": 256,
+          "name": "playground",
+          "scopes": [
+            {
+              "collections": [
+                {
+                  "name": "docs"
+                }
+              ],
+              "name": "app"
+            }
+          ]
+        }
+      ],
+      "cloudProvider": {
+        "cidr": "10.30.0.0/24",
+        "region": "us-east-1",
+        "type": "aws"
+      },
+      "configurationType": "singleNode",
+      "description": "Single-node developer cluster",
+      "hibernation": {
+        "timezone": "US/Eastern",
+        "weekdays": "08:00-19:00",
+        "weekend": "off"
+      },
+      "name": "nova-sandbox-01",
+      "serviceGroups": [
+        {
+          "node": {
+            "compute": {
+              "cpu": 4,
+              "ram": 16
+            },
+            "disk": {
+              "iops": 3000,
+              "storage": 50,
+              "type": "gp3"
+            }
+          },
+          "numOfNodes": 1,
+          "services": [
+            "data",
+            "index",
+            "query",
+            "search"
+          ]
+        }
+      ],
+      "support": {
+        "plan": "basic"
+      }
+    }
+  ],
+  "organizationId": "${CAPELLA_ORG_ID}",
+  "project": {
+    "description": "Personal development sandbox",
+    "name": "nova-sandbox"
+  }
+}

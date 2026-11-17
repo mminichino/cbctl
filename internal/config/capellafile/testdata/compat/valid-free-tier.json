@@ -1,0 +1,39 @@
+{
+  "apiVersion": "cbctl/v1",
+  "projects": [
+    {
+      "clusters": [
+        {
+          "allowedCidrs": [
+            {
+              "cidr": "203.0.113.10"
+            }
+          ],
+          "buckets": [
+            {
+              "memoryAllocationInMb": 100,
+              "name": "scratch",
+              "scopes": [
+                {
+                  "collections": [
+                    {
+                      "name": "docs"
+                    }
+                  ],
+                  "name": "app"
+                }
+              ]
+            }
+          ],
+          "cloudProvider": {
+            "region": "us-east-2",
+            "type": "aws"
+          },
+          "name": "free-1",
+          "tier": "free"
+        }
+      ],
+      "name": "free-project"
+    }
+  ]
+}

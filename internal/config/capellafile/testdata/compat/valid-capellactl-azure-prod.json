@@ -1,0 +1,90 @@
+{
+  "apiVersion": "capellactl/v1",
+  "clusters": [
+    {
+      "allowedCidrs": [
+        {
+          "cidr": "198.51.100.0/24",
+          "comment": "Application subnet (replace with yours)"
+        }
+      ],
+      "availability": {
+        "type": "multi"
+      },
+      "buckets": [
+        {
+          "memoryAllocationInMb": 4096,
+          "name": "orders",
+          "replicas": 2,
+          "scopes": [
+            {
+              "collections": [
+                {
+                  "name": "invoices"
+                }
+              ],
+              "name": "billing"
+            }
+          ]
+        }
+      ],
+      "cloudProvider": {
+        "cidr": "10.50.0.0/24",
+        "region": "eastus",
+        "type": "azure"
+      },
+      "databaseCredentials": [
+        {
+          "access": [
+            {
+              "privileges": [
+                "data_reader",
+                "data_writer"
+              ],
+              "resources": {
+                "buckets": [
+                  {
+                    "name": "orders"
+                  }
+                ]
+              }
+            }
+          ],
+          "name": "orders_app",
+          "password": "${ORDERS_APP_PASSWORD}"
+        }
+      ],
+      "deletionProtection": true,
+      "description": "Production cluster (Azure)",
+      "name": "nova-prod-azure",
+      "serviceGroups": [
+        {
+          "node": {
+            "compute": {
+              "cpu": 8,
+              "ram": 32
+            },
+            "disk": {
+              "type": "P30"
+            }
+          },
+          "numOfNodes": 3,
+          "services": [
+            "data",
+            "index",
+            "query"
+          ]
+        }
+      ],
+      "support": {
+        "plan": "enterprise",
+        "timezone": "ET"
+      }
+    }
+  ],
+  "organizationId": "${CAPELLA_ORG_ID}",
+  "project": {
+    "description": "Nova production",
+    "name": "nova-prod"
+  }
+}

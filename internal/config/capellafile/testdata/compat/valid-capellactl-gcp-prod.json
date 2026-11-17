@@ -1,0 +1,110 @@
+{
+  "apiVersion": "capellactl/v1",
+  "clusters": [
+    {
+      "allowedCidrs": [
+        {
+          "cidr": "198.51.100.0/24",
+          "comment": "Application subnet (replace with yours)"
+        }
+      ],
+      "availability": {
+        "type": "multi"
+      },
+      "buckets": [
+        {
+          "durabilityLevel": "majority",
+          "memoryAllocationInMb": 4096,
+          "name": "orders",
+          "replicas": 2,
+          "scopes": [
+            {
+              "collections": [
+                {
+                  "name": "invoices"
+                },
+                {
+                  "name": "payments"
+                }
+              ],
+              "name": "billing"
+            }
+          ]
+        }
+      ],
+      "cloudProvider": {
+        "cidr": "10.40.0.0/24",
+        "region": "us-east1",
+        "type": "gcp"
+      },
+      "databaseCredentials": [
+        {
+          "access": [
+            {
+              "privileges": [
+                "data_reader",
+                "data_writer"
+              ],
+              "resources": {
+                "buckets": [
+                  {
+                    "name": "orders"
+                  }
+                ]
+              }
+            }
+          ],
+          "name": "orders_app",
+          "password": "${ORDERS_APP_PASSWORD}"
+        }
+      ],
+      "deletionProtection": true,
+      "description": "Production cluster (GCP)",
+      "name": "nova-prod-gcp",
+      "serviceGroups": [
+        {
+          "node": {
+            "compute": {
+              "cpu": 8,
+              "ram": 32
+            },
+            "disk": {
+              "storage": 256,
+              "type": "pd-ssd"
+            }
+          },
+          "numOfNodes": 3,
+          "services": [
+            "data"
+          ]
+        },
+        {
+          "node": {
+            "compute": {
+              "cpu": 8,
+              "ram": 32
+            },
+            "disk": {
+              "storage": 128,
+              "type": "pd-ssd"
+            }
+          },
+          "numOfNodes": 2,
+          "services": [
+            "index",
+            "query"
+          ]
+        }
+      ],
+      "support": {
+        "plan": "enterprise",
+        "timezone": "ET"
+      }
+    }
+  ],
+  "organizationId": "${CAPELLA_ORG_ID}",
+  "project": {
+    "description": "Nova production",
+    "name": "nova-prod"
+  }
+}

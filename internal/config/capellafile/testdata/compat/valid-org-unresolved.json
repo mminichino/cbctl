@@ -1,0 +1,45 @@
+{
+  "apiVersion": "cbctl/v1",
+  "clusters": [
+    {
+      "availability": {
+        "type": "multi"
+      },
+      "cloudProvider": {
+        "cidr": "10.10.0.0/24",
+        "region": "us-east-1",
+        "type": "aws"
+      },
+      "name": "a",
+      "serviceGroups": [
+        {
+          "node": {
+            "compute": {
+              "cpu": 4,
+              "ram": 16
+            },
+            "disk": {
+              "iops": 3000,
+              "storage": 50,
+              "type": "gp3"
+            }
+          },
+          "numOfNodes": 3,
+          "services": [
+            "data",
+            "index",
+            "query"
+          ]
+        }
+      ],
+      "support": {
+        "plan": "developer pro",
+        "timezone": "PT"
+      }
+    }
+  ],
+  "organizationId": "${NOT_DEFINED_ORG}",
+  "project": {
+    "name": "nova-dev"
+  }
+}
