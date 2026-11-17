@@ -883,6 +883,9 @@ func managedClusterBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, e
 			if err != nil {
 				return err
 			}
+			if err := refuseFreeEntry(ed, cl); err != nil {
+				return err
+			}
 			b := childMap(ed, cl, "backupSchedule")
 			if (b == nil || ed.Child(b, "interval") == nil) && !ch("every") || (b == nil || ed.Child(b, "retention") == nil) && !ch("retain") {
 				return usageError("a new backup schedule needs --every HOURS and --retain DURATION",
@@ -915,11 +918,17 @@ func managedClusterBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, e
 
 var backupDayValues = backupDays
 
+// refuseFreeEntry fails with ExitBlocked when the cluster entry is a free-tier cluster, which has
+// no backups (the same refusal as the direct commands).
+func refuseFreeEntry(ed *capellafile.Editor, cl *yaml.Node) error {
+	if t := ed.Child(cl, "tier"); t != nil && t.Kind == yaml.ScalarNode && t.Value == "free" {
+		return blockedError("create a provisioned cluster for data that needs backups ('cbctl capella cluster create')", "%s", freeNoBackups)
+	}
+	return nil
+}
+
 func managedBucketBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	ch := cmd.Flags().Changed
-	if !ch("day") && !ch("start-at") && !ch("incremental-every") && !ch("retention") && !ch("cost-optimized") {
-		return Mutation{}, usageError("add at least one schedule option, for example --retention 90days", "nothing to set: no schedule option was given")
-	}
 	if ch("day") && !slices.Contains(backupDayValues, flagString(cmd, "day")) {
 		return Mutation{}, usageError("use one of "+strings.Join(backupDayValues, ", "), "invalid --day %q", flagString(cmd, "day"))
 	}
@@ -942,14 +951,30 @@ func managedBucketBackupSet(cmd *cobra.Command, args []string, _ *envRuntime, ed
 			if err != nil {
 				return err
 			}
+			if err := refuseFreeEntry(ed, cl); err != nil {
+				return err
+			}
 			b, err := bucketEntry(ed, cl, bucket)
 			if err != nil {
 				return err
 			}
-			if s := childMap(ed, b, "backupSchedule"); s != nil {
+			s := childMap(ed, b, "backupSchedule")
+			isNew := s == nil || ed.Child(s, "ensure") != nil
+			if s != nil {
 				ed.Delete(s, "ensure")
 			}
 			put := func(k string, v any) { ed.SetOrdered(b, []string{"backupSchedule", k}, v, capellafile.BucketKeyOrder) }
+			if isNew {
+				// A new schedule records every value, so the file shows what Capella runs.
+				def := bucketScheduleDefaults()
+				for _, k := range []string{"dayOfWeek", "startAt", "incrementalEvery", "retentionTime", "costOptimizedRetention"} {
+					v := def[k]
+					if n, ok := v.(int); ok {
+						v = int64(n)
+					}
+					put(k, v)
+				}
+			}
 			if ch("day") {
 				put("dayOfWeek", flagString(cmd, "day"))
 			}
@@ -975,14 +1000,16 @@ func managedBackupDelete(kind string, bucketLevel bool) managedBuild {
 	return func(cmd *cobra.Command, args []string, _ *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 		target := kind + "/" + args[0]
 		what := "the backup schedule of " + args[0]
+		owner := "cluster " + args[0]
 		if bucketLevel {
 			target += "/" + args[1]
 			what = "the backup schedule of bucket " + args[1]
+			owner = "bucket " + args[1] + " of " + args[0]
 		}
 		return Mutation{
 			Target:      target,
 			Question:    fmt.Sprintf("Mark %s absent in %s and delete it in Capella?", what, fileName(ed)),
-			NoopMessage: fmt.Sprintf("there is no %s; nothing to do", what),
+			NoopMessage: owner + " has no backup schedule; nothing to do",
 			Edit: func(ed *capellafile.Editor) error {
 				cl, err := clusterEntry(cmd, args, ed)
 				if err != nil {

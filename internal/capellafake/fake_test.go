@@ -635,7 +635,7 @@ func TestSnapshots(t *testing.T) {
 	if err != nil || rid == "" {
 		t.Fatalf("RestoreSnapshot = %q, %v", rid, err)
 	}
-	if restores, err := c.ListSnapshotRestores(ctx, p, cl); err != nil || len(restores) != 1 || restores[0]["snapshot"] != id {
+	if restores, err := c.ListSnapshotRestores(ctx, p, cl); err != nil || len(restores) != 1 || restores[0]["snapshot"] == "" || restores[0]["snapshot"] == id {
 		t.Fatalf("restores = %v, %v", restores, err)
 	}
 	if err := c.DeleteSnapshot(ctx, p, cl, id); err != nil {

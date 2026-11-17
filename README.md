@@ -282,6 +282,8 @@ Passwords never appear in the file: write `${VAR}` or `${file:PATH}` and `cbctl`
 
 Extra exit codes: 2 = changes found (`plan`/`drift --detailed-exitcode`, `sync --dry-run`), 3 = invalid config, 4 = blocked plan or confirmation without a terminal.
 
+Guides: [Getting started](docs/capella/getting-started.md), [Custom clusters](docs/capella/custom-clusters.md), [Backup and restore](docs/capella/backup-restore.md), [Runbook](docs/capella/runbook.md).
+
 ### Commands
 
 Capella commands live under `cbctl capella`:
@@ -303,7 +305,7 @@ cbctl configure --api-base-url https://cloudapi.cloud.couchbase.com   # = --api-
 cbctl capella --help
 ```
 
-On a terminal, missing values are asked for as capellactl did: `cluster create` without a name runs a wizard, `cluster clone` without arguments picks the source and asks for the region, name and project, `bucket add` asks for `--memory`, `project create` for a description and `cluster group add` for `--services`. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`).
+On a terminal, missing values are asked for as capellactl did: `cluster create` without a name runs a wizard, `cluster clone` without arguments picks the source and asks for the region, name and project, `bucket add` asks for `--memory`, `project create` for a description and `cluster group add` for `--services`, `bucket backup schedule set` without schedule flags for each schedule field. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`).
 
 `--timeout` takes a duration (`90m`, `1h30m`, units in any case) or a bare number of seconds (`90`); it must be positive and at most 24h. `CBCTL_QUIET` accepts `1/true/yes/on`. New buckets default to 1024 MB and Capella's default storage backend.
 

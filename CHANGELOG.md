@@ -60,6 +60,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cluster schedule apply`, `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`,
   `--no-cross-cluster-versioning`, `configure --api-base-url`, and
   `configure list|show --output-format legacy`.
+- Backups, as in capellactl: backup, export and restore waits print each state with its elapsed time
+  and a dot every 30 s on the same line; `bucket backup schedule set` on a terminal without flags asks
+  for each field; with a capella.yaml, a bucket schedule set on a free-tier cluster exits 4 and a new
+  bucket schedule records every default field; `cluster backup list` adds a PROJECT column only when
+  it lists several projects; every backup verb's `--help` has examples; a managed schedule delete of
+  a missing schedule says "has no backup schedule; nothing to do".
 
 ### Deprecated
 

@@ -370,7 +370,8 @@ func (c *rctx) restoreSnapshot() {
 		c.err(http.StatusConflict, "the cluster is "+cl.state()+"; a restore needs a healthy cluster")
 		return
 	}
-	r := &snapshot{obj: Obj{"id": uuid.NewString(), "snapshot": s.obj["id"], "status": "pending", "createdAt": c.f.now()}}
+	// "snapshot" is the creation time of the restored snapshot (date-time in the spec).
+	r := &snapshot{obj: Obj{"id": uuid.NewString(), "snapshot": s.obj["createdAt"], "status": "pending", "createdAt": c.f.now()}}
 	cl.restores = append(cl.restores, r)
 	c.writeJSON(http.StatusAccepted, Obj{"restoreId": r.obj["id"]})
 }
@@ -385,7 +386,15 @@ func (c *rctx) listProjectSnapshots() {
 		if len(cl.snapshots) == 0 {
 			continue
 		}
-		oldest, newest := cl.snapshots[0], cl.snapshots[len(cl.snapshots)-1]
+		oldest, newest := cl.snapshots[0], cl.snapshots[0]
+		for _, s := range cl.snapshots {
+			if str(s.obj, "createdAt") < str(oldest.obj, "createdAt") {
+				oldest = s
+			}
+			if str(s.obj, "createdAt") > str(newest.obj, "createdAt") {
+				newest = s
+			}
+		}
 		items = append(items, Obj{
 			"clusterId": cl.obj["id"], "clusterName": cl.obj["name"], "projectName": p.obj["name"],
 			"region":             str(sub(cl.obj, "cloudProvider"), "region"),
@@ -500,7 +509,11 @@ func (c *rctx) createBackup() {
 		c.err(http.StatusConflict, "the cluster is "+cl.state()+"; a backup needs a healthy cluster")
 		return
 	}
-	cl.backups = append(cl.backups, &backup{obj: c.f.newBackupObj(cl, b, uuid.NewString(), "full", "manual", "")})
+	status := ""
+	if c.f.failNextBackup {
+		status, c.f.failNextBackup = "failed", false
+	}
+	cl.backups = append(cl.backups, &backup{obj: c.f.newBackupObj(cl, b, uuid.NewString(), "full", "manual", status)})
 	c.w.WriteHeader(http.StatusAccepted)
 }
 
@@ -509,9 +522,20 @@ func (c *rctx) listCycles() {
 	if b == nil {
 		return
 	}
+	// One entry per cycle, started at its first backup, as Capella lists them.
 	cycles := []Obj{}
+	at := map[string]Obj{}
 	for _, bk := range cl.bucketBackups(str(b.obj, "id")) {
-		cycles = append(cycles, Obj{"cycleID": bk.obj["cycleID"], "createdAt": bk.obj["date"]})
+		id := str(bk.obj, "cycleID")
+		if c, ok := at[id]; ok {
+			if str(bk.obj, "date") < str(c, "createdAt") {
+				c["createdAt"] = bk.obj["date"]
+			}
+			continue
+		}
+		c := Obj{"cycleID": id, "createdAt": bk.obj["date"]}
+		at[id] = c
+		cycles = append(cycles, c)
 	}
 	c.writeJSON(http.StatusOK, Obj{"data": cycles})
 }
@@ -622,6 +646,10 @@ func (c *rctx) exportBackup() {
 	bk := cl.findBackup(c.p["backup"])
 	if bk == nil {
 		c.notFound("backup")
+		return
+	}
+	if st := str(bk.obj, "status"); st != "ready" {
+		c.err(http.StatusUnprocessableEntity, "the backup is "+st+"; only a backup in the ready state can be exported")
 		return
 	}
 	cycle := str(bk.obj, "cycleID")

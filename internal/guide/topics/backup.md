@@ -30,4 +30,4 @@ intervals and retention a cluster may use depend on its support plan: `cluster b
 Free-tier clusters have no backups. Most backup operations need an API key with the **Organization Owner** or
 **Project Owner** role; with a Project Manager key, `sync` keeps the schedules capella.yaml already has.
 
-Step by step: docs/backup-restore.md.
+Step by step: docs/capella/backup-restore.md.

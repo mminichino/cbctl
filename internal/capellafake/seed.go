@@ -171,8 +171,10 @@ func (f *Fake) SeedSnapshot(clusterID string, createdAt string, retentionHours i
 	return str(s.obj, "id")
 }
 
-// SeedBucketBackup creates an on-demand bucket backup record and returns its ID.
-func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string) string {
+// SeedBucketBackup creates an on-demand bucket backup record and returns its ID. Fields override
+// the record, for example WithField("cycleID", "cy-1"), WithField("date", ...) or
+// WithField("status", "pending").
+func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string, fields ...Field) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	_, cl := f.findClusterAnywhere(clusterID)
@@ -184,6 +186,7 @@ func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string) string
 		f.t.Fatalf("capellafake: SeedBucketBackup: unknown bucket %q", bucket)
 	}
 	obj := f.newBackupObj(cl, b, "", method, source, "ready")
+	applyFields(obj, fields)
 	cl.backups = append(cl.backups, &backup{obj: obj})
 	return str(obj, "id")
 }
@@ -333,4 +336,11 @@ func (f *Fake) RemoveProject(projectID string) bool {
 		}
 	}
 	return false
+}
+
+// FailNextBucketBackup makes the next on-demand bucket backup end in status "failed".
+func (f *Fake) FailNextBucketBackup() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.failNextBackup = true
 }
