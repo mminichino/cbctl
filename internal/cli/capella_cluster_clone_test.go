@@ -156,7 +156,9 @@ func TestClusterClone(t *testing.T) {
 		f := newFake(t)
 		pid, _ := seedCluster(f, "alpha", "c1")
 		f.SeedCluster(pid, "taken", "healthy")
-		runCap(t, "cluster", "clone", "c1", "c2").mustFail(t, ExitConfigInvalid, "region of the clone is required")
+		runCap(t, "cluster", "clone", "c1", "c2").mustFail(t, ExitConfigInvalid, "missing --region: there is no terminal")
+		runCap(t, "cluster", "clone", "c1").mustFail(t, ExitConfigInvalid, "missing NEW_NAME")
+		runCap(t, "cluster", "clone").mustFail(t, ExitConfigInvalid, "missing SOURCE")
 		runCap(t, "cluster", "clone", "c1", "c2", "--region", "x", "--cidr", "nope").mustFail(t, ExitConfigInvalid, "invalid --cidr")
 		runCap(t, "cluster", "clone", "c1", "c2", "--region", "x", "--support-plan", "gold").mustFail(t, ExitConfigInvalid, "unknown support plan")
 		runCap(t, "cluster", "clone", "c1", "taken", "--region", "x").mustFail(t, ExitBlocked, "already exists")
@@ -189,7 +191,7 @@ func TestClusterGroup(t *testing.T) {
 
 	runCap(t, "cluster", "group", "list", "c1").mustOK(t).wantStdout(t, "SERVICES", "data,index,query", "total nodes: 3 of 27")
 
-	runCap(t, "cluster", "group", "add", "c1").mustFail(t, ExitConfigInvalid, "services of the new group are required")
+	runCap(t, "cluster", "group", "add", "c1").mustFail(t, ExitConfigInvalid, "missing --services: there is no terminal")
 	runCap(t, "cluster", "group", "add", "c1", "--services", "search", "--nodes", "1").mustFail(t, ExitConfigInvalid, "outside the limits")
 
 	var r groupChangeResult

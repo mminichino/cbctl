@@ -29,7 +29,7 @@ test-integration:
 		CBCTL_IT_TARGET=sandbox go test -tags=integration -timeout 300m ./internal/integration/... -v; \
 	fi
 
-# Live Capella tests; need CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_LIVE_CLUSTER=1 adds the billable cluster parts).
+# Live Capella tests; need CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_IT_CLUSTERS=1 adds the billable cluster parts).
 test-capella-live:
 	go test -tags=integration -timeout 90m -run Capella ./internal/integration -v
 
@@ -72,6 +72,7 @@ docs-check:
 	go run ./cmd/cbdev docs coverage --check
 	go run ./cmd/cbdev docs reference --check
 	go run ./cmd/cbdev docs links --check
+	go run ./cmd/cbdev docs doc-map --check
 
 index:
 	go run ./cmd/cbdev docs index

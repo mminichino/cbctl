@@ -40,7 +40,7 @@ func cmdDocsPort(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprint(stdout, `usage: cbdev docs port --src DIR --dst DIR [--release R]... [--sha SHA] [--force]
 
 Port capellactl Markdown into docs/backlog using rewrite rules v1 (R1,R3,R5,R6,R13).
-Releases: 1.5.0 (CAP-*.md), 1.0.0-architecture (00-architecture.md).
+Releases: 1.5.0 (CAP-*.md), 1.0.0-architecture (00-architecture.md), user-docs (operator guides → --dst docs/capella).
 `)
 			return 0
 		default:

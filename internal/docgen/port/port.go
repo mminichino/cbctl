@@ -1,6 +1,9 @@
 // Package port rewrites capellactl Markdown into cbctl docs/backlog form.
 //
-// MVP rules: R1, R3, R5, R6, R13 (plus a minimal bare-word R2 for prose).
+// MVP rules: R1, R3, R5, R6, R13 (plus a minimal bare-word R2 for prose) and R14, which
+// rewrites capellactl's sample output inside code fences: embedded commands ("Next: capellactl
+// plan", "pbpaste | capellactl configure"), help hints and the [ERROR]:/[WARNING]:/[ACTION]:
+// message prefixes, so the samples read as cbctl prints them.
 package port
 
 import (
@@ -14,6 +17,10 @@ import (
 
 // RulesVersion is recorded in SOURCE.md and ported-from footers.
 const RulesVersion = 1
+
+// UserDocs are the capellactl operator guides (docs/*.md) that release "user-docs" ports to
+// docs/capella. reference.md is generated from the schema instead (cbdev docs reference).
+var UserDocs = []string{"getting-started.md", "runbook.md", "custom-clusters.md", "terraform.md", "migrating-from-scale-script.md", "backup-restore.md"}
 
 // Options control a Port run.
 type Options struct {
@@ -106,6 +113,22 @@ func Port(opts Options) (Result, error) {
 				}
 				res.Reviews = append(res.Reviews, reviews...)
 			}
+		case rel == "user-docs":
+			for _, name := range UserDocs {
+				in := filepath.Join(opts.Src, name)
+				out := filepath.Join(opts.Dst, name)
+				wrote, skipped, reviews, err := portFile(in, out, "user", "", sha7, opts.Force)
+				if err != nil {
+					return res, err
+				}
+				if wrote != "" {
+					res.Wrote = append(res.Wrote, wrote)
+				}
+				if skipped != "" {
+					res.Skipped = append(res.Skipped, skipped)
+				}
+				res.Reviews = append(res.Reviews, reviews...)
+			}
 		default:
 			return res, fmt.Errorf("port: unsupported --release %q", rel)
 		}
@@ -125,6 +148,9 @@ func portFile(in, out, profile, release, sha7 string, force bool) (wrote, skippe
 	}
 	base := filepath.Base(in)
 	srcPath := fmt.Sprintf("docs/release-%s/%s", release, base)
+	if release == "" {
+		srcPath = "docs/" + base
+	}
 	outBytes, flags := Rewrite(string(raw), RewriteOpts{
 		Profile:  profile,
 		SHA7:     sha7,
@@ -132,6 +158,11 @@ func portFile(in, out, profile, release, sha7 string, force bool) (wrote, skippe
 		Release:  release,
 		FileName: base,
 	})
+	if profile == "user" {
+		if outBytes, err = applyOverrides(base, outBytes); err != nil {
+			return "", "", nil, err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 		return "", "", nil, err
 	}
@@ -174,10 +205,16 @@ var (
 	reDotDir     = regexp.MustCompile(`\.capellactl/`)
 	reConfigPath = regexp.MustCompile(`~/\.config/capellactl`)
 	reAPIVersion = regexp.MustCompile(`apiVersion:\s*capellactl/v1`)
-	reModuleDot  = regexp.MustCompile(`\bcapellactl\.`)
+	reModuleDot  = regexp.MustCompile(`\bcapellactl\.[a-z_]`) // a module path (capellactl.cli), not a sentence end
 	reBareWord   = regexp.MustCompile(`\bcapellactl\b`)
-	rePortedFrom = regexp.MustCompile(`(?m)^<!-- ported-from:.*?-->\s*$`)
-	rePortReview = regexp.MustCompile(`(?m)^<!-- port-review:.*?-->\s*$`)
+	// R14
+	reEmbeddedCmd = regexp.MustCompile(`\bcapellactl((?:\s+-[-\w=]+)*\s+(?:init|validate|plan|apply|drift|sync|destroy|project|cluster|bucket|scope|collection|cidr|credential|configure|import|completion|doctor)\b)`)
+	reMsgError    = regexp.MustCompile(`\[ERROR\]:\s?`)
+	reMsgWarning  = regexp.MustCompile(`\[WARNING\]:\s?`)
+	reMsgAction   = regexp.MustCompile(`\[ACTION\]:\s?`)
+	reVenvLine    = regexp.MustCompile(`^source \.venv/bin/activate\s+# capellactl on PATH\s*$`)
+	rePortedFrom  = regexp.MustCompile(`(?m)^<!-- ported-from:.*?-->\s*$`)
+	rePortReview  = regexp.MustCompile(`(?m)^<!-- port-review:.*?-->\s*$`)
 )
 
 // Rewrite applies ordered rules to one Markdown document. Line endings are normalized to \n.
@@ -210,8 +247,9 @@ func Rewrite(src string, opts RewriteOpts) (string, []Flag) {
 			} else {
 				// R1: command lines inside fences
 				if reCmdLine.MatchString(line) {
-					lines[i] = reCmdLine.ReplaceAllString(line, "${1}cbctl capella${2}")
+					lines[i] = RenameVerbs(reCmdLine.ReplaceAllString(line, "${1}cbctl capella${2}"))
 				}
+				lines[i] = applyR14(lines[i])
 				// R5/R6 still apply inside fences for env/path tokens
 				lines[i] = applyR5(lines[i])
 				lines[i], flags = applyR6(lines[i], i+1, flags)
@@ -243,7 +281,10 @@ func Rewrite(src string, opts RewriteOpts) (string, []Flag) {
 	out = rePortedFrom.ReplaceAllString(out, "")
 	out = strings.TrimRight(out, "\n") + "\n"
 
-	if opts.Profile == "story" || opts.Profile == "architecture" {
+	if opts.Profile == "user" {
+		out = rebaseUserLinks(out)
+	}
+	if opts.Profile == "story" || opts.Profile == "architecture" || opts.Profile == "user" {
 		if opts.SHA7 != "" && opts.SrcPath != "" {
 			footer := fmt.Sprintf("<!-- ported-from: capellactl@%s %s · rules v%d -->\n", opts.SHA7, opts.SrcPath, RulesVersion)
 			out = out + "\n" + footer
@@ -260,11 +301,18 @@ func Rewrite(src string, opts RewriteOpts) (string, []Flag) {
 }
 
 func rewriteInlineCode(inner string) string {
-	if inner == "capellactl" {
+	switch inner {
+	case "capellactl":
 		return "cbctl"
+	case "[ERROR]:":
+		return "[error] -"
+	case "[WARNING]:":
+		return "[warning] -"
+	case "[ACTION]:":
+		return "→"
 	}
 	if strings.HasPrefix(inner, "capellactl ") {
-		return "cbctl capella " + strings.TrimPrefix(inner, "capellactl ")
+		return RenameVerbs("cbctl capella " + strings.TrimPrefix(inner, "capellactl "))
 	}
 	// R3 inside inline code
 	inner = strings.ReplaceAll(inner, "capellactl help", "cbctl capella guide")
@@ -273,6 +321,35 @@ func rewriteInlineCode(inner string) string {
 	// Remaining bare tokens (e.g. user-agent strings): R2-lite.
 	inner = reBareWord.ReplaceAllString(inner, "cbctl")
 	return inner
+}
+
+var (
+	reLinkRootReadme = regexp.MustCompile(`\]\(\.\./README\.md`)
+	reLinkBacklog    = regexp.MustCompile(`\]\((release-\d+\.\d+\.\d+/)`)
+)
+
+// rebaseUserLinks fixes relative links of an operator guide moved from capellactl's docs/ to
+// cbctl's docs/capella/: the README is one level further up, and the release backlogs are
+// under docs/backlog.
+func rebaseUserLinks(s string) string {
+	s = reLinkRootReadme.ReplaceAllString(s, "](../../README.md")
+	return reLinkBacklog.ReplaceAllString(s, "](../backlog/$1")
+}
+
+// applyR14 rewrites one line of a code fence: commands embedded in sample output or after a
+// pipe, help hints, message prefixes and any capellactl left over.
+func applyR14(s string) string {
+	if reVenvLine.MatchString(s) {
+		return "# cbctl on PATH: see Install in the README"
+	}
+	s = reCapHelp.ReplaceAllString(s, "cbctl capella guide")
+	s = reEmbeddedCmd.ReplaceAllStringFunc(s, func(m string) string {
+		return RenameVerbs("cbctl capella" + strings.TrimPrefix(m, "capellactl"))
+	})
+	s = reMsgError.ReplaceAllString(s, "[error] - ")
+	s = reMsgWarning.ReplaceAllString(s, "[warning] - ")
+	s = reMsgAction.ReplaceAllString(s, "  → ")
+	return reBareWord.ReplaceAllString(s, "cbctl")
 }
 
 func applyR3(s string) string {
@@ -368,4 +445,26 @@ func gitDirty(dir string) (bool, error) {
 		return false, fmt.Errorf("port: git status in %s: %w", dir, err)
 	}
 	return strings.TrimSpace(string(out)) != "", nil
+}
+
+var (
+	reVerbConfigure = regexp.MustCompile(`\bcbctl capella configure\b`)
+	reVerbCreate    = regexp.MustCompile(`\bcbctl capella (bucket|scope|collection) create\b`)
+	reVerbImport    = regexp.MustCompile(`\bcbctl capella import\b`)
+	reVerbHelp      = regexp.MustCompile(`\bcbctl capella help\b`)
+	reVerbVersion   = regexp.MustCompile(`\bcbctl capella --version\b`)
+	reVerbComplete  = regexp.MustCompile(`\bcbctl capella completion\b`)
+)
+
+// RenameVerbs maps capellactl verbs (after the "cbctl capella" prefix rewrite) to their cbctl
+// names: configure is top-level, bucket/scope/collection create is add, import is sync and
+// help is guide; --version and completion belong to the root command.
+func RenameVerbs(s string) string {
+	s = reVerbConfigure.ReplaceAllString(s, "cbctl configure")
+	s = reVerbCreate.ReplaceAllString(s, "cbctl capella $1 add")
+	s = reVerbImport.ReplaceAllString(s, "cbctl capella sync")
+	s = reVerbHelp.ReplaceAllString(s, "cbctl capella guide")
+	s = reVerbVersion.ReplaceAllString(s, "cbctl --version")
+	s = reVerbComplete.ReplaceAllString(s, "cbctl completion")
+	return s
 }

@@ -33,7 +33,7 @@ cbctl capella credential list CLUSTER
 cbctl capella credential get CLUSTER NAME
 cbctl capella credential create CLUSTER NAME --privileges read+write --bucket orders [--scope S [--collection C]]
 cbctl capella credential update CLUSTER NAME [--privileges … --bucket …] [--rotate-password]
-cbctl capella credential delete CLUSTER NAME        (the local password file is kept)
+cbctl capella credential delete CLUSTER NAME        # the local password file is kept
 ```
 
 Removing a credential from the file deletes nothing; `cbctl capella apply --prune` does. Advanced credentials

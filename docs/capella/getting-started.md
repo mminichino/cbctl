@@ -1,50 +1,883 @@
-# Getting started with Capella (cbctl)
+# Getting started with cbctl
 
-This guide takes you from a local checkout to a working Capella environment description
-you can validate, plan, and apply. Fenced blocks with info string `bash run` are exercised
-against `internal/capellafake` by `TestGuides_CAP033_AC5_GettingStartedRun`.
+This guide takes you from nothing to a working Couchbase Capella environment, one command at a time. Each step
+builds on the one before it:
 
-## Quick path (offline / fake)
+| Section | You will | Changes Capella? | Time |
+|---|---|---|---|
+| [Connect to Capella](#connect-to-capella) | Save your API key, list what you have | No, read-only | 5 min |
+| [Create your first cluster (free tier)](#create-your-first-cluster-free-tier) | Create a project, a free-tier cluster, a bucket and an app login | Yes, at no cost | 15 min |
+| [Manage a provisioned cluster](#manage-a-provisioned-cluster) | Scale, change, protect, power off, bring in UI changes | Yes, a provisioned cluster is billed | 30 min+ |
+| [Clean up](#clean-up) | Delete the provisioned cluster and the project | Yes | 10 min |
+| [Build a whole environment in one go](#build-a-whole-environment-in-one-go) | Describe a whole environment, then create it with `apply` | Yes | 15 min |
 
-1. Build: `make build`
-2. Unit + hermetic checks: `make check` (or `go test ./internal/...` while `check` is landing)
-3. Capella commands against the in-memory fake: see `docs/capella/testing.md`
+Two things to know before you start:
 
-Configure a real org with `cbctl capella configure` when you have `CAPELLA_API_KEY` / `CAPELLA_ORG_ID`.
+- **Every command shows what it will do and asks before doing it.** Nothing changes until you answer `y`.
+- **You never edit a file.** cbctl records what you create in `capella.yaml`, a plain description of your
+  environment, so you can review it, keep it in Git, and rebuild from it later ([Build a whole environment in one go](#build-a-whole-environment-in-one-go)).
 
-## Validate, plan, apply (fake walkthrough)
+## Before you start
 
-Assume a `capella.yaml` is already in the working directory (the scenario test seeds one).
-Run these in order:
+**A Capella API key.** In the Capella UI, go to **Organization settings → API Keys** and create a key:
 
-```bash run
-cbctl capella validate
+- Role: **Organization Owner**, or **Project Creator** plus **Project Owner** on the project you will use.
+- Allowed IPs: add this machine's public IP (`curl -s https://checkip.amazonaws.com` shows it; in PowerShell,
+  `curl.exe -s https://checkip.amazonaws.com`).
+- Copy the **API Key Token** when the key is created. Capella shows it only once, and the API Key ID will not work.
+
+**cbctl installed.** Follow [Install](../../README.md#install), then check it:
+
+```bash
+cbctl --version               # cbctl version X.Y.Z (commit=… date=…)
 ```
 
-```bash run
+**A folder for your environment.** cbctl writes `capella.yaml` in the folder you run it from. Use a new one
+(not the cbctl source folder, if you installed from source):
+
+```bash
+mkdir ~/capella-env && cd ~/capella-env
+```
+
+### Using the commands in PowerShell
+
+This guide and the [runbook](runbook.md) show macOS/Linux commands. Every `cbctl` command is typed the same way
+in PowerShell; only these shell parts differ:
+
+<!-- powershell-translation:start -->
+| In the docs (macOS/Linux) | In PowerShell |
+|---|---|
+| `mkdir ~/capella-env && cd ~/capella-env` | `mkdir ~\capella-env; cd ~\capella-env` |
+| `export ORDERS_APP_PASSWORD='…'` | `$env:ORDERS_APP_PASSWORD = '…'` (in cmd.exe: `set ORDERS_APP_PASSWORD=…`) |
+| a long command with lines ending in `\` | end those lines with a backtick `` ` `` instead, or type it on one line |
+| `"$(curl -s https://checkip.amazonaws.com)/32"` | `"$(curl.exe -s https://checkip.amazonaws.com)/32"` (plain `curl` is a different command in Windows PowerShell) |
+| `pbpaste \| cbctl configure --api-key-stdin` | `Get-Clipboard \| cbctl configure --api-key-stdin` |
+| `cbctl capella plan --detailed-exitcode \|\| [ $? -eq 2 ]` | `cbctl capella plan --detailed-exitcode; if ($LASTEXITCODE -notin 0, 2) { exit $LASTEXITCODE }` |
+| `cbctl completion zsh` | not available in PowerShell |
+<!-- powershell-translation:end -->
+
+At the hidden `configure` prompt, paste with right-click or Ctrl+V: nothing appears, but the token is there; press
+Enter.
+
+## Step by step
+
+### Connect to Capella
+
+Nothing in this part changes Capella.
+
+**1. Connect**
+
+```bash
+cbctl configure
+```
+```
+Paste the API Key Token from Capella (Organization settings → API Keys). It is shown once when the key is created; the API Key ID will not work.
+Capella API Key Token (input hidden):
+profile 'default' saved (org Nova Corp) in ~/.config/cbctl/profiles.yaml
+API Key Token stored in the OS keychain
+Discover your projects and clusters and write capella.yaml now? [Y/n]: y
+Imported 2 projects, 1 cluster, 1 bucket, 0 scopes, 0 collections, 0 credentials, 0 allowed CIDRs, 0 hibernation schedules into capella.yaml
+Next: cbctl capella plan    (reports no changes for what was imported)
+```
+
+- The token is checked against Capella and stored in your OS keychain, never in a file.
+- Answer `y` to discover: it only reads from Capella and writes what it finds to `capella.yaml`. Passwords are never
+  exported (Capella never returns them).
+- A new organization with no projects yet gets `This organization has no projects yet` instead; carry on with step 2;
+  you will create your first project in step 3.
+
+**2. Look around**
+
+```bash
+cbctl capella project list
+cbctl capella cluster list                     # clusters of every project
+```
+```
+S.NO  NAME      DESCRIPTION  CREATED               IN FILE  ID
+1     web-shop  Online shop  2026-01-01T00:00:00Z  yes      4dbab271-8a31-4146-8af5-6ad09ec26d0a
+
+S.NO  NAME           PROJECT   STATE    PROVIDER  REGION     NODES  PLAN           ID
+1     web-shop-prod  web-shop  healthy  aws       us-east-1  3      developer pro  c77ec8a5-dd9d-440e-b526-5b628ec035ea
+```
+
+This is an organization that already has a project, `web-shop`. In a new organization both lists are empty; you will
+fill them in the next section. Every list numbers its rows (`S.NO`) and
+shows Capella's ID last; `IN FILE` shows what is recorded in `capella.yaml`. `cbctl capella guide`, and `--help` on any
+command, explain the rest.
+
+### Create your first cluster (free tier)
+
+Capella's free tier is a 1-node cluster at no cost. Each command below shows its plan and asks `[y/N]` before changing
+anything.
+
+> **Only one free-tier cluster per organization at a time.** Capella allows one free-tier cluster per organization
+> (tenant), shared by everyone in it: while yours exists, no one else in your organization can create one. You delete
+> it at the end of this section, before moving on.
+
+**3. Create a project**
+
+A project is a folder for clusters, usually one per application or environment (for example dev, test and prod).
+Capella access rights can be given per project, so a project also decides who can see its clusters.
+
+```bash
+cbctl capella project create sandbox --description "Trying cbctl"
+```
+```
+  + project sandbox  Trying cbctl
+
+Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.
+Create project sandbox in Capella and write capella.yaml? [y/N]: y
+project sandbox created (id p-1)
+Next: cbctl capella cluster create NAME --project sandbox    (deploys the first cluster of this project)
+```
+
+`cbctl capella project list` now shows it. A name that already exists in Capella is refused; add an existing project to
+the file with `cbctl capella sync --project NAME`.
+
+**4. See what you can deploy**
+
+```bash
+cbctl capella cluster options
+```
+```
+Free tier          available
+  1 node · data, index, query, search · no cost · one per organization
+  aws    us-east-2, eu-west-1, ap-southeast-1
+  gcp    us-central1, europe-west1, asia-east1
+  azure  eastus, swedencentral, koreacentral
+  deploy: cbctl capella cluster create NAME --free-tier [--provider aws --region us-east-2]
+
+Provisioned        available
+  providers        aws, gcp, azure
+  sizes            dev (1 × 4 vCPU/16 GB, single node), small (3 × 4 vCPU/16 GB), medium (3 × 8 vCPU/32 GB), large (5 × 16 vCPU/64 GB), custom
+```
+
+If it says `not available: already used by …`, your organization already has its free cluster: use that cluster's
+name in steps 6–10, or deploy a provisioned one (step 11, billed) and come back.
+
+**5. Deploy a free-tier cluster**
+
+```bash
+cbctl capella cluster create try-01 --project sandbox
+```
+```
+Cluster type (free, provisioned) [provisioned]: free
+Cloud provider (aws, gcp, azure) [aws]: azure
+Region (free-tier regions) (eastus, swedencentral, koreacentral) [eastus]:
+Network CIDR (must not overlap other clusters) [10.0.0.0/24]:
+
+  + cluster try-01  free tier · azure eastus · 1 node · data,index,query,search
+
+Add try-01 to capella.yaml and deploy it now? [y/N]: y
+→ creating cluster try-01 …
+  cluster try-01: deploying (0s) ......
+  cluster try-01: healthy (3m05s)
+connectionString (try-01): couchbases://cb.xxxx.cloud.couchbase.com
+Apply complete in 3m05s.
+```
+
+Press Enter to accept a default; anything invalid is explained and asked again. What each question means:
+
+| Question | Option | Meaning |
+|---|---|---|
+| Cluster type | `--free-tier` | `free` or `provisioned` (billed; step 11). Only asked while your organization has no free-tier cluster |
+| Cloud provider | `--provider` | `aws`, `gcp` or `azure`: the cloud the cluster runs in |
+| Region | `--region` | Where in that cloud. A free-tier cluster can use only the regions `cluster options` lists |
+| Network CIDR | `--cidr` | The private address range of the cluster's own network in the cloud. It must not overlap the ranges of the project's other clusters, so they can be connected later; cbctl checks this against Capella before creating anything. It does **not** decide who may connect; that is step 8 |
+
+The table's options answer the question on the command line instead, so it is not asked. While a cluster deploys, a
+spinner (`| / - \`) turns at the end of the line and a dot is added every 30 seconds, so a long wait never looks
+stuck. Now that it exists, look at it:
+
+```bash
+cbctl capella cluster list
+cbctl capella cluster get try-01               # one cluster: state, size, connection string
+```
+```
+NAME    STATE    PROVIDER  REGION  NODES  PLAN  ID
+try-01  healthy  azure     eastus  1      free  5d760754-ae8f-448e-acb1-a66ed0e0cd41
+  …
+connectionString: couchbases://cb.xxxx.cloud.couchbase.com
+```
+
+**6. Add a bucket**
+
+A bucket is where your documents (JSON data) live, much like a database. `--memory` is how much of the cluster's
+memory, in MB, the bucket may use to keep data close at hand.
+
+```bash
+cbctl capella bucket add try-01 orders --memory 100
+cbctl capella bucket list try-01
+```
+```
+  + bucket try-01/orders  free tier · 100 MB
+```
+
+On the free tier only the memory can be set; on a provisioned cluster you can also choose replicas, durability,
+storage backend and TTL (`cbctl capella bucket add --help`).
+
+**7. Organise it: a scope and a collection**
+
+Inside a bucket, documents are grouped in two levels: a **scope** holds **collections**, and a collection holds the
+documents, much like a schema and its tables in a relational database. Applications often use one scope per
+service or tenant, and one collection per document type. Every bucket starts with a `_default` scope and collection.
+
+```bash
+cbctl capella scope add try-01 orders inventory               # scope "inventory" in bucket "orders"
+cbctl capella collection add try-01 orders inventory items    # collection "items" in that scope
+cbctl capella collection list try-01 orders inventory            # the collections of the scope
+```
+
+**8. Let your machine connect to the cluster**
+
+Capella accepts connections only from allowed IP ranges. A new cluster has none yet:
+
+```bash
+cbctl capella cidr list try-01
+```
+```
+S.NO  CIDR  COMMENT  EXPIRES  STATUS  IN FILE
+```
+
+Allow this machine, then list again:
+
+```bash
+cbctl capella cidr create try-01 "$(curl -s https://checkip.amazonaws.com)/32" --comment "My laptop"
+cbctl capella cidr list try-01
+```
+```
+S.NO  CIDR             COMMENT    EXPIRES  STATUS  IN FILE
+1     203.0.113.10/32  My laptop  never    active  yes
+```
+
+Your range shows your machine's public IP instead of the example `203.0.113.10`. `IN FILE: yes` shows that the range
+was also recorded in `capella.yaml`.
+
+A range is an address followed by `/` and the number of leading bits that must match: `/32` is exactly one address,
+`/24` is 256 addresses (`203.0.113.0` – `203.0.113.255`). Each range belongs to one cluster. The options of
+`cidr create`:
+
+| Option | Meaning |
+|---|---|
+| `--comment` | A note for people, such as who uses the range |
+| `--expires-at` | When Capella stops allowing it, for example `2026-12-31T23:59:59Z`. Default: never |
+| `--allow-any-ip` | Needed to allow `0.0.0.0/0`, which is every address on the internet. It records `allowAnyIp: true` on the cluster, so the open range is a visible, deliberate choice |
+
+**9. Give an application a login**
+
+Applications sign in to the cluster with a database credential. A new cluster has none yet:
+
+```bash
+cbctl capella credential list try-01
+```
+```
+S.NO  NAME  TYPE  ACCESS  IN FILE
+```
+
+Create one that can read and write the `orders` bucket, then list again:
+
+```bash
+export ORDERS_APP_PASSWORD='Orders-Passw0rd-2026!'   # 8+ chars, upper, lower, digit, special; none of < > ; . * & | £
+cbctl capella credential create try-01 orders_app --privileges read+write --bucket orders --password-env ORDERS_APP_PASSWORD
+cbctl capella credential list try-01
+```
+```
+  + credential try-01/orders_app  read+write · orders
+...
+S.NO  NAME        TYPE   ACCESS               IN FILE
+1     orders_app  basic  read+write · orders  yes
+```
+
+The options decide what the login may do, and where:
+
+| Option | Meaning |
+|---|---|
+| `--privileges` | `read`, `write` or `read+write` |
+| `--bucket orders` | The access applies to the whole bucket: every scope and collection in it |
+| `--scope NAME` | With `--bucket`: only that scope of the bucket |
+| `--collection NAME` | With `--scope`: only that collection; repeat it for several |
+| `--all-buckets` | Instead of `--bucket`: every bucket of the cluster |
+| `--password-env VAR` | Your own password, read from environment variable `VAR`; `--password-file PATH` reads it from a file |
+
+Each option narrows the one before it, so give the least access the application needs. The password is never written
+to a file or printed. Leave out `--password-env` and Capella generates one, saved once to `.cbctl/credentials/`
+(only you can read it).
+
+**10. See what was recorded**
+
+```bash
+cat capella.yaml
+```
+```yaml
+projects:
+  - name: sandbox
+    description: Trying cbctl
+    clusters:
+      - id: c-2
+        name: try-01
+        tier: free
+        cloudProvider: {type: azure, region: eastus, cidr: 10.0.0.0/24}
+        allowedCidrs:
+          - cidr: 203.0.113.10/32
+            comment: My laptop
+        buckets:
+          - name: orders
+            memoryAllocationInMb: 100
+            scopes:
+              - name: inventory
+                collections:
+                  - name: items
+        databaseCredentials:
+          - name: orders_app
+            password: ${ORDERS_APP_PASSWORD}
+            access:
+              - privileges: [data_reader, data_writer]
+                resources:
+                  buckets:
+                    - name: orders
+```
+
+Each command recorded its change, and the password is only a reference (`${ORDERS_APP_PASSWORD}`). This file is all
+`cbctl capella apply` needs to build the same environment again ([Build a whole environment in one go](#build-a-whole-environment-in-one-go)).
+
+Now compare it with Capella:
+
+```bash
 cbctl capella plan
 ```
+```
+Project sandbox · organization 6af0…
 
-```bash run
-cbctl capella apply --yes
+  = project sandbox
+  = cluster try-01
+  = allowed-cidr try-01/203.0.113.10/32
+  = bucket try-01/orders
+  = scope try-01/orders/inventory
+  = collection try-01/orders/inventory/items
+  = credential try-01/orders_app
+
+Plan: 0 to add, 0 to change, 0 to delete, 0 blocked.
 ```
 
-```bash run
+`plan` never changes anything. Here everything matches (`=`), because each command already applied what it recorded.
+Later you will also see `+` (will be created), `~` (will change), `-` (will be deleted), `!` (blocked: unsafe or
+impossible) and `…` (waits for something else, such as a cluster that is still deploying). If step 1 discovered
+existing projects, they are listed too.
+
+**Before you go on: delete the free-tier cluster**
+
+The next section uses a provisioned cluster, so free the free-tier slot for others in your organization. Delete the
+pieces one at a time, smallest first, to see what each delete does:
+
+```bash
+cbctl capella credential delete try-01 orders_app
+cbctl capella cidr delete try-01 <203.0.113.10/32>      # your own range from step 8: copy it from cidr list
+cbctl capella bucket delete try-01 orders               # asks you to type the bucket name
+cbctl capella cluster delete try-01                     # asks you to type the cluster name; waits until it is gone
+cbctl capella cluster options                           # Free tier: available again
+```
+```
+  - cluster try-01  azure eastus · 1 node · 0 buckets
+Type the cluster name to confirm deletion: try-01
+→ deleting cluster try-01 …
+  cluster try-01: destroying (0s)
+  cluster try-01: deleted (1m21s)
+deleted cluster try-01
+removed cluster try-01 from capella.yaml (previous version kept as capella.yaml.bak)
+```
+
+Replace `<203.0.113.10/32>` with your machine's range: it is the one `cbctl capella cidr list try-01` shows, and differs
+from the example. Each delete shows what goes, asks before deleting, and removes the item from `capella.yaml`. A cluster delete also
+deletes its buckets, so `cbctl capella cluster delete try-01` alone is enough when you are sure. The project `sandbox`
+stays: the next section uses it.
+
+### Manage a provisioned cluster
+
+These steps need a **provisioned cluster**, which Capella bills by the hour while it is on. Delete it when you are done
+([Clean up](#clean-up)), or turn it off (step 16).
+
+**11. Deploy a provisioned cluster**
+
+```bash
+cbctl capella cluster create dev-01 --project sandbox
+```
+```
+Cluster type (free, provisioned) [provisioned]:
+Cloud provider (aws, gcp, azure) [aws]: azure
+Size (dev, small, medium, large, custom) [small]:
+Region [eastus]:
+Network CIDR (must not overlap other clusters) [10.0.0.0/24]:
+Support plan (basic, developer pro, enterprise) [developer pro]:
+New cluster dev-01 in project sandbox: azure eastus, 3 × 4 vCPU/16 GB, network 10.0.0.0/24, support developer pro
+
+  + cluster dev-01  azure eastus · multi-AZ · 3 × 4 vCPU/16 GB · data,index,query · developer pro
+
+Add dev-01 to capella.yaml and deploy it now? [y/N]: y
+→ creating cluster dev-01 …
+  cluster dev-01: deploying (0s) ...................
+  cluster dev-01: healthy (9m40s)
+connectionString (dev-01): couchbases://cb.xxxx.cloud.couchbase.com
+Apply complete in 9m41s.
+```
+
+Provider, region and network CIDR mean the same as in step 5. The two new questions:
+
+| Question | Option | Meaning |
+|---|---|---|
+| Size | `--size` | `dev` (1 node, AWS only), `small` (3 × 4 vCPU/16 GB), `medium` (3 × 8/32), `large` (5 × 16/64), or `custom` to choose the nodes yourself. `3 × 4 vCPU/16 GB` means 3 nodes, each with 4 vCPUs and 16 GB of RAM |
+| Support plan | `--support-plan` | `basic`, `developer pro` or `enterprise`: Capella's support level, which affects the price |
+
+Capella's API does not list the regions your organization can use: one it does not offer is rejected with Capella's
+own message. With every question answered as an option, the command deploys the same cluster and asks only for the
+final `[y/N]`:
+
+```bash
+cbctl capella cluster create dev-01 --project sandbox --provider azure --region eastus --cidr 10.0.0.0/24 \
+  --size small --support-plan "developer pro"
+```
+
+On AWS use `--provider aws --region us-east-1`, on Google Cloud `--provider gcp --region us-east1`. Each node gets
+the provider's default disk (AWS `gp3` 50 GB, Google Cloud `pd-ssd` 50 GB, Azure `P6`); to choose another, see
+[Choose each group's disk](custom-clusters.md#4-choose-each-groups-disk).
+
+For a production layout with separate groups of nodes per service (multi-dimensional scaling), for example data on
+3 × 8 vCPU/32 GB and index and query on 2 × 8/32, see [Custom clusters and service groups](custom-clusters.md).
+
+To back the cluster up on a schedule, take a backup before a risky change, or restore a cluster or a bucket, see
+[Backup and restore](backup-restore.md).
+
+**12. Change a cluster**
+
+A cluster can grow in two ways: **scale out** adds nodes of the same size, which adds capacity and spreads the load;
+**scale up** replaces the nodes with bigger ones. Start by adding a node:
+
+```bash
+cbctl capella cluster scale dev-01 --nodes 4
+```
+```
+  ~ cluster dev-01   scale out
+      serviceGroups[data,index,query].numOfNodes:  3 → 4
+```
+
+Give each node more vCPUs and RAM (scale up), or change a setting such as the support plan:
+
+```bash
+cbctl capella cluster update dev-01 --cpu 8 --ram 32
+cbctl capella cluster update dev-01 --support-plan enterprise     # or --description "…"
+cbctl capella cluster update dev-01                               # no options: asks what to change
+```
+
+`--nodes`, `--cpu` and `--ram` change one **service group**, a set of identical nodes. `dev-01` has a single group,
+so they change every node. A cluster with several groups needs `--group SERVICES` to say which one; without it, the
+group that runs `data` changes ([Custom clusters](custom-clusters.md#8-change-the-layout-later)). `--support-plan` and
+`--description` belong to the whole cluster.
+
+Each command shows the change, asks once, records it in `capella.yaml` and waits until the cluster is healthy again.
+Even a description or support-plan change starts a short cluster job in Capella, so the command says so and waits.
+Scaling in (fewer nodes or less RAM) is checked first: the buckets must still fit, and replicas need enough data
+nodes (see [What is refused, and why](#what-is-refused-and-why)).
+
+**13. Change and delete buckets, scopes and collections**
+
+`dev-01` has no buckets yet. Create one with the settings a provisioned cluster allows (the free tier only took
+`--memory`), and list before and after:
+
+```bash
+cbctl capella bucket list dev-01                                  # empty
+cbctl capella bucket add dev-01 orders --memory 1024 --storage-backend magma --durability none
+cbctl capella bucket list dev-01
+```
+```
+S.NO  NAME    TYPE       STORAGE  MEMORY MB  REPLICAS  DURABILITY  TTL  ITEMS  IN FILE
+1     orders  couchbase  magma    1024       1         none        0    0      yes
+```
+
+The bucket options, and whether `bucket update` can change them later:
+
+| Option | Meaning | Default | Can change later |
+|---|---|---|---|
+| `--memory` | Memory the bucket may use, in MB | asked (1024) | yes |
+| `--type` | `couchbase` (stored on disk) or `ephemeral` (memory only) | `couchbase` | no |
+| `--storage-backend` | `couchstore`, or `magma` for large data sets that do not fit in memory | Capella's | no |
+| `--replicas` | Extra copies of each document, on other nodes (0–3) | 1 | yes |
+| `--durability` | When a write counts as done: `none` (in memory on one node), `majority`, `majorityAndPersistActive`, `persistToMajority` | `none` | yes |
+| `--ttl` | Seconds until documents expire; `0`: never | 0 | yes |
+| `--flush` | Allow emptying the bucket with one call | off | yes |
+
+`cbctl capella bucket add --help` lists the rest. A setting that cannot change is refused before anything is sent.
+Give the bucket more memory:
+
+```bash
+cbctl capella bucket update dev-01 orders --memory 2048
+```
+
+Add a scope and a collection whose documents expire on their own. A collection's `--max-ttl` overrides the bucket's
+`--ttl` for the documents in that collection: a number of seconds (2592000 is 30 days), `-1` for never, or `0` to use
+the bucket's setting. Then change your mind and turn expiry off:
+
+```bash
+cbctl capella scope add dev-01 orders billing
+cbctl capella collection add dev-01 orders billing invoices --max-ttl 2592000
+cbctl capella collection update dev-01 orders billing invoices --max-ttl -1
+```
+
+Finally, practise deleting: a scope (with its collections and their documents), and a bucket made just for this:
+
+```bash
+cbctl capella scope delete dev-01 orders billing                  # asks you to type the scope name
+cbctl capella bucket add dev-01 events --memory 1024
+cbctl capella bucket delete dev-01 events                         # asks you to type the bucket name
+```
+
+Deletes show what goes (item count, collections, the credentials that lose access) and ask you to type the name.
+
+**14. Rotate and remove app logins**
+
+Good practice is to change (rotate) application passwords regularly, and to remove logins that are no longer used.
+Create a login on `dev-01` as in step 9:
+
+```bash
+cbctl capella credential create dev-01 orders_app --privileges read+write --bucket orders --password-env ORDERS_APP_PASSWORD
+```
+
+To rotate, put the new password in the same environment variable and send it to Capella. Applications using the
+login need the new password too:
+
+```bash
+export ORDERS_APP_PASSWORD='Orders-Passw0rd-2026-v2!'
+cbctl capella credential update dev-01 orders_app --rotate-password
+```
+
+Remove the login when no application uses it any more:
+
+```bash
+cbctl capella credential delete dev-01 orders_app
+```
+
+Passwords are never compared, so nothing changes a password behind a running application except `--rotate-password`
+(or `cbctl capella apply --rotate-passwords` for all of them). `cbctl capella guide credentials` has the details.
+
+**15. Protect a cluster from deletion**
+
+Deletion protection is a Capella setting that stops a cluster from being deleted by mistake, by you, a colleague or a
+script. Turn it on, see a delete refused, then turn it off again:
+
+```bash
+cbctl capella cluster protect dev-01 --on
+cbctl capella cluster delete dev-01         # refused: deletion protection is on
+cbctl capella cluster protect dev-01 --off
+```
+
+Protection blocks every way of deleting the cluster or its data (`cluster delete`, `bucket delete`, `scope delete`,
+`project delete --cascade`, `destroy`, …) until you turn it off.
+
+**16. Save money: power off, hibernation schedule, step scaling**
+
+**Power off** stops the cluster's compute (its nodes) while keeping its data and settings: useful for a test cluster
+you do not need right now. Turning it back on takes a few minutes:
+
+```bash
+cbctl capella cluster power dev-01 --off
+cbctl capella cluster power dev-01 --on
+```
+
+A **hibernation schedule** lets Capella do this for you every week, for example on during office hours and off at
+night and at weekends. `show` prints the weekly grid and the next on or off time:
+
+```bash
+cbctl capella cluster schedule set dev-01 --timezone US/Pacific --weekdays 08:00-18:00 --weekend off
+cbctl capella cluster schedule show dev-01
+```
+
+Each day takes `on`, `off` or an on-window such as `08:00-18:00` (minutes `00` or `30`), in `--timezone`.
+`--weekdays` sets Monday to Friday and `--weekend` Saturday and Sunday; a single day, such as `--friday 08:00-14:30`,
+overrides them for that day.
+
+For a late demo or an incident, **pause** the schedule so the cluster stays on, then **resume** it:
+
+```bash
+cbctl capella cluster schedule pause dev-01 --power-on
+cbctl capella cluster schedule resume dev-01
+```
+
+**Step scaling** adds or removes one node at a time within limits you set, which suits a script or a scheduled job
+that follows the load. Like `--nodes`, it changes the group that runs `data` unless you give `--group`; `--all-groups`
+steps every group. `--max` and `--min` are the limits. At a limit it does nothing and still succeeds; removing a node
+is capacity-checked first:
+
+```bash
+cbctl capella cluster scale dev-01 --step +1 --max 6
+cbctl capella cluster scale dev-01 --step -1 --min 3
+```
+
+The schedule is recorded in `capella.yaml`; power on/off is not (it is a moment, not a setting). While a cluster is
+off, Capella does not allow changes to it or to its buckets: `plan` shows them as blocked and says when the schedule
+turns it on again; `cbctl capella apply --power-on` turns it on first.
+
+**17. Bring in changes made in the Capella UI**
+
+`capella.yaml` is only up to date while changes go through cbctl. When someone changes Capella another way, in
+the Capella UI or with another tool, `sync` reads Capella and updates the file to match. It never changes Capella.
+Change something in the Capella UI, for example the cluster's description, then:
+
+```bash
+cbctl capella sync --dry-run    # show the difference only (exit 2 when out of date; good for CI)
+cbctl capella sync              # update capella.yaml from Capella
+```
+```
+--- capella.yaml (now)
++++ capella.yaml (from Capella)
+-  description: Nova development cluster
++  description: changed in the Capella UI
+capella.yaml updated from Capella (previous version kept as capella.yaml.bak).
+```
+
+`sync` only reads from Capella and keeps what Capella cannot return, such as `${ORDERS_APP_PASSWORD}`.
+`cbctl capella sync --project sandbox` refreshes one project. A project or cluster renamed in the UI is recognised by its
+`id:` and renamed in the file.
+
+**18. Check for drift**
+
+**Drift** is any difference between Capella and `capella.yaml`: a setting changed outside cbctl, something in
+the file that is missing in Capella, or something in Capella that is not in the file (unmanaged). `drift` reports
+it and changes nothing:
+
+```bash
 cbctl capella drift
 ```
+```
+Changed (capella.yaml differs from Capella; 'apply' changes Capella):
+  ~ cluster dev-01
+      description:  "changed in the Capella UI" → ""
+      note: Capella runs a cluster update job for this (shown as "scale" in the Capella UI); nodes do not change
 
-```bash run
-cbctl capella plan --detailed-exitcode
+Unmanaged (in Capella, not in capella.yaml; 'apply --prune' deletes them, 'sync' adds them to the file):
+    bucket dev-01/scratch
+
+Drift: 1 changed, 0 missing, 1 unmanaged.
 ```
 
-A second apply should report no changes:
+Each finding says how to resolve it: `apply` makes Capella match the file, `sync` makes the file match Capella. Run
+it on a schedule, for example nightly in CI, to catch changes made outside cbctl; `--detailed-exitcode` makes it
+exit with 2 when there is drift, so the job can alert you:
 
-```bash run
-cbctl capella apply --yes
+```bash
+cbctl capella drift --detailed-exitcode
 ```
 
-## Next steps
+`drift`, `plan` and `sync` look alike: `plan` shows what `apply` would change in Capella, `sync` updates the file,
+and `drift` only reports.
 
-- Custom layouts: `docs/capella/reference.md`
-- Testing / fake / nightly: `docs/capella/testing.md`
-- Backlog and CAP stories: `docs/backlog/README.md`
+### Clean up
+
+Delete the provisioned cluster, which stops the billing, then the project. Each asks you to type its name:
+
+```bash
+cbctl capella cluster delete dev-01                     # waits until it is gone (snapshot backups are kept)
+cbctl capella project delete sandbox
+```
+```
+  - cluster dev-01  azure eastus · 4 nodes · 1 bucket
+    buckets deleted with the cluster: orders
+    snapshot backups are kept (--discard-snapshots deletes them)
+Type the cluster name to confirm deletion: dev-01
+  cluster dev-01: destroying (0s)
+  cluster dev-01: deleted (4m10s)
+deleted cluster dev-01 (snapshot backups retained)
+```
+
+Each delete also removes the item from `capella.yaml`. If you skipped deleting the free-tier cluster, run
+`cbctl capella cluster delete try-01` too. `project delete` refuses a project that still has clusters;
+`cbctl capella project delete sandbox --cascade` deletes the clusters first.
+
+### Build a whole environment in one go
+
+You have now created each piece with its own command. cbctl can also take a description of a whole environment
+(project, cluster, IP ranges, a bucket and an app login) and create all of it with one `apply`.
+
+**19. Describe an environment with the wizard**
+
+`init` writes a new `capella.yaml`, so start in a new folder:
+
+```bash
+mkdir ~/capella-nova && cd ~/capella-nova
+cbctl capella init
+```
+```
+Start from: a new environment, or an existing Capella project (new, import) [new]:
+Organization: Nova Corp (6af0…)
+Project (number of an existing project, or a new name): nova-dev
+Project nova-dev does not exist yet; apply will create it.
+Cluster name [nova-dev-01]:
+Cloud provider (aws, gcp, azure) [aws]:
+Region [us-east-1]:
+Cluster network (must not overlap other clusters) [10.0.0.0/24]:
+Size preset (dev, small, medium, large, custom) [small]:
+Support plan (basic, developer pro, enterprise) [developer pro]:
+Protect from deletion? [Y/n]:
+Hibernate outside office hours (weekdays only)? [y/N]:
+Allowed IP ranges (CIDR, comma-separated; empty: none):
+Add a bucket now? Bucket name (empty: none):
+✔ Wrote capella.yaml (validated)
+Next: cbctl capella plan
+```
+
+`init` only reads from Capella (to list your organizations and projects). It writes a commented `capella.yaml`, never
+the API key or a password (an app login gets `password: ${ORDERS_APP_PASSWORD}`), and asks before overwriting an
+existing file (keeping a `.bak`).
+
+**20. Check it, then create it**
+
+Three commands take a file to a running environment. `validate` checks `capella.yaml` without contacting Capella
+(field names, values, references between items). `plan` compares the file with Capella and lists what `apply` would
+create or change. `apply` makes those changes, in order, and waits until the cluster is healthy:
+
+```bash
+cbctl capella validate
+cbctl capella plan
+cbctl capella apply
+```
+```
+  + project nova-dev
+  + cluster nova-dev-01  aws us-east-1 · multi-AZ · 3 × 4 vCPU/16 GB · data,index,query · developer pro  (after project is created)
+  + deletion-protection nova-dev-01  deletionProtection: true  (after cluster is healthy)
+
+Plan: 3 to add, 0 to change, 0 to delete, 0 blocked.
+```
+
+Run `apply` again and it reports `No changes`. From here on, change the environment with the commands from steps 3–18, which keep this file up to date.
+
+**21. The same without questions (scripts and CI)**
+
+Every question in step 19 has an option. Once you know them, one command writes the file:
+
+```bash
+# AWS
+cbctl capella init --non-interactive --project nova-dev --cluster nova-dev-01 --provider aws --region us-east-1 \
+  --preset small --hibernation office-hours --timezone US/Pacific --cidr 203.0.113.10/32
+# Azure (Azure disk types, such as P6, are chosen for you); for Google Cloud: --provider gcp --region us-east1
+cbctl capella init --non-interactive --project nova-dev --cluster nova-dev-01 --provider azure --region eastus \
+  --preset small --hibernation office-hours --timezone US/Pacific --cidr 203.0.113.10/32
+cbctl capella init --dry-run     # print the YAML instead of writing it
+```
+
+`cbctl capella init --help` lists every option (bucket, app login, support plan, …); presets live in
+`cbctl/config/presets.yaml`. In CI, set `CAPELLA_API_KEY` and `CAPELLA_ORG_ID` instead of running `configure`,
+and add `--auto-approve` (`-y`) to commands that change something; `--quiet` keeps the log short.
+`cbctl capella guide ci` has GitHub Actions and GitLab CI examples.
+
+**22. Copy a cluster to another region**
+
+```bash
+cbctl capella cluster clone nova-dev-01 nova-dev-west --region us-west-2                       # same project
+cbctl capella project create nova-dr
+cbctl capella cluster clone nova-dev-01 nova-dr-01 --region us-west-2 --to-project nova-dr --with-cidrs
+cbctl capella cluster clone                                                                     # asks for everything
+```
+
+The copy gets the size, services, disks, support plan, deletion protection, and the buckets, scopes and collections.
+Documents and the hibernation schedule are not copied; IP ranges and app logins only with `--with-cidrs` and
+`--with-credentials` (each login gets a new password). The plan lists what is not copied before you confirm.
+
+**23. Tear down and rebuild**
+
+`apply` only creates and changes; it never deletes something just because it is missing from the file. To remove
+buckets, scopes, logins and IP ranges that exist in Capella but not in `capella.yaml` (the unmanaged items `drift`
+lists), add `--prune`:
+
+```bash
+cbctl capella apply --prune
+```
+
+`destroy` deletes everything `capella.yaml` describes, smallest items first, and keeps the file. Because the file
+stays, `apply` can build the same environment again, which is handy for test environments you only need
+sometimes:
+
+```bash
+cbctl capella destroy
+cbctl capella apply
+```
+
+`destroy` refuses while a cluster has deletion protection, asks you to type the project name, and keeps snapshot
+backups unless you add `--discard-snapshots`.
+
+## What is refused, and why
+
+`plan` and `apply` stop before changing anything when a change is unsafe or impossible:
+
+```
+  ! cluster dev-01  immutable: cloudProvider.region (requires a new cluster)
+      cloudProvider.region:  "eastus" → "westus3"
+      See: cbctl capella guide idempotency
+```
+
+Fewer nodes, less RAM or a removed service group (scale-in) are checked first: the buckets must still fit in memory,
+every bucket's replicas need enough data nodes, `data` can never be removed, and removing the last nodes of another
+service or a whole group needs `--allow-service-removal` / `--allow-service-group-removal`:
+
+```bash
+cbctl capella cluster scale dev-01 --nodes 3
+```
+```
+  ~ cluster dev-01   scale in
+      serviceGroups[data,index,query].numOfNodes:  4 → 3
+      checks: memory ok (1,024 / ~15,360 MB) · replicas ok (max 1, needs 2 data nodes)
+```
+
+Disks never shrink, and failed or degraded clusters are not changed. A turned-off cluster is powered on first
+(`cbctl capella cluster power NAME --on`, or `apply --power-on`). `cbctl capella guide safety` explains each case.
+
+## When something goes wrong
+
+- Every error starts with `[error] -` and every warning with `[warning] -`, saying what happened; the next line,
+  `→`, says what to do, and ends with the `cbctl capella guide` page to read when there is one:
+  ```
+  [error] - cluster nova-dev-01 is turningOff
+    → Wait until it is healthy or turned off ('cbctl capella cluster get nova-dev-01' shows its state), then run the command again.
+  ```
+- Problems in `capella.yaml` are listed under `[error] -`, each with where it is, by name and line
+  (`project non-prod › cluster web-01 › allowed IP range 0.0.0.0/0 (line 34)`), what is wrong, and an `action:`
+  line when a command fixes it. The heading says whether your command caused it (`This change is not valid`) or it
+  was already in the file (`already had 1 problem before this command`); in both cases nothing was changed.
+- Settings that are valid but may not be intended (an IP range open to everyone, an expired range, a credential for
+  all buckets) are listed by `cbctl capella validate`. `plan` and `apply` only count them in one line; other commands
+  don't mention them.
+- `configure` says "API Key Token rejected": the most common cause is the API key's **IP allowlist** (Capella UI →
+  Organization settings → API Keys → your key) not including this machine's public IP
+  (`curl -s https://checkip.amazonaws.com`). Also check that you copied the **API Key Token**, not the API Key ID. The
+  message shows Capella's own hint and a `curl` command to test the key. To avoid pasting into the hidden prompt:
+  `pbpaste | cbctl configure --api-key-stdin` (PowerShell: `Get-Clipboard | cbctl configure --api-key-stdin`).
+- Windows: `cbctl is not recognized`: the folder that holds `cbctl.exe` is not on `PATH`. Add it, or type the
+  full path to `cbctl.exe` ([Install](../../README.md#install)).
+- `sync` or `configure` says `buckets and database credentials not imported (turnedOff)`: Capella does not return
+  them while a cluster is off. Turn it on (`cbctl capella cluster power NAME --on`) and run `cbctl capella sync` again.
+- `plan` blocks a project with `probably renamed in Capella`: the project was renamed in the UI and the file has no
+  `id:` for it. Run `cbctl capella sync` to adopt the new name (it also records the ids).
+- `project NAME not found`: the `capella.yaml` in this folder is probably for another organization or project. Run
+  `cbctl configure show` to see which file and organization are used; `cbctl capella sync --force` rewrites the
+  file for your organization (the old one is kept as `.bak`).
+- Exit codes: `cbctl capella guide exit-codes` (3 = config problem, 4 = blocked, 5 = timed out waiting).
+- Details of every API call (secrets masked): `cbctl capella --log-level debug plan`.
+- If `apply` stops halfway, fix the cause and run `cbctl capella apply` again; finished steps are not repeated.
+
+For day-2 tasks with the exact command and expected output, see the [runbook](runbook.md).
+
+## capella.yaml: written by cbctl
+
+`capella.yaml` (`capella.yml` also works) describes all your projects and their clusters in one file. cbctl
+creates it and keeps it up to date; you do not need to edit it.
+
+| How it changes | Command |
+|---|---|
+| Created from your Capella projects | `cbctl configure` (offers it) or `cbctl capella sync [--project NAME] [--cluster NAME]` |
+| Created for a new environment | `cbctl capella init` |
+| New project added | `cbctl capella project create NAME` |
+| More existing projects added | `cbctl capella sync` (adds the ones that are missing; `--skip-project NAME` leaves one out) |
+| Cluster, bucket, scope, collection, IP range or app login added, changed or deleted | the matching `cbctl` command |
+| Refreshed after changes made in the Capella UI | `cbctl capella sync` |
+
+Keep it in version control to review changes over time. `cbctl capella guide config <field>` explains any field you see
+in it. Projects and clusters are recorded with their `id:`; to copy the file to another organization, delete the
+`id:` lines first.
+
+<!-- ported-from: capellactl@6389d5a docs/getting-started.md · rules v1 -->

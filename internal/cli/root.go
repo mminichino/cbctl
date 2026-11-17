@@ -70,7 +70,9 @@ func buildRootCmd() *cobra.Command {
 // removedVerbs maps capellactl command paths (without the leading "cbctl ") that cbctl does not
 // provide as commands to the invocation that replaces them. They exit 3 with the replacement as
 // the hint instead of falling through to group help.
-var removedVerbs = map[string]string{}
+var removedVerbs = map[string]string{
+	"capella completion": "'cbctl completion bash|zsh|fish|powershell'",
+}
 
 // hardenTree makes usage mistakes fail loudly. Cobra runs a group's Run with an unknown
 // positional (cobra only validates arguments on the root), so "cbctl capella cluster bogus" used

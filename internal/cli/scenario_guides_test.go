@@ -21,10 +21,11 @@ var guidePlaceholders = map[string]string{
 var bashRunFence = regexp.MustCompile("(?ms)^```bash run\\s*\\n(.*?)\\n```")
 
 // TestGuides_CAP033_AC5_GettingStartedRun extracts ```bash run blocks from
-// docs/capella/getting-started.md and runs each cbctl invocation against Scenario.
+// docs/capella/testing.md ("Try the workflow offline"; getting-started.md is ported from
+// capellactl and runs against real Capella) and runs each cbctl invocation against Scenario.
 func TestGuides_CAP033_AC5_GettingStartedRun(t *testing.T) {
 	root := findRepoRoot(t)
-	docPath := filepath.Join(root, "docs", "capella", "getting-started.md")
+	docPath := filepath.Join(root, "docs", "capella", "testing.md")
 	raw, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatal(err)

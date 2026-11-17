@@ -12,9 +12,9 @@ import (
 
 // Profile holds non-secret Capella settings for a named profile.
 type Profile struct {
-	OrganizationID string `yaml:"organizationId,omitempty"`
-	APIBaseURL     string `yaml:"apiBaseUrl,omitempty"`
-	ConfigFile     string `yaml:"configFile,omitempty"`
+	OrganizationID string `yaml:"organizationId,omitempty" json:"organizationId,omitempty"`
+	APIBaseURL     string `yaml:"apiBaseUrl,omitempty" json:"apiBaseUrl,omitempty"`
+	ConfigFile     string `yaml:"configFile,omitempty" json:"configFile,omitempty"`
 }
 
 type profilesFile struct {

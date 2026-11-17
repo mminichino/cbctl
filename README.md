@@ -225,7 +225,7 @@ cbctl configure migrate         # copy capellactl profiles + keychain API keys (
 cbctl capella doctor            # offline: list what is left from capellactl (--detailed-exitcode exits 4)
 ```
 
-**Coming from capellactl.** Its settings keep working, each with a one-time `[warning]` on stderr:
+**Coming from capellactl.** [docs/capella/migrating-from-capellactl.md](docs/capella/migrating-from-capellactl.md) maps every command, setting, file and exit code (short version: `cbctl capella guide migrate`). Its settings keep working, each with a one-time `[warning]` on stderr:
 
 | capellactl | cbctl | Rule |
 |---|---|---|
@@ -298,9 +298,12 @@ cbctl capella scope create my-cluster orders sales     # = scope add
 cbctl capella collection create my-cluster orders sales eu   # = collection add
 cbctl capella cluster schedule apply my-cluster -y     # = apply --target schedule/my-cluster
 cbctl capella help getting-started                     # = guide getting-started
+cbctl configure --api-base-url https://cloudapi.cloud.couchbase.com   # = --api-host
 
 cbctl capella --help
 ```
+
+On a terminal, missing values are asked for as capellactl did: `cluster create` without a name runs a wizard, `cluster clone` without arguments picks the source and asks for the region, name and project, `bucket add` asks for `--memory`, `project create` for a description and `cluster group add` for `--services`. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`).
 
 `--timeout` takes a duration (`90m`, `1h30m`, units in any case) or a bare number of seconds (`90`); it must be positive and at most 24h. `CBCTL_QUIET` accepts `1/true/yes/on`. New buckets default to 1024 MB and Capella's default storage backend.
 
@@ -367,9 +370,9 @@ cbctl capella cluster backup schedule set my-cluster --every 24 --retain 30d
 ```bash
 make build              # bin/cbctl
 make test-unit          # with -race (./internal/...)
-make test-integration   # Docker required; Couchbase enterprise image
-make test-capella-live  # needs CAPELLA_API_KEY and CAPELLA_ORG_ID (CBCTL_LIVE_CLUSTER=1 adds billable clusters)
-make janitor PREFIX=cbctl-ci-   # delete leftover live-test projects
+make test-integration-fake   # Capella integration suite against the in-memory fake
+make test-integration   # Capella integration suite against a sandbox org (CAPELLA_API_KEY, CAPELLA_ORG_ID; CBCTL_IT_CLUSTERS=1 adds billable clusters)
+make janitor PREFIX=cbctl-ci-   # delete leftover test projects (prefix of at least 3 characters)
 make vet
 make lint               # golangci-lint v2.15.0 (config: .golangci.yml)
 make check              # everything CI runs, including lint
@@ -377,4 +380,4 @@ make check              # everything CI runs, including lint
 
 CI (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main` and `mm--capellactl-port`. Workflow actions are pinned by commit SHA; Dependabot (`.github/dependabot.yml`) proposes weekly bumps.
 
-Offline Capella scenario tests use `internal/capellafake`. Live Capella tests (`//go:build integration`) skip unless sandbox credentials are set; with `CBCTL_LIVE_CLUSTER=1` they also run the declarative §13.4 validate/plan/apply/drift/prune/destroy flow. See `docs/specs/capella-fold-in-phase-4.md` for the Phase 4 harness (`CBCTL_IT_TARGET=fake|sandbox`), janitor, secret scanner, and release gate. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).
+Offline Capella scenario tests use `internal/capellafake`. The integration suites (`//go:build integration`, `CBCTL_IT_TARGET=fake|sandbox`) and their variables, the janitor and the documentation checks are described in [docs/capella/testing.md](docs/capella/testing.md). The janitor contract: `cbctl capella janitor --prefix P --yes` deletes only projects whose names start with `P` (3 characters or more) and their clusters; it never touches anything else in the organization. Roadmap / backlog stories live under `docs/backlog/` (ported from [capellactl](https://github.com/couchbaselabs/capellactl)).

@@ -8,21 +8,18 @@ import (
 
 func TestSlug(t *testing.T) {
 	cases := map[string]string{
-		"## Hello World":      "hello-world",
-		"### CAP-066 — Flush": "cap-066--flush",
-		"# Snapshot":          "snapshot",
+		"## Hello World":                       "hello-world",
+		"### CAP-066 — Flush":                  "cap-066--flush",
+		"# Snapshot":                           "snapshot",
+		"## Delivery phases":                   "delivery-phases",
+		"# Part 1 — Day-2 tasks":               "part-1--day-2-tasks",
+		"# Part 3 — 20-minute demo (Azure)":    "part-3--20-minute-demo-azure",
+		"### Using the commands in PowerShell": "using-the-commands-in-powershell",
 	}
 	for in, want := range cases {
 		if got := Slug(in); got != want {
-			// GitHub strips emoji/punct; double-dash from em-dash is trimmed of duplicates
-			_ = want
-			if got == "" {
-				t.Fatalf("Slug(%q) empty", in)
-			}
+			t.Errorf("Slug(%q) = %q, want %q", in, got, want)
 		}
-	}
-	if Slug("## Delivery phases") != "delivery-phases" {
-		t.Fatalf("got %q", Slug("## Delivery phases"))
 	}
 }
 

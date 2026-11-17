@@ -38,6 +38,7 @@ func newCapellaCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaHelpAlias())
 	cmd.AddCommand(newCapellaDoctorCmd())
 	installManagedModes(cmd)
+	installPrompts(cmd)
 	installLegacy(cmd)
 	for _, kind := range []string{"bucket", "scope", "collection"} {
 		c, _, err := cmd.Find([]string{kind, "create"})
@@ -46,6 +47,7 @@ func newCapellaCmd() *cobra.Command {
 		}
 		shareAddFlags(c)
 	}
+	installNegations(cmd)
 	return cmd
 }
 

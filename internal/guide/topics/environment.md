@@ -20,6 +20,13 @@ instead of pasting: `pbpaste | cbctl capella configure --api-key-stdin`.
 | `CBCTL_CONFIG` | Config file path |
 | `CBCTL_HOME` | Directory of `profiles.yaml` (default `~/.config/cbctl`) |
 | `CBCTL_PROFILE` | Profile name |
+| `CBCTL_QUIET` | `1`/`true`/`yes`/`on` turns on `--quiet` |
+
+capellactl's names still work for one release, with a deprecation warning on stderr:
+`CAPELLACTL_CONFIG`, `CAPELLACTL_PROFILE`, `CAPELLACTL_QUIET`, `CAPELLACTL_HOME`, `BEARER_TOKEN`,
+`ORG_ID` and `API_BASE_URL`. When both names are set the cbctl name wins. Profiles and keychain
+entries that only capellactl has are read too (with a warning); `cbctl configure migrate` copies
+them for good and `cbctl capella doctor` lists what is left. See `cbctl capella guide migrate`.
 
 **Precedence** (highest first): command-line flags → environment variables → profile →
 `organizationId` in the config file.

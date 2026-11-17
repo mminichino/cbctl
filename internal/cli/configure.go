@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
@@ -15,6 +16,7 @@ import (
 	"github.com/mminichino/cbctl/internal/redact"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/term"
 )
 
@@ -26,6 +28,28 @@ type configureFlags struct {
 	configFile  string
 	yes         bool
 	output      string
+	format      string
+}
+
+// activeProfile is the profile save/remove act on: --profile, then CBCTL_PROFILE (or
+// capellactl's CAPELLACTL_PROFILE), then "default".
+func activeProfile(cmd *cobra.Command, flag string) string {
+	if flag != "" {
+		return flag
+	}
+	if v := envFrom(cmd)("CBCTL_PROFILE"); v != "" {
+		return v
+	}
+	return "default"
+}
+
+// checkFormat validates --output-format: cbctl (default) or legacy (capellactl's JSON shapes).
+func checkFormat(f *configureFlags) error {
+	switch f.format {
+	case "", "cbctl", "legacy":
+		return nil
+	}
+	return Errorf(ExitConfigInvalid, "", "--output-format must be cbctl or legacy (got %q)", f.format)
 }
 
 // keyringFactory builds the keyring used by configure. Tests replace it with MemKeyring.
@@ -47,6 +71,13 @@ func newConfigureCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&f.apiKeyStdin, "api-key-stdin", false, "Read API key from stdin")
 	cmd.Flags().StringVar(&f.configFile, "config-file", "", "Path of the capella.yaml this profile uses")
 	cmd.Flags().StringVarP(&f.output, "output", "o", "text", "Output format: text|json")
+	// capellactl spelled --api-host as --api-base-url; accept it without listing it in help.
+	cmd.Flags().SetNormalizeFunc(func(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "api-base-url" {
+			name = "api-host"
+		}
+		return pflag.NormalizedName(name)
+	})
 
 	listCmd := &cobra.Command{
 		Use:   "list",
@@ -56,6 +87,7 @@ func newConfigureCmd() *cobra.Command {
 		},
 	}
 	listCmd.Flags().StringVarP(&f.output, "output", "o", "text", "Output format: text|json")
+	listCmd.Flags().StringVar(&f.format, "output-format", "cbctl", "JSON shape: cbctl|legacy (capellactl's profiles map)")
 
 	showCmd := &cobra.Command{
 		Use:   "show",
@@ -66,6 +98,7 @@ func newConfigureCmd() *cobra.Command {
 	}
 	showCmd.Flags().StringVar(&f.profile, "profile", "", "Profile name")
 	showCmd.Flags().StringVarP(&f.output, "output", "o", "text", "Output format: text|json")
+	showCmd.Flags().StringVar(&f.format, "output-format", "cbctl", "JSON shape: cbctl|legacy (capellactl's {field: {value, source}})")
 
 	removeCmd := &cobra.Command{
 		Use:   "remove",
@@ -83,10 +116,7 @@ func newConfigureCmd() *cobra.Command {
 
 func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags) error {
 	d := depsFromCmd(cmd)
-	profile := f.profile
-	if profile == "" {
-		profile = "default"
-	}
+	profile := activeProfile(cmd, f.profile)
 	key, err := readAPIKey(cmd, f.apiKeyStdin)
 	if err != nil {
 		return err
@@ -245,6 +275,9 @@ func readAPIKey(cmd *cobra.Command, fromStdin bool) (string, error) {
 }
 
 func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
+	if err := checkFormat(f); err != nil {
+		return err
+	}
 	d := depsFromCmd(cmd)
 	home := d.Home
 	if home == "" {
@@ -262,8 +295,19 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 		APIHost      string `json:"apiHost"`
 		Key          string `json:"key"`
 	}
-	var rows []row
-	for name, p := range profiles {
+	if f.output == "json" && f.format == "legacy" {
+		enc := json.NewEncoder(cmd.OutOrStdout())
+		enc.SetIndent("", "  ")
+		return enc.Encode(profiles) // capellactl: the profiles map as stored
+	}
+	names := make([]string, 0, len(profiles))
+	for name := range profiles {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	rows := []row{}
+	for _, name := range names {
+		p := profiles[name]
 		keyStatus := "missing"
 		if _, err := kr.Get(name); err == nil {
 			keyStatus = "stored"
@@ -283,6 +327,9 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 }
 
 func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
+	if err := checkFormat(f); err != nil {
+		return err
+	}
 	resolved, err := resolveSettings(cmd, settings.Inputs{
 		Profile: f.profile, ConfigFile: flagIfChanged(cmd, "config"),
 	})
@@ -310,6 +357,13 @@ func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
 	if f.output == "json" {
 		enc := json.NewEncoder(cmd.OutOrStdout())
 		enc.SetIndent("", "  ")
+		if f.format == "legacy" {
+			legacy := make(map[string]map[string]string, len(rows))
+			for _, r := range rows {
+				legacy[r.Field] = map[string]string{"value": r.Value, "source": r.Source}
+			}
+			return enc.Encode(legacy)
+		}
 		return enc.Encode(rows)
 	}
 	for _, r := range rows {
@@ -320,10 +374,7 @@ func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
 
 func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 	d := depsFromCmd(cmd)
-	profile := f.profile
-	if profile == "" {
-		profile = "default"
-	}
+	profile := activeProfile(cmd, f.profile)
 	home := d.Home
 	if home == "" {
 		home = settings.HomeDir(d.Env)

@@ -13,6 +13,7 @@ var docsCommands = map[string]groupFunc{
 	"ac-coverage":  cmdDocsACCoverage,
 	"reference":    cmdDocsReference,
 	"links":        cmdDocsLinks,
+	"doc-map":      cmdDocsDocMap,
 }
 
 func runDocs(args []string, stdout, stderr io.Writer) int {

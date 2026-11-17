@@ -67,7 +67,7 @@ func walk(prefix string, props map[string]any, root map[string]any, out map[stri
 		if node == nil {
 			continue
 		}
-		node = deref(node, root)
+		node = derefItems(deref(node, root), root)
 		path := k
 		if prefix != "" {
 			path = prefix + "." + k
@@ -78,13 +78,30 @@ func walk(prefix string, props map[string]any, root map[string]any, out map[stri
 				walk(path, nested, root, out)
 			}
 			if items, ok := node["items"].(map[string]any); ok {
-				items = deref(items, root)
 				if nested, ok := items["properties"].(map[string]any); ok {
 					walk(path, nested, root, out)
 				}
 			}
 		}
 	}
+}
+
+// derefItems returns node with its "items" schema dereferenced, copying node so the schema
+// itself is not modified. Later steps (isSection, typeOf) then see the item type directly.
+func derefItems(node, root map[string]any) map[string]any {
+	items, ok := node["items"].(map[string]any)
+	if !ok {
+		return node
+	}
+	if _, isRef := items["$ref"]; !isRef {
+		return node
+	}
+	out := make(map[string]any, len(node))
+	for k, v := range node {
+		out[k] = v
+	}
+	out["items"] = deref(items, root)
+	return out
 }
 
 func deref(node, root map[string]any) map[string]any {
@@ -155,7 +172,20 @@ func minimal() string {
 	return b.String()
 }
 
-func renderFrom(fields map[string]map[string]any) string {
+// singleProjectAlias reports whether path is inside the single-project form ("project:" and
+// "clusters:" at the top level). Its fields are the same as under "projects[]", which the
+// reference lists once; the two top-level keys themselves keep a row.
+func singleProjectAlias(path string) bool {
+	return strings.HasPrefix(path, "clusters.") || strings.HasPrefix(path, "project.")
+}
+
+func renderFrom(all map[string]map[string]any) string {
+	fields := make(map[string]map[string]any, len(all))
+	for path, node := range all {
+		if !singleProjectAlias(path) {
+			fields[path] = node
+		}
+	}
 	sections := map[string][]string{"(top level)": {}}
 	var sectionOrder []string
 	sectionOrder = append(sectionOrder, "(top level)")
@@ -178,10 +208,10 @@ func renderFrom(fields map[string]map[string]any) string {
 		parent := "(top level)"
 		if i := strings.LastIndex(path, "."); i >= 0 {
 			parent = path[:i]
-			for parent != "(top level)" && sections[parent] == nil && strings.Contains(parent, ".") {
+			for !hasSection(sections, parent) && strings.Contains(parent, ".") {
 				parent = parent[:strings.LastIndex(parent, ".")]
 			}
-			if sections[parent] == nil {
+			if !hasSection(sections, parent) {
 				parent = "(top level)"
 			}
 		}
@@ -194,6 +224,11 @@ func renderFrom(fields map[string]map[string]any) string {
 				}
 				sections[parent] = append(sections[parent], path)
 				continue
+			}
+			if strings.Contains(path, ".") {
+				// A nested object (cloudProvider, node.compute): one row with its description;
+				// its fields follow as "cloudProvider.type" and so on.
+				sections[parent] = append(sections[parent], path)
 			}
 			continue
 		}
@@ -247,6 +282,12 @@ func renderFrom(fields map[string]map[string]any) string {
 		w("")
 	}
 	return b.String()
+}
+
+// hasSection reports whether name is a section, with or without rows so far.
+func hasSection(sections map[string][]string, name string) bool {
+	_, ok := sections[name]
+	return ok
 }
 
 func cell(text string) string {

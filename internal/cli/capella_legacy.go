@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -171,4 +172,47 @@ func forwardToAdd(cmd *cobra.Command, args []string) error {
 		return &CLIError{Code: ExitConfigInvalid, Message: err.Error()}
 	}
 	return add.RunE(add, args)
+}
+
+// negatableFlags are boolean flags capellactl also spelled as --no-NAME (click's on/off pairs).
+var negatableFlags = []string{"disk-auto-expansion", "cost-optimized", "flush", "cross-cluster-versioning", "protect"}
+
+// negation is the hidden --no-NAME flag: setting it sets NAME to the opposite value, so the
+// command sees NAME as changed exactly as with --NAME=false.
+type negation struct {
+	fs     *pflag.FlagSet
+	target string
+}
+
+func (n *negation) String() string { return "false" }
+func (n *negation) Type() string   { return "bool" }
+func (n *negation) Set(s string) error {
+	v, err := strconv.ParseBool(s)
+	if err != nil {
+		return err
+	}
+	return n.fs.Set(n.target, strconv.FormatBool(!v))
+}
+
+// installNegations adds a hidden --no-NAME to every command in the tree that has a bool flag
+// NAME from negatableFlags and no --no-NAME yet.
+func installNegations(root *cobra.Command) {
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		fs := c.Flags()
+		for _, name := range negatableFlags {
+			fl := fs.Lookup(name)
+			if fl == nil || fl.Value.Type() != "bool" || fs.Lookup("no-"+name) != nil {
+				continue
+			}
+			fs.Var(&negation{fs: fs, target: name}, "no-"+name, "Same as --"+name+"=false")
+			neg := fs.Lookup("no-" + name)
+			neg.NoOptDefVal = "true"
+			neg.Hidden = true
+		}
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	walk(root)
 }

@@ -8,8 +8,10 @@ import (
 	"testing"
 )
 
+var mentionsCapellactl = map[string]bool{"config": true, "environment": true, "exit-codes": true, "migrate": true}
+
 func TestTopicsAreListedAndRender(t *testing.T) {
-	want := []string{"getting-started", "config", "credentials", "scaling", "backup", "idempotency", "hibernation", "ci", "safety", "environment", "exit-codes"}
+	want := []string{"getting-started", "config", "credentials", "scaling", "backup", "idempotency", "hibernation", "ci", "safety", "environment", "exit-codes", "migrate"}
 	got := Names()
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("Names() = %v, want %v", got, want)
@@ -19,7 +21,8 @@ func TestTopicsAreListedAndRender(t *testing.T) {
 		if err != nil || strings.TrimSpace(text) == "" {
 			t.Errorf("Render(%q) = %q, %v", name, text, err)
 		}
-		if strings.Contains(text, "capellactl") && name != "config" {
+		// Only the pages that explain moving from capellactl may name it.
+		if strings.Contains(text, "capellactl") && !mentionsCapellactl[name] {
 			t.Errorf("topic %s still mentions capellactl", name)
 		}
 	}

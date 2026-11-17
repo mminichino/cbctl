@@ -1,0 +1,258 @@
+# Every document in capellactl docs/ (at 6389d5a, the commit the port was made from) and the
+# cbctl document that carries it, or the reason it was dropped. Checked by
+# `cbdev docs doc-map --check` (part of `make docs-check`); add a row when a capellactl document
+# is added, and keep "sources" in step (`cbdev docs doc-map --src ../capellactl/docs` lists them).
+sources:
+  - backup-restore.md
+  - custom-clusters.md
+  - getting-started.md
+  - migrating-from-scale-script.md
+  - reference.md
+  - release-1.0.0/00-architecture.md
+  - release-1.0.0/API-COVERAGE.md
+  - release-1.0.0/CAP-001-package-scaffold-cli-ci.md
+  - release-1.0.0/CAP-002-config-schema-validation-secrets.md
+  - release-1.0.0/CAP-003-management-api-client.md
+  - release-1.0.0/CAP-004-fake-capella-test-harness.md
+  - release-1.0.0/CAP-005-reconciler-framework-plan-engine.md
+  - release-1.0.0/CAP-006-apply-executor-output-exit-codes.md
+  - release-1.0.0/CAP-007-async-operation-waiter.md
+  - release-1.0.0/CAP-008-secret-redaction-credential-output.md
+  - release-1.0.0/CAP-009-ensure-project.md
+  - release-1.0.0/CAP-010-delete-project.md
+  - release-1.0.0/CAP-011-create-cluster.md
+  - release-1.0.0/CAP-012-edit-cluster-settings.md
+  - release-1.0.0/CAP-013-deletion-protection.md
+  - release-1.0.0/CAP-014-delete-cluster.md
+  - release-1.0.0/CAP-015-scale-out-cluster.md
+  - release-1.0.0/CAP-016-scale-in-cluster.md
+  - release-1.0.0/CAP-017-vertical-scaling-compute-disk.md
+  - release-1.0.0/CAP-018-step-scaling-command.md
+  - release-1.0.0/CAP-019-power-cluster-off-on.md
+  - release-1.0.0/CAP-020-hibernation-schedule.md
+  - release-1.0.0/CAP-021-pause-resume-schedule.md
+  - release-1.0.0/CAP-022-allowed-cidrs.md
+  - release-1.0.0/CAP-023-ensure-bucket.md
+  - release-1.0.0/CAP-024-delete-bucket.md
+  - release-1.0.0/CAP-025-ensure-scopes-collections.md
+  - release-1.0.0/CAP-026-delete-scopes-collections.md
+  - release-1.0.0/CAP-027-ensure-database-credential.md
+  - release-1.0.0/CAP-028-password-rotation.md
+  - release-1.0.0/CAP-029-delete-database-credential.md
+  - release-1.0.0/CAP-030-full-environment-apply-destroy.md
+  - release-1.0.0/CAP-031-drift-report-prune.md
+  - release-1.0.0/CAP-032-integration-suite-release-gate.md
+  - release-1.0.0/CAP-033-docs-examples-runbook.md
+  - release-1.0.0/CAP-034-help-command-topics-completion.md
+  - release-1.0.0/CAP-035-init-wizard.md
+  - release-1.0.0/CAP-036-import-existing-environment.md
+  - release-1.0.0/CAP-037-configure-profiles.md
+  - release-1.0.0/CAP-038-cli-managed-clusters-and-sync.md
+  - release-1.0.0/CAP-039-create-project-from-cli.md
+  - release-1.0.0/CAP-040-multiple-projects-one-file.md
+  - release-1.0.0/CAP-041-free-tier-and-cluster-options.md
+  - release-1.0.0/CAP-042-non-interactive-ci-mode.md
+  - release-1.0.0/CAP-043-build-distributables.md
+  - release-1.0.0/CAP-044-license-and-notices.md
+  - release-1.0.0/CAP-045-standalone-executables.md
+  - release-1.0.0/CAP-046-credential-commands.md
+  - release-1.0.0/CAP-047-configure-checks-existing-config.md
+  - release-1.0.0/CAP-048-track-resources-by-id.md
+  - release-1.0.0/CAP-049-clone-cluster-to-another-region.md
+  - release-1.0.0/CAP-050-protect-main-branch.md
+  - release-1.0.0/CAP-051-multi-dimensional-cluster-create.md
+  - release-1.0.0/CAP-052-service-group-commands.md
+  - release-1.0.0/CAP-053-advanced-cluster-create-options.md
+  - release-1.0.0/CAP-054-one-sync-command.md
+  - release-1.0.0/CAP-055-windows-install-steps.md
+  - release-1.0.0/CAP-056-cluster-backup-schedule.md
+  - release-1.0.0/CAP-057-cluster-backup-and-restore.md
+  - release-1.0.0/CAP-058-bucket-backup-schedule.md
+  - release-1.0.0/CAP-059-bucket-backup-and-restore.md
+  - release-1.0.0/CAP-060-choose-disk-type.md
+  - release-1.0.0/CAP-061-backup-and-disk-guides.md
+  - release-1.0.0/CAP-062-clear-config-error-messages.md
+  - release-1.0.0/CAP-063-error-warning-action-messages.md
+  - release-1.0.0/README.md
+  - release-1.5.0/API-COVERAGE.md
+  - release-1.5.0/CAP-064-custom-database-roles.md
+  - release-1.5.0/CAP-065-sample-buckets.md
+  - release-1.5.0/CAP-066-bucket-flush.md
+  - release-1.5.0/CAP-067-query-indexes.md
+  - release-1.5.0/CAP-068-eventing-functions.md
+  - release-1.5.0/CAP-069-data-api.md
+  - release-1.5.0/CAP-070-xdcr-replications.md
+  - release-1.5.0/CAP-071-clone-cluster-from-backup.md
+  - release-1.5.0/CAP-072-migrate-bucket-storage.md
+  - release-1.5.0/CAP-073-cluster-certificate.md
+  - release-1.5.0/CAP-074-network-peering.md
+  - release-1.5.0/CAP-075-private-endpoint-service.md
+  - release-1.5.0/CAP-076-cluster-audit-logging.md
+  - release-1.5.0/CAP-077-customer-managed-keys.md
+  - release-1.5.0/CAP-078-organization-settings.md
+  - release-1.5.0/CAP-079-organization-users.md
+  - release-1.5.0/CAP-080-api-keys.md
+  - release-1.5.0/CAP-081-alert-integrations.md
+  - release-1.5.0/CAP-082-events.md
+  - release-1.5.0/CAP-083-billing-reports.md
+  - release-1.5.0/CAP-084-operational-insights-clusters.md
+  - release-1.5.0/CAP-085-insights-on-off-schedule.md
+  - release-1.5.0/CAP-086-insights-allowed-cidrs.md
+  - release-1.5.0/CAP-087-insights-backups.md
+  - release-1.5.0/CAP-088-insights-private-endpoints.md
+  - release-1.5.0/CAP-089-release-1-5-docs-and-gate.md
+  - release-1.5.0/README.md
+  - release-2.0.0/API-COVERAGE-APP-SERVICES.md
+  - runbook.md
+  - terraform.md
+mappings:
+  - source: getting-started.md
+    target: docs/capella/getting-started.md
+  - source: runbook.md
+    target: docs/capella/runbook.md
+  - source: custom-clusters.md
+    target: docs/capella/custom-clusters.md
+  - source: terraform.md
+    target: docs/capella/terraform.md
+  - source: migrating-from-scale-script.md
+    target: docs/capella/migrating-from-scale-script.md
+  - source: backup-restore.md
+    target: docs/capella/backup-restore.md
+  - source: reference.md
+    target: docs/capella/reference.md
+  - source: release-1.0.0/README.md
+    target: docs/backlog/release-1.0.0/README.md
+  - source: release-1.0.0/00-architecture.md
+    target: docs/backlog/release-1.0.0/00-architecture.md
+  - source: release-1.0.0/API-COVERAGE.md
+    target: docs/backlog/release-1.0.0/API-COVERAGE.md
+  - source: release-1.5.0/
+    target: docs/backlog/release-1.5.0
+  - source: release-2.0.0/
+    target: docs/backlog/release-2.0.0
+  - source: release-1.0.0/CAP-001-package-scaffold-cli-ci.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-002-config-schema-validation-secrets.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-003-management-api-client.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-004-fake-capella-test-harness.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-005-reconciler-framework-plan-engine.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-006-apply-executor-output-exit-codes.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-007-async-operation-waiter.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-008-secret-redaction-credential-output.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-009-ensure-project.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-010-delete-project.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-011-create-cluster.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-012-edit-cluster-settings.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-013-deletion-protection.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-014-delete-cluster.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-015-scale-out-cluster.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-016-scale-in-cluster.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-017-vertical-scaling-compute-disk.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-018-step-scaling-command.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-019-power-cluster-off-on.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-020-hibernation-schedule.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-021-pause-resume-schedule.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-022-allowed-cidrs.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-023-ensure-bucket.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-024-delete-bucket.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-025-ensure-scopes-collections.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-026-delete-scopes-collections.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-027-ensure-database-credential.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-028-password-rotation.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-029-delete-database-credential.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-030-full-environment-apply-destroy.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-031-drift-report-prune.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-032-integration-suite-release-gate.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-033-docs-examples-runbook.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-034-help-command-topics-completion.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-035-init-wizard.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-036-import-existing-environment.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-037-configure-profiles.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-038-cli-managed-clusters-and-sync.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-039-create-project-from-cli.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-040-multiple-projects-one-file.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-041-free-tier-and-cluster-options.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-042-non-interactive-ci-mode.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-043-build-distributables.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-044-license-and-notices.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-045-standalone-executables.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-046-credential-commands.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-047-configure-checks-existing-config.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-048-track-resources-by-id.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-049-clone-cluster-to-another-region.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-050-protect-main-branch.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-051-multi-dimensional-cluster-create.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-052-service-group-commands.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-053-advanced-cluster-create-options.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-054-one-sync-command.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-055-windows-install-steps.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-056-cluster-backup-schedule.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-057-cluster-backup-and-restore.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-058-bucket-backup-schedule.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-059-bucket-backup-and-restore.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-060-choose-disk-type.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-061-backup-and-disk-guides.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-062-clear-config-error-messages.md
+    target: docs/backlog/release-1.0.0/stories.yaml
+  - source: release-1.0.0/CAP-063-error-warning-action-messages.md
+    target: docs/backlog/release-1.0.0/stories.yaml

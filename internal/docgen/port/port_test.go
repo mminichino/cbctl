@@ -173,3 +173,82 @@ func TestRewrite_DollarPrompt(t *testing.T) {
 		t.Fatalf("$ prompt rewrite failed:\n%s", out)
 	}
 }
+
+func TestRenameVerbs(t *testing.T) {
+	cases := map[string]string{
+		"capellactl configure --profile prod":         "cbctl configure --profile prod",
+		"capellactl bucket create c1 orders":          "cbctl capella bucket add c1 orders",
+		"capellactl scope create c1 orders inventory": "cbctl capella scope add c1 orders inventory",
+		"capellactl collection create c1 b s c":       "cbctl capella collection add c1 b s c",
+		"capellactl import --project demo":            "cbctl capella sync --project demo",
+		"capellactl help config":                      "cbctl capella guide config",
+		"capellactl cluster create --name demo":       "cbctl capella cluster create --name demo",
+		"capellactl --version":                        "cbctl --version",
+		"capellactl completion zsh":                   "cbctl completion zsh",
+	}
+	for in, want := range cases {
+		got, _ := Rewrite("```bash\n"+in+"\n```\n", RewriteOpts{Profile: "guide"})
+		if !strings.Contains(got, want+"\n") {
+			t.Errorf("fence %q -> %q, want %q", in, got, want)
+		}
+		got, _ = Rewrite("run `"+in+"` now\n", RewriteOpts{Profile: "guide"})
+		if !strings.Contains(got, "`"+want+"`") {
+			t.Errorf("inline %q -> %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestR14SampleOutput(t *testing.T) {
+	cases := map[string]string{
+		"Next: capellactl plan    (reports no changes)":        "Next: cbctl capella plan    (reports no changes)",
+		"  deploy: capellactl cluster create NAME --free-tier": "  deploy: cbctl capella cluster create NAME --free-tier",
+		"      See: capellactl help idempotency":               "      See: cbctl capella guide idempotency",
+		"pbpaste | capellactl configure --api-key-stdin":       "pbpaste | cbctl configure --api-key-stdin",
+		"CBCTL_QUIET=true capellactl -y apply":                 "CBCTL_QUIET=true cbctl capella -y apply",
+		"[ERROR]: cluster x is turningOff":                     "[error] - cluster x is turningOff",
+		"[WARNING]: slow":                                      "[warning] - slow",
+		"[ACTION]: Wait ('capellactl cluster get x' shows it)": "  → Wait ('cbctl capella cluster get x' shows it)",
+		"  + project sandbox  Trying capellactl":               "  + project sandbox  Trying cbctl",
+		"source .venv/bin/activate      # capellactl on PATH":  "# cbctl on PATH: see Install in the README",
+	}
+	for in, want := range cases {
+		got, _ := Rewrite("```text\n"+in+"\n```\n", RewriteOpts{Profile: "guide"})
+		if !strings.Contains(got, want+"\n") {
+			t.Errorf("%q -> %q, want %q", in, got, want)
+		}
+	}
+	got, _ := Rewrite("Errors start with `[ERROR]:`; then `[ACTION]:`.\n", RewriteOpts{Profile: "guide"})
+	if !strings.Contains(got, "`[error] -`") || !strings.Contains(got, "`→`") {
+		t.Errorf("inline prefixes not rewritten: %q", got)
+	}
+}
+
+func TestRebaseUserLinks(t *testing.T) {
+	in := "See [Install](../README.md#install) and [coverage](release-1.0.0/API-COVERAGE.md); [x](runbook.md).\n"
+	got, _ := Rewrite(in, RewriteOpts{Profile: "user"})
+	for _, want := range []string{"](../../README.md#install)", "](../backlog/release-1.0.0/API-COVERAGE.md)", "](runbook.md)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("Rewrite = %q, want %q", got, want)
+		}
+	}
+	if got, _ := Rewrite(in, RewriteOpts{Profile: "guide"}); strings.Contains(got, "../../README.md") {
+		t.Errorf("only user docs are rebased: %q", got)
+	}
+}
+
+func TestApplyOverrides(t *testing.T) {
+	for name, list := range userOverrides {
+		for _, o := range list {
+			got, err := applyOverrides(name, "before\n"+o.Old+"\nafter")
+			if err == nil && len(list) == 1 && !strings.Contains(got, o.New) {
+				t.Errorf("%s: override not applied", name)
+			}
+		}
+		if _, err := applyOverrides(name, "nothing to match"); err == nil {
+			t.Errorf("%s: a stale override must be an error", name)
+		}
+	}
+	if got, err := applyOverrides("no-overrides.md", "text"); err != nil || got != "text" {
+		t.Errorf("file without overrides: %q, %v", got, err)
+	}
+}

@@ -22,11 +22,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - Capella failures use structured exit codes (0/1/2/3/4/5/130) with action hints.
+- Every usage mistake exits 3: an unknown or ambiguous subcommand (it used to print help and exit
+  0), a bad flag or choice, a missing required flag, a wrong argument count.
+- `capella bucket add` defaults to 1024 MB, like capellactl, and leaves the storage backend to
+  Capella.
+- `CBCTL_QUIET` accepts `1`, `true`, `yes` and `on`.
+- `docs/capella/reference.md` lists every field of capella.yaml, including fields inside lists
+  (`serviceGroups`, `buckets.scopes.collections`, `databaseCredentials.access`).
+
+### Added (capellactl port)
+
+- `docs/capella/migrating-from-capellactl.md` and `cbctl capella guide migrate`.
+- The capellactl operator guides, ported: `getting-started.md`, `runbook.md`,
+  `custom-clusters.md`, `terraform.md`, `migrating-from-scale-script.md`, `backup-restore.md`.
+- `cbctl configure migrate` (alias `import-capellactl`) and `cbctl capella doctor`.
+- capellactl's prompts on a terminal: the `cluster create` wizard, `cluster clone` without
+  arguments, `bucket add --memory`, `project create` description, `cluster group add --services`.
+- capellactl spellings: `bucket|scope|collection create` with capellactl's arguments,
+  `cluster schedule apply`, `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`,
+  `--no-cross-cluster-versioning`, `configure --api-base-url`, and
+  `configure list|show --output-format legacy`.
 
 ### Deprecated
 
-- `CBCTL_LIVE_CLUSTER` remains accepted; prefer `CBCTL_IT_CLUSTERS=1` once the Phase 4 integration
-  harness is the primary entry (alias with a deprecation log).
+- `CBCTL_LIVE_CLUSTER` remains accepted; use `CBCTL_IT_CLUSTERS=1`.
+- capellactl's environment variables, accepted for one release with a warning:
+  `CAPELLACTL_CONFIG`, `CAPELLACTL_PROFILE`, `CAPELLACTL_QUIET`, `CAPELLACTL_HOME`, `BEARER_TOKEN`,
+  `ORG_ID`, `API_BASE_URL`. capellactl's profiles, keychain entries and `./.capellactl/credentials`
+  are read as fallbacks until `cbctl configure migrate` copies them.
+- The pre-port Capella commands, hidden and warning: `capella cluster exists|destroy|test`,
+  `capella bucket exists`, `capella cluster create|bucket create` with `--database`, and
+  `capella cluster|project apply NAME`.
+
+### Breaking (for capellactl users)
+
+- The command is `cbctl capella …` (`cbctl configure …` for profiles); capellactl's `import` is
+  `cbctl capella sync`, its `help` is `cbctl capella guide`, its `completion` is `cbctl completion`.
+- Usage errors exit 3 (capellactl: 2). A confirmation without a terminal and without `-y` exits 4
+  (capellactl: 1).
+- Messages are prefixed `[error] -`, `[warning] -` and `→` (capellactl: `[ERROR]:`, `[WARNING]:`,
+  `[ACTION]:`).
+- `configure list|show -o json` print arrays of rows unless `--output-format legacy`.
+- Without an OS keychain, `configure` exits 3 and saves nothing (capellactl saved the profile).
+- `init --password-env` defaults to `CBCTL_PWD_<CLUSTER>_<NAME>` (capellactl: `<NAME>_PASSWORD`).
+- Writing a password file that git would commit exits 4 (`--force-overwrite-secret` overrides).
+
+### Migration
+
+Run `cbctl configure migrate`, then `cbctl capella doctor`, then `cbctl capella plan` (it should
+show no changes). capella.yaml files with `apiVersion: capellactl/v1` work unchanged, and `sync`
+keeps that version. See [docs/capella/migrating-from-capellactl.md](docs/capella/migrating-from-capellactl.md).
 
 ### Security
 

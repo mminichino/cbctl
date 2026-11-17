@@ -34,6 +34,7 @@ var topics = []Topic{
 	{"safety", "deletion protection, prune, cascade, confirmations"},
 	{"environment", "API key, organization, profiles, environment variables, precedence"},
 	{"exit-codes", "what each exit code means"},
+	{"migrate", "moving from capellactl: renamed commands, environment, profiles, exit codes"},
 }
 
 // Topics returns the available pages in display order.

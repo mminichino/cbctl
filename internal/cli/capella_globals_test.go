@@ -163,7 +163,7 @@ func TestLegacyLeafFlagsUnchanged(t *testing.T) {
 		path  []string
 		extra []string
 	}{
-		{[]string{"cluster", "create"}, []string{"availability", "cidr", "cmek-id", "cpu", "direct", "disk-auto-expansion",
+		{[]string{"cluster", "create"}, []string{"availability", "cidr", "cmek-id", "cpu", "direct", "disk-auto-expansion", "no-disk-auto-expansion",
 			"disk-iops", "disk-size", "disk-type", "free-tier", "group", "name", "no-apply", "nodes", "private-dns", "provider",
 			"ram", "region", "server-version", "services", "single-node", "size", "support-plan", "support-timezone", "zone", "description"}},
 		{[]string{"cluster", "exists"}, nil},

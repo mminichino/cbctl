@@ -28,7 +28,7 @@ cbctl collection create <name> --bucket <bucket> --scope <scope> --host 127.0.0.
 cbctl collection exists <name> --bucket <bucket> --scope <scope> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
 # Capella auth / profiles
-cbctl configure [--profile NAME] [--org-id ID] [--api-host HOST] [--api-key-stdin]
+cbctl configure [--profile NAME] [--org-id ID] [--api-host HOST] [--api-key-stdin] # --api-base-url = --api-host (capellactl spelling)
 cbctl configure show|list|remove
 cbctl configure migrate [--from DIR] [--profile P]... [--dry-run] [--force] [--remove-legacy] [-o json] # alias import-capellactl; conflicts exit 4
 cbctl capella configure   # alias
@@ -41,7 +41,7 @@ cbctl capella apply [--target KIND/NAME] [--prune] [--rotate-passwords] [--power
 cbctl capella drift [--detailed-exitcode]
 cbctl capella sync [--project P] [--cluster C] [--file F] [--dry-run] [--stdout] [--full] [--force] [--api-version cbctl/v1|capellactl/v1]
 cbctl capella destroy [--discard-snapshots] -y
-cbctl capella guide [topic|topics|config FIELD]
+cbctl capella guide [topic|topics|config FIELD] # topic migrate: moving from capellactl
 cbctl capella doctor [--detailed-exitcode] [-o json] # offline, read-only capellactl leftovers; findings exit 4 with --detailed-exitcode
 # With a capella.yaml present these edit the file, plan, ask, save, apply; --no-apply only edits the file, --direct skips the file:
 cbctl capella project create|update|delete ... [--no-apply|--direct]
@@ -90,7 +90,7 @@ cbctl capella cluster update <cluster> [--description D] [--support-plan P] [--s
 cbctl capella cluster power <cluster> (--on [--with-app-service] | --off) -y
 cbctl capella cluster protect <cluster> (--on | --off) -y
 cbctl capella cluster delete <cluster> [--discard-snapshots] -y
-cbctl capella cluster clone <source> <new-name> --region R [--to-project P] [--cidr C] [--support-plan P] [--server-version V|latest] [--with-cidrs] [--with-credentials] [--no-data-model]
+cbctl capella cluster clone [<source> <new-name>] --region R [--to-project P] [--cidr C] [--support-plan P] [--server-version V|latest] [--with-cidrs] [--with-credentials] [--no-data-model]
 cbctl capella cluster group list <cluster>
 cbctl capella cluster group add <cluster> --services S [--nodes 2-24] [--cpu N] [--ram GB] [--disk-type T] [--disk-size GB] [--disk-iops N]
 cbctl capella cluster group remove <cluster> <services> [--allow-service-removal] [--skip-capacity-check] -y
@@ -235,6 +235,8 @@ Import JSON Lines into a keyspace.
 - Free-tier clusters: `bucket add` takes only `--memory`; `bucket update` only `--memory` and `--cross-cluster-versioning`; other flags exit 3.
 - `collection update --max-ttl` needs Couchbase Server 7.6.0+ (exit 4 otherwise).
 - `project delete` refuses a non-empty project unless `--cascade`; cascade deletes the clusters first and waits unless `--no-wait`.
+- Prompts (TTY only): `cluster create` without a name runs a wizard; `cluster clone` without arguments picks the source and asks region, name and target project (with only SOURCE: region and name); `bucket add` asks `--memory` (default 1024); `project create` asks for an optional description, `project update` for `--description`; `cluster group add` asks `--services`. Without a terminal a missing required value exits 3 (`missing X: there is no terminal to ask for it`); optional values use their defaults. Automation must pass every value as flags.
+- `cbctl capella completion` exits 3; shell completion is `cbctl completion bash|zsh|fish|powershell`.
 - Cluster operations (`scale`, `update`, `power`, `delete`, `clone`, `group add|remove`, `backup create|restore`) wait for completion; `--no-wait` returns status `accepted`. Exit 5 on timeout, 130 on Ctrl-C (the operation continues in Capella).
 - `cluster scale`: `--nodes` and `--step` are mutually exclusive (exit 3); free tier exits 4; a step at the group's limit is a no-op (exit 0); scale-in that bucket memory or replicas cannot fit exits 4 unless `--skip-capacity-check`. A transitional cluster is waited for (exit 4 with `--no-wait`).
 - `cluster power --off`, `protect --off`, `delete`, `group remove`, `schedule delete`, `backup delete|restore` and `bucket backup delete|restore` need `-y` without a terminal (exit 4). `cluster delete` is refused while deletion protection is on (exit 4); a missing cluster is a no-op.

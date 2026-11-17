@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/mminichino/cbctl/internal/settings"
 )
 
 // noConfigDir runs the test in an empty directory, so no capella.yaml is found.
@@ -360,4 +362,69 @@ func decodeJSON(t *testing.T, s string) map[string]any {
 		t.Fatalf("not JSON: %v\n%s", err, s)
 	}
 	return m
+}
+
+func TestNegationFlags(t *testing.T) {
+	root := newCapellaCmd()
+	for _, p := range [][]string{{"cluster", "update"}, {"cluster", "group", "add"}, {"bucket", "backup", "schedule", "set"}} {
+		c, _, err := root.Find(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var neg string
+		for _, name := range negatableFlags {
+			if c.Flags().Lookup(name) != nil {
+				neg = name
+				break
+			}
+		}
+		if neg == "" {
+			t.Fatalf("%v has no negatable flag", p)
+		}
+		fl := c.Flags().Lookup("no-" + neg)
+		if fl == nil || !fl.Hidden {
+			t.Fatalf("%v: --no-%s missing or visible", p, neg)
+		}
+		if err := c.Flags().Parse([]string{"--no-" + neg}); err != nil {
+			t.Fatal(err)
+		}
+		if !c.Flags().Changed(neg) || c.Flags().Lookup(neg).Value.String() != "false" {
+			t.Errorf("%v: --no-%s did not set --%s=false", p, neg, neg)
+		}
+	}
+}
+
+func TestConfigureLegacyOutputFormat(t *testing.T) {
+	lf := newLegacyFixture(t, "")
+	if err := (settings.ProfileStore{Path: settings.ProfilesPath(lf.home)}).Save(map[string]settings.Profile{
+		"b": {OrganizationID: "org-b"}, "a": {OrganizationID: "org-a"}}); err != nil {
+		t.Fatal(err)
+	}
+	stdout, _, code := lf.run("configure", "list", "-o", "json", "--output-format", "legacy")
+	var m map[string]map[string]any
+	if code != 0 || json.Unmarshal([]byte(stdout), &m) != nil || m["a"]["organizationId"] != "org-a" {
+		t.Fatalf("legacy list: exit %d %s", code, stdout)
+	}
+	stdout, _, code = lf.run("configure", "list", "-o", "json")
+	var rows []map[string]any
+	if code != 0 || json.Unmarshal([]byte(stdout), &rows) != nil || len(rows) != 2 || rows[0]["profile"] != "a" {
+		t.Fatalf("cbctl list (sorted): exit %d %s", code, stdout)
+	}
+	stdout, _, code = lf.run("configure", "show", "--profile", "a", "-o", "json", "--output-format", "legacy")
+	var show map[string]map[string]string
+	if code != 0 || json.Unmarshal([]byte(stdout), &show) != nil || show["organization"]["value"] != "org-a" {
+		t.Fatalf("legacy show: exit %d %s", code, stdout)
+	}
+	if _, _, code = lf.run("configure", "show", "--output-format", "xml"); code != int(ExitConfigInvalid) {
+		t.Errorf("bad --output-format: exit %d", code)
+	}
+	// CBCTL_PROFILE (and capellactl's CAPELLACTL_PROFILE) selects the profile remove acts on.
+	lf.env["CAPELLACTL_PROFILE"] = "b"
+	if _, stderr, code := lf.run("configure", "remove", "-y"); code != 0 || !strings.Contains(stderr, "CAPELLACTL_PROFILE is deprecated") {
+		t.Fatalf("remove: exit %d %s", code, stderr)
+	}
+	left, _ := settings.ProfileStore{Path: settings.ProfilesPath(lf.home)}.Load()
+	if _, ok := left["b"]; ok || len(left) != 1 {
+		t.Errorf("profiles after remove = %v", left)
+	}
 }

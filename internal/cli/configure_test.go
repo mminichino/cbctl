@@ -159,3 +159,20 @@ func TestConfigureShowConfigFileSource(t *testing.T) {
 		t.Errorf("CBCTL_CONFIG must override the profile:\n%s", got)
 	}
 }
+
+func TestConfigureAcceptsAPIBaseURL(t *testing.T) {
+	root := NewRootCmd(DefaultDeps())
+	cmd, _, err := root.Find([]string{"configure"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.ParseFlags([]string{"--api-base-url", "https://cloudapi.example.com"}); err != nil {
+		t.Fatalf("capellactl's --api-base-url must parse: %v", err)
+	}
+	if got, _ := cmd.Flags().GetString("api-host"); got != "https://cloudapi.example.com" {
+		t.Errorf("--api-base-url set api-host to %q", got)
+	}
+	if fl := cmd.Flags().Lookup("api-base-url"); fl == nil {
+		t.Error("lookup of the old name must resolve to api-host")
+	}
+}

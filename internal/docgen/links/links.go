@@ -182,11 +182,8 @@ func Slug(heading string) string {
 			// strip punctuation including emoji; keep nothing
 		}
 	}
-	s := b.String()
-	for strings.Contains(s, "--") {
-		s = strings.ReplaceAll(s, "--", "-")
-	}
-	return strings.Trim(s, "-")
+	// GitHub keeps runs of hyphens: "Part 1 — Day-2 tasks" is #part-1--day-2-tasks.
+	return strings.Trim(b.String(), "-")
 }
 
 func hasAnchor(text, frag string) bool {
