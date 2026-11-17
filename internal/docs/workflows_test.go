@@ -103,6 +103,19 @@ func TestNightlyWorkflow(t *testing.T) {
 		}
 	}
 	runs := stepRuns(it)
+	// The probe dispatch: its name marks it for dedupe, its input reaches the shell only
+	// through env (no ${{ }} expansion inside run:), and the default runs the whole suite.
+	if !strings.Contains(asString(wf["run-name"]), "probe: ") {
+		t.Errorf("run-name = %v, want a probe dispatch named \"probe: KIND\" (dedupe.ProbeTitlePrefix)", wf["run-name"])
+	}
+	for _, want := range []string{`CBCTL_IT_PROBE: ${{ inputs.probe }}`, `"") go test -tags=integration -timeout 290m -v ./internal/integration/... ;;`} {
+		if !strings.Contains(raw, want) {
+			t.Errorf("nightly.yml must contain %q", want)
+		}
+	}
+	if strings.Contains(runs, "inputs.") {
+		t.Error("nightly.yml run: scripts must not expand inputs directly (use env)")
+	}
 	for _, want := range []string{
 		"::error::secret CAPELLA_SANDBOX_API_KEY is empty", // preflight
 		"CBCTL_IT_LOG=$GITHUB_WORKSPACE/",                  // absolute artifact paths
