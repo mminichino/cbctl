@@ -6,10 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-17
+
+### Changed
+
+- CI action versions bumped: `actions/checkout` 4.4.0 → 7.0.1, `actions/setup-go` 5.6.0 → 7.0.0,
+  `actions/upload-artifact` 4.6.2 → 7.0.2, `goreleaser/goreleaser-action` 6.4.0 → 7.3.0 (all
+  Node 24). `golangci/golangci-lint-action` stays at v9.3.0, now pinned to its commit SHA instead
+  of the annotated tag object.
+
 ### Fixed
 
 - Managed `cluster delete` of a name missing from `capella.yaml` falls through to Capella, so a
   failed clone that rolled back the file can still be torn down.
+- `internal/redact` unit tests no longer run in parallel against the shared secret registry, which
+  made `TestRegisterAndString` flaky (seen on macOS CI).
 
 ## [0.6.0] - 2026-11-17
 
@@ -208,5 +219,6 @@ keeps that version. See [docs/capella/migrating-from-capellactl.md](docs/capella
 
 - Secret redaction in logs and CLI output; generated credential passwords written only to 0600 files.
 
-[Unreleased]: https://github.com/mminichino/cbctl/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/mminichino/cbctl/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/mminichino/cbctl/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/mminichino/cbctl/compare/v0.5.0...v0.6.0

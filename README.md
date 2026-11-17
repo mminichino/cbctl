@@ -18,8 +18,8 @@ curl -sL "https://github.com/mminichino/cbctl/releases/download/latest/cbctl_Dar
 sudo mv cbctl /usr/local/bin/
 cbctl --version            # cbctl capella --version prints the same
 
-# Pin a version (replace v0.6.0)
-# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.6.0/cbctl_Darwin_arm64.tar.gz" | tar xz
+# Pin a version (replace v0.6.1)
+# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.6.1/cbctl_Darwin_arm64.tar.gz" | tar xz
 ```
 
 See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures. Asset URLs use `/releases/download/<tag>/...` (tag before the filename).
