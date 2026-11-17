@@ -276,6 +276,9 @@ func confirmRuntime(yes bool, stdin string) (*runtime, *bytes.Buffer) {
 }
 
 func TestConfirm(t *testing.T) {
+	// confirmRuntime uses DefaultDeps, which reads the process env. Clear CI so the blocked
+	// case asserts the non-CI action; CI-specific wording is covered by scenario_ci_test.go.
+	t.Setenv("CI", "")
 	tests := []struct {
 		name       string
 		yes, tty   bool
