@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `CBCTL_QUIET` accepts `1`, `true`, `yes` and `on`.
 - `docs/capella/reference.md` lists every field of capella.yaml, including fields inside lists
   (`serviceGroups`, `buckets.scopes.collections`, `databaseCredentials.access`).
+- `capella project create --direct` looks for a project with the name before creating one. Capella
+  allows two projects with the same name, so cbctl no longer relies on Capella to refuse it.
 
 ### Added (capellactl port)
 

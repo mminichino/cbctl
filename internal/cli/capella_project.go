@@ -93,6 +93,17 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 			return err
 		}
 		name := args[0]
+		// Capella allows two projects with the same name, so a 409 cannot be relied on: look
+		// first, and never create a second project the name would then not identify.
+		projects, err := rt.Client.ListProjects(rt.Ctx)
+		if err != nil {
+			return fmt.Errorf("listing projects: %w", err)
+		}
+		for _, p := range projects {
+			if p.Name == name {
+				return Errorf(ExitError, "check the name with 'cbctl capella project list'", "project %s already exists", name)
+			}
+		}
 		id, err := rt.Client.CreateProject(rt.Ctx, name, description)
 		if err != nil {
 			if isAmbiguous(err) {

@@ -84,8 +84,9 @@ func TestProjectCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateProject(ctx, "alpha", ""); !errors.Is(err, capellaapi.ErrConflict) {
-		t.Fatalf("duplicate: err = %v, want ErrConflict", err)
+	// Capella allows two projects with the same name (parity with capellactl's fake).
+	if dup, err := c.CreateProject(ctx, "alpha", ""); err != nil || dup == id {
+		t.Fatalf("duplicate project name: id %q (first %q), err %v; want a second project", dup, id, err)
 	}
 	p, etag, err := c.GetProject(ctx, id)
 	if err != nil || p.Name != "alpha" || p.Description != "first" || etag != "1" {
@@ -159,8 +160,13 @@ func TestClusterLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateCluster(ctx, p, clusterReq("c1")); !errors.Is(err, capellaapi.ErrConflict) {
-		t.Fatalf("duplicate cluster: err = %v, want ErrConflict", err)
+	// Capella allows two clusters with the same name in a project (in a separate project here so
+	// the lifecycle below sees one cluster).
+	p2, _ := c.CreateProject(ctx, "dups", "")
+	a, errA := c.CreateCluster(ctx, p2, clusterReq("same"))
+	b, errB := c.CreateCluster(ctx, p2, clusterReq("same"))
+	if errA != nil || errB != nil || a == b {
+		t.Fatalf("duplicate cluster name: ids %q %q, errs %v %v; want two clusters", a, b, errA, errB)
 	}
 
 	var states []string

@@ -2,7 +2,6 @@ package capellafake
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/mminichino/cbctl/internal/engine"
@@ -80,15 +79,6 @@ func (f *Fake) findProject(id string) *project {
 	return nil
 }
 
-func (f *Fake) projectByName(name string) *project {
-	for _, p := range f.projects {
-		if str(p.obj, "name") == name {
-			return p
-		}
-	}
-	return nil
-}
-
 func (f *Fake) newProject(name, desc string) *project {
 	p := &project{res: res{ver: 1, obj: Obj{"id": uuid.NewString(), "name": name, "description": desc, "audit": f.audit(1)}}}
 	f.projects = append(f.projects, p)
@@ -121,10 +111,6 @@ func (c *rctx) createProject() {
 		c.err(http.StatusUnprocessableEntity, "name is required")
 		return
 	}
-	if c.f.projectByName(name) != nil {
-		c.err(http.StatusConflict, "a project named "+strconv.Quote(name)+" already exists")
-		return
-	}
 	p := c.f.newProject(name, str(body, "description"))
 	c.writeJSON(http.StatusCreated, Obj{"id": p.obj["id"]})
 }
@@ -148,10 +134,6 @@ func (c *rctx) updateProject() {
 	name := str(body, "name")
 	if name == "" {
 		c.err(http.StatusUnprocessableEntity, "name is required")
-		return
-	}
-	if other := c.f.projectByName(name); other != nil && other != p {
-		c.err(http.StatusConflict, "a project named "+strconv.Quote(name)+" already exists")
 		return
 	}
 	p.obj["name"] = name
@@ -205,15 +187,6 @@ func (p *project) removeCluster(cl *cluster) {
 			return
 		}
 	}
-}
-
-func (p *project) clusterByName(name string) *cluster {
-	for _, cl := range p.clusters {
-		if str(cl.obj, "name") == name {
-			return cl
-		}
-	}
-	return nil
 }
 
 // newCluster adds a cluster in "deploying" that becomes healthy after the settle polls.
@@ -370,10 +343,6 @@ func (c *rctx) createCluster() {
 		c.err(http.StatusUnprocessableEntity, "at least one service group is required")
 		return
 	}
-	if p.clusterByName(str(body, "name")) != nil {
-		c.err(http.StatusConflict, "a cluster named "+strconv.Quote(str(body, "name"))+" already exists in this project")
-		return
-	}
 	cl := c.f.newCluster(p, body, false)
 	c.writeJSON(http.StatusAccepted, Obj{"id": cl.obj["id"]})
 }
@@ -414,7 +383,7 @@ func (c *rctx) busy(cl *cluster) bool {
 }
 
 func (c *rctx) updateCluster() {
-	p, cl := c.cluster()
+	_, cl := c.cluster()
 	if cl == nil {
 		return
 	}
@@ -425,10 +394,6 @@ func (c *rctx) updateCluster() {
 	name := str(body, "name")
 	if name == "" {
 		c.err(http.StatusUnprocessableEntity, "name is required")
-		return
-	}
-	if other := p.clusterByName(name); other != nil && other != cl {
-		c.err(http.StatusConflict, "a cluster named "+strconv.Quote(name)+" already exists in this project")
 		return
 	}
 	cl.obj["name"] = name
@@ -584,10 +549,6 @@ func (c *rctx) createFreeCluster() {
 				return
 			}
 		}
-	}
-	if p.clusterByName(str(body, "name")) != nil {
-		c.err(http.StatusConflict, "a cluster named "+strconv.Quote(str(body, "name"))+" already exists in this project")
-		return
 	}
 	provider := clone(sub(body, "cloudProvider"))
 	if provider == nil {

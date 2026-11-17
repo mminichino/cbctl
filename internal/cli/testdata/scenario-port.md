@@ -33,9 +33,9 @@ The counts below are generated; do not edit them.
 | binary | 4 | 0 (0) | 0 | 2 | 2 | 50% |
 | contract | 26 | 23 (0) | 2 | 1 | 0 | 88% |
 | integration | 10 | 6 (0) | 4 | 0 | 0 | 60% |
-| scenario | 586 | 249 (0) | 225 | 110 | 2 | 43% |
-| unit | 252 | 127 (0) | 47 | 34 | 44 | 68% |
-| **all** | 878 | 405 (0) | 278 | 147 | 48 | 52% |
+| scenario | 586 | 252 (0) | 223 | 109 | 2 | 43% |
+| unit | 252 | 129 (0) | 47 | 32 | 44 | 69% |
+| **all** | 878 | 410 (0) | 276 | 144 | 48 | 52% |
 
 | capellactl file | Tests | C | P | M | N/A | Status |
 |---|---|---|---|---|---|---|
@@ -94,11 +94,11 @@ The counts below are generated; do not edit them.
 | `scenario/test_first_environment.py` | 2 | 0 | 2 | 0 | 0 | partial |
 | `scenario/test_free_tier.py` | 8 | 4 | 0 | 4 | 0 | partial |
 | `scenario/test_help_hints.py` | 2 | 1 | 0 | 1 | 0 | partial |
-| `scenario/test_import.py` | 17 | 2 | 4 | 11 | 0 | partial |
+| `scenario/test_import.py` | 17 | 3 | 4 | 10 | 0 | partial |
 | `scenario/test_init.py` | 15 | 13 | 0 | 2 | 0 | partial |
 | `scenario/test_messages.py` | 4 | 2 | 1 | 1 | 0 | partial |
 | `scenario/test_multi_project.py` | 13 | 4 | 7 | 2 | 0 | partial |
-| `scenario/test_plan.py` | 10 | 2 | 7 | 0 | 1 | partial |
+| `scenario/test_plan.py` | 10 | 4 | 5 | 0 | 1 | partial |
 | `scenario/test_power.py` | 12 | 5 | 4 | 3 | 0 | partial |
 | `scenario/test_project.py` | 11 | 3 | 8 | 0 | 0 | partial |
 | `scenario/test_project_create.py` | 7 | 1 | 4 | 2 | 0 | partial |
@@ -165,7 +165,7 @@ The counts below are generated; do not edit them.
 | `unit/docs/test_windows_docs.py` | 7 | 0 | 0 | 0 | 7 | n/a |
 | `unit/engine/test_normalize.py` | 5 | 5 | 0 | 0 | 0 | **ported** |
 | `unit/engine/test_waiter.py` | 6 | 6 | 0 | 0 | 0 | **ported** |
-| `unit/fakes/test_fake_capella.py` | 11 | 8 | 1 | 2 | 0 | partial |
+| `unit/fakes/test_fake_capella.py` | 11 | 10 | 1 | 0 | 0 | partial |
 | `unit/fakes/test_fake_parity.py` | 2 | 2 | 0 | 0 | 0 | **ported** |
 | `unit/output/test_gitcheck.py` | 3 | 3 | 0 | 0 | 0 | **ported** |
 | `unit/output/test_password_gen.py` | 2 | 2 | 0 | 0 | 0 | **ported** |

@@ -88,6 +88,13 @@ func WithClock(c *engine.FakeClock) Option {
 	}
 }
 
+// WithLenientRoutes answers unknown routes with a plain 404 instead of failing the test. Only
+// tests that probe unknown endpoints on purpose (the fake's own parity checks) use it; every
+// other test runs strict, so a mistyped path is never silently read as "absent".
+func WithLenientRoutes() Option {
+	return func(f *Fake) { f.lenient = true }
+}
+
 // Fake is the in-memory Capella server. Create one with New; it is shut down when the test ends.
 //
 // Exported fields URL, OrgID, and APIKey are kept for existing call sites; Clock/Handler/Advance
@@ -114,6 +121,7 @@ type Fake struct {
 	pageSize int // when > 0, caps perPage so tests can force multiple pages
 	failures []*failure
 	hooks    []*hook
+	lenient  bool // unknown routes are a plain 404 rather than a test failure
 	log      []Request
 }
 
@@ -589,6 +597,11 @@ func (f *Fake) serveRoute(c *rctx, r *http.Request) {
 		}
 		rt.h(c)
 		return
+	}
+	if !f.lenient {
+		// Errorf (not Fatalf): this runs on the server goroutine. The 404 still goes out so the
+		// code under test sees what Capella would send.
+		f.t.Errorf("capellafake: unhandled %s %s", r.Method, r.URL.Path)
 	}
 	c.err(http.StatusNotFound, "no such endpoint: "+r.Method+" "+r.URL.Path)
 }
