@@ -1,0 +1,3 @@
+cluster_cidr_overlap.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-02 › cloudProvider.cidr (line 20)
+    10.10.0.128/25 overlaps the network of cluster 'nova-dev-01' (10.10.0.0/24)

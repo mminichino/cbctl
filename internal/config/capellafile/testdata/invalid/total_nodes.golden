@@ -1,0 +1,3 @@
+total_nodes.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › serviceGroups (line 12)
+    a cluster can have at most 27 nodes (declared 29)

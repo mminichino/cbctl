@@ -1,0 +1,3 @@
+disk_size_too_big.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › node.disk.storage (line 15)
+    gp3 disks are at most 16000 GB (got 100000) (see 'cbctl capella cluster disk-types')

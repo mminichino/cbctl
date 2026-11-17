@@ -30,7 +30,6 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
-.cursor/
 
 # Project
 .ref/
@@ -39,5 +38,6 @@ go.work.sum
 /dist/
 /cbctl
 coverage.out
+/.cover/
 .DS_Store
 vendor/

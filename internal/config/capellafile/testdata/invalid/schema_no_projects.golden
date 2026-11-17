@@ -1,0 +1,3 @@
+schema_no_projects.yaml has 1 problem:
+  (root) (line 1)
+    missing 'projects' (or the single-project 'project')

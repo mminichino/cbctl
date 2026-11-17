@@ -1,0 +1,3 @@
+bucket_duplicate.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › bucket a (line 20)
+    duplicate bucket name 'a' (also on line 19)

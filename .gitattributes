@@ -1,0 +1,10 @@
+# Check out text files with LF on every platform. Golden files and YAML fixtures are compared
+# byte-for-byte, and Windows runners default to core.autocrlf=true.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.gz binary

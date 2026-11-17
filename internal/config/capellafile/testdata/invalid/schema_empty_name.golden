@@ -1,0 +1,3 @@
+schema_empty_name.yaml has 1 problem:
+  project.name (line 4)
+    must not be empty

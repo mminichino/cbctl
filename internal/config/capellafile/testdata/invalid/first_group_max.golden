@@ -1,0 +1,3 @@
+first_group_max.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › numOfNodes (line 16)
+    must be between 1 and 27

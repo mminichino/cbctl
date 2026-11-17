@@ -50,21 +50,6 @@ const (
 	TimeZoneAsia   TimeZoneType = "IST"
 )
 
-// StateWaitOperation controls cluster wait comparisons.
-type StateWaitOperation string
-
-const (
-	StateWaitEquals    StateWaitOperation = "equals"
-	StateWaitNotEquals StateWaitOperation = "not_equals"
-)
-
-func (op StateWaitOperation) evaluate(value bool) bool {
-	if op == StateWaitEquals {
-		return value
-	}
-	return !value
-}
-
 // AuditData is Capella audit metadata.
 type AuditData struct {
 	CreatedBy  string `json:"createdBy,omitempty"`

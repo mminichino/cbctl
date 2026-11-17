@@ -1,0 +1,3 @@
+multi_project_nested.yaml has 1 problem:
+  project two › cluster c › service group data › numOfNodes (line 14)
+    must be between 3 and 27

@@ -1,0 +1,3 @@
+disk_autoexpansion_aws.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › node.disk.autoExpansion (line 15)
+    autoExpansion is for azure disks only

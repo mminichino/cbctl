@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/mminichino/cbctl/internal/capella"
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/server"
 	"github.com/spf13/cobra"
@@ -15,12 +13,42 @@ func newCapellaCmd() *cobra.Command {
 		Use:   "capella",
 		Short: "Capella cloud operations",
 		Run:   func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
+		// Applies --log-level/--quiet to every subcommand; no leaf defines its own persistent hook.
+		PersistentPreRunE: capellaPersistentPreRun,
 	}
+	addCapellaGlobalFlags(cmd)
+	cmd.AddCommand(newCapellaProjectCmd())
 	cmd.AddCommand(newCapellaClusterCmd())
 	cmd.AddCommand(newCapellaBucketCmd())
 	cmd.AddCommand(newCapellaScopeCmd())
 	cmd.AddCommand(newCapellaCollectionCmd())
+	cmd.AddCommand(newCapellaCIDRCmd())
+	cmd.AddCommand(newCapellaCredentialCmd())
 	cmd.AddCommand(newCapellaImportCmd())
+	cmd.AddCommand(newConfigureCmd())
+	cmd.AddCommand(newCapellaJanitorCmd())
+	cmd.AddCommand(newCapellaValidateCmd())
+	cmd.AddCommand(newCapellaPlanCmd())
+	cmd.AddCommand(newCapellaApplyCmd())
+	cmd.AddCommand(newCapellaEnvDestroyCmd())
+	cmd.AddCommand(newCapellaDriftCmd())
+	cmd.AddCommand(newCapellaSyncCmd())
+	cmd.AddCommand(newCapellaInitCmd())
+	cmd.AddCommand(newCapellaGuideCmd())
+	cmd.AddCommand(newCapellaHelpAlias())
+	cmd.AddCommand(newCapellaDoctorCmd())
+	installManagedModes(cmd)
+	installPrompts(cmd)
+	installLegacy(cmd)
+	for _, kind := range []string{"bucket", "scope", "collection"} {
+		c, _, err := cmd.Find([]string{kind, "create"})
+		if err != nil {
+			panic(err)
+		}
+		shareAddFlags(c)
+	}
+	installNegations(cmd)
+	installClusterCompletion(cmd)
 	return cmd
 }
 
@@ -34,35 +62,97 @@ func newCapellaClusterCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaClusterExistsCmd())
 	cmd.AddCommand(newCapellaClusterDestroyCmd())
 	cmd.AddCommand(newCapellaClusterTestCmd())
+	cmd.AddCommand(newHiddenApplyAlias("cluster"))
+	registerCapellaClusterCommands(cmd)
 	return cmd
 }
 
 func newCapellaClusterCreateCmd() *cobra.Command {
 	var cf capellaFlags
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "create [NAME]",
 		Short: "Create a Capella cluster",
+		Long: "Create a cluster. With a capella.yaml present the cluster is added to the file and applied; without one\n" +
+			"(or with --direct) it is created in Capella directly. On a terminal, a missing name starts a short wizard,\n" +
+			"and with a name but no size flags the type, provider, size, region, network and support plan are asked.\n\n" +
+			"Examples:\n  cbctl capella cluster create dev-01 --size dev\n  cbctl capella cluster create prod-01 --group data:3x8/32 --group index,query:2x8/32 --region us-east-2\n" +
+			"  cbctl capella cluster create prod-02 --group data:3x8/32:size=100 --group analytics:2x16/64:size=200,iops=5000\n\n" +
+			"--group SERVICES:NODESxCPU/RAM[:DISK] (repeatable; one per service group):\n" +
+			"  SERVICES       data, index, query, search, analytics, eventing (comma-separated)\n" +
+			"  NODESxCPU/RAM  nodes, vCPUs and GB of RAM per node, e.g. 3x8/32\n" +
+			"  DISK           type=, size= (GB), iops=, auto-expansion= (azure)\n" +
+			"Sizes Capella offers: cbctl capella cluster options. Disk types: cbctl capella cluster disk-types.\n" +
+			"To copy the layout of an existing cluster: cbctl capella cluster clone SOURCE NEW_NAME --region REGION --no-data-model",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			backend := capella.NewBackend()
-			created, err := backend.CreateCluster(cf.config())
-			if err != nil {
-				logging.Error("Failed to create cluster: %v", err)
-				exitErr()
+			if usesLegacyFlags(cmd) {
+				return runLegacyClusterCreate(cmd, args, &cf)
 			}
-			if !created {
-				logging.Info("Cluster already configured")
-				return nil
-			}
-			name := cf.database
-			if name == "" {
-				name = cf.databaseID
-			}
-			logging.Info("Cluster created on %s", name)
-			return nil
+			return runDirectClusterCreate(cmd, args)
 		},
 	}
 	cf.addTo(cmd)
 	return cmd
+}
+
+// managedCreateFlags are the cluster create flags of the managed and direct builder; none of
+// them can be combined with the legacy flags.
+var managedCreateFlags = []string{"name", "provider", "region", "cidr", "size", "nodes", "cpu", "ram", "group",
+	"disk-type", "disk-size", "disk-iops", "disk-auto-expansion", "services", "availability", "support-plan",
+	"support-timezone", "description", "free-tier", "single-node", "server-version", "zone", "cmek-id", "private-dns"}
+
+// resolveClusterName returns the cluster name from the positional argument or the named flag.
+// Both given and different is a usage error.
+func resolveClusterName(cmd *cobra.Command, args []string, flag string) (string, error) {
+	fromFlag := flagString(cmd, flag)
+	if len(args) == 0 {
+		return fromFlag, nil
+	}
+	if fromFlag != "" && fromFlag != args[0] {
+		return "", usageError("give the name once, as NAME or --"+flag,
+			"cluster name %q and --%s %q differ", args[0], flag, fromFlag)
+	}
+	return args[0], nil
+}
+
+// runLegacyClusterCreate is the pre-port direct create, kept for scripts that pass the legacy
+// flags. It warns, and opens no network access or database user the caller did not ask for.
+func runLegacyClusterCreate(cmd *cobra.Command, args []string, cf *capellaFlags) error {
+	warnDeprecated(cmd.ErrOrStderr(), "capella cluster create --database ...", replacementFor("cluster create"))
+	var mixed []string
+	for _, name := range managedCreateFlags {
+		if f := cmd.Flags().Lookup(name); f != nil && f.Changed {
+			mixed = append(mixed, "--"+name)
+		}
+	}
+	if len(mixed) > 0 {
+		return usageError("use either the cluster flags (--size, --group, ...) or the legacy flags, not both",
+			"cannot combine %s with legacy --database/-u/--password-env", strings.Join(mixed, ", "))
+	}
+	if len(args) == 1 {
+		if cf.database != "" && cf.database != args[0] {
+			return usageError("give the name once", "cluster name %q and --database %q differ", args[0], cf.database)
+		}
+		cf.database = args[0]
+	}
+	cfg, err := cf.prepare(cmd, false)
+	if err != nil {
+		return err
+	}
+	created, err := newLegacyBackend().CreateCluster(cmd.Context(), cfg)
+	if err != nil {
+		return failure("Failed to create cluster", err)
+	}
+	name := cf.database
+	if name == "" {
+		name = cf.databaseID
+	}
+	if !created {
+		logging.Info("Cluster already configured")
+		return nil
+	}
+	logging.Info("Cluster created on %s", name)
+	return nil
 }
 
 func newCapellaClusterExistsCmd() *cobra.Command {
@@ -71,7 +161,14 @@ func newCapellaClusterExistsCmd() *cobra.Command {
 		Use:   "exists",
 		Short: "Print whether a Capella cluster exists",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ok := capella.NewBackend().ClusterExists(cf.config())
+			cfg, err := cf.prepare(cmd, false)
+			if err != nil {
+				return err
+			}
+			ok, err := newLegacyBackend().ClusterExists(cmd.Context(), cfg)
+			if err != nil {
+				return failure("", err)
+			}
 			if ok {
 				logging.Println("true")
 			} else {
@@ -84,32 +181,43 @@ func newCapellaClusterExistsCmd() *cobra.Command {
 	return cmd
 }
 
+// newCapellaClusterDestroyCmd is the legacy destroy. It runs the same code as "cluster delete",
+// so it asks for confirmation (exit 4 without a terminal and --yes) and honours deletion
+// protection.
 func newCapellaClusterDestroyCmd() *cobra.Command {
-	var cf capellaFlags
+	var (
+		cf      capellaFlags
+		discard bool
+	)
 	cmd := &cobra.Command{
 		Use:   "destroy",
 		Short: "Destroy a Capella cluster",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			backend := capella.NewBackend()
-			cfg := cf.config()
-			// Ensure cluster handle is resolved via Connect path / exists lookup.
-			if !backend.ClusterExists(cfg) {
-				logging.Warning("Cluster does not exist")
-				return nil
-			}
-			if err := backend.DestroyCluster(cfg); err != nil {
-				logging.Error("Failed to destroy cluster: %v", err)
-				exitErr()
+			if err := cf.loadPassword(cmd, false); err != nil {
+				return err
 			}
 			name := cf.database
 			if name == "" {
 				name = cf.databaseID
 			}
-			logging.Info("Cluster %q destroyed", name)
-			return nil
+			if name == "" {
+				return usageError("pass --database NAME, or use 'cbctl capella cluster delete CLUSTER'", "the cluster name is required")
+			}
+			af := readAPIFlags(cmd)
+			af.apiHost = flagIfChanged(cmd, "api-host")
+			rt, err := newRuntime(cmd, af)
+			if err != nil {
+				return err
+			}
+			project := ""
+			if cmd.Flags().Changed("project") {
+				project = cf.project
+			}
+			return rt.runClusterDelete(name, project, discard)
 		},
 	}
 	cf.addTo(cmd)
+	cmd.Flags().BoolVar(&discard, "discard-snapshots", false, "Also delete the cluster's snapshot backups (kept by default)")
 	return cmd
 }
 
@@ -122,12 +230,14 @@ func newCapellaClusterTestCmd() *cobra.Command {
 		Use:   "test",
 		Short: "Connect to Capella and verify KV put/get",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			backend := capella.NewBackend()
-			cfg := cf.config()
-			cluster, cleanup, _, _, err := backend.Connect(cfg)
+			backend := newLegacyBackend()
+			cfg, err := cf.prepare(cmd, true)
 			if err != nil {
-				logging.Error("Cluster test failed: %v", err)
-				exitErr()
+				return err
+			}
+			cluster, cleanup, _, _, err := backend.Connect(cmd.Context(), cfg)
+			if err != nil {
+				return failure("Cluster test failed", err)
 			}
 			defer cleanup()
 
@@ -141,8 +251,7 @@ func newCapellaClusterTestCmd() *cobra.Command {
 			s.Cluster = cluster
 			s.Config = cfg
 			if err := s.ClusterTest(bucket); err != nil {
-				logging.Error("Cluster test failed: %v", err)
-				exitErr()
+				return failure("Cluster test failed", err)
 			}
 			logging.Info("Cluster test passed")
 			return nil
@@ -161,6 +270,12 @@ func newCapellaBucketCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newCapellaBucketCreateCmd())
 	cmd.AddCommand(newCapellaBucketExistsCmd())
+	cmd.AddCommand(newCapellaBucketListCmd())
+	cmd.AddCommand(newCapellaBucketGetCmd())
+	cmd.AddCommand(newCapellaBucketAddCmd())
+	cmd.AddCommand(newCapellaBucketUpdateCmd())
+	cmd.AddCommand(newCapellaBucketDeleteCmd())
+	cmd.AddCommand(newCapellaBucketBackupCmd())
 	return cmd
 }
 
@@ -171,29 +286,40 @@ func newCapellaBucketCreateCmd() *cobra.Command {
 		replicas int
 	)
 	cmd := &cobra.Command{
-		Use:   "create [name]",
-		Short: "Create a Capella bucket",
-		Args:  cobra.ExactArgs(1),
+		Use:   "create CLUSTER NAME",
+		Short: "Add a bucket (capellactl spelling of 'bucket add')",
+		Long: "'bucket create CLUSTER NAME' is capellactl's spelling of 'bucket add CLUSTER NAME' and takes the same flags.\n" +
+			"The pre-port form 'bucket create NAME --database CLUSTER' still works but is deprecated.",
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if capellactlArity("bucket", args) {
+				return forwardToAdd(cmd, args)
+			}
+			if !usesLegacyFlags(cmd) {
+				return usageError("run 'cbctl capella bucket add CLUSTER NAME'",
+					"'bucket create' takes CLUSTER NAME (or the deprecated NAME --database CLUSTER)")
+			}
+			warnDeprecated(cmd.ErrOrStderr(), "capella bucket create NAME --database ...", replacementFor("bucket create"))
 			name := args[0]
-			backend := capella.NewBackend()
-			cfg := cf.config()
-			_, cleanup, _, _, err := backend.Connect(cfg)
+			cfg, err := cf.prepare(cmd, true)
 			if err != nil {
-				logging.Error("Failed to create bucket: %v", err)
-				exitErr()
+				return err
+			}
+			backend := newLegacyBackend()
+			_, cleanup, _, _, err := backend.Connect(cmd.Context(), cfg)
+			if err != nil {
+				return failure("Failed to create bucket", err)
 			}
 			defer cleanup()
 			if err := backend.CreateBucket(name, quota, replicas); err != nil {
-				logging.Error("Failed to create bucket: %v", err)
-				exitErr()
+				return failure("Failed to create bucket", err)
 			}
 			logging.Info("Bucket %q created", name)
 			return nil
 		},
 	}
 	cf.addTo(cmd)
-	cmd.Flags().IntVar(&quota, "quota", 128, "RAM quota in MiB")
+	cmd.Flags().IntVar(&quota, "quota", 128, "RAM quota in MiB (deprecated form only)")
 	cmd.Flags().IntVar(&replicas, "replicas", 1, "Number of replicas")
 	return cmd
 }
@@ -205,236 +331,26 @@ func newCapellaBucketExistsCmd() *cobra.Command {
 		Short: "Print whether a Capella bucket exists",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			backend := capella.NewBackend()
-			cfg := cf.config()
-			cluster, cleanup, _, _, err := backend.Connect(cfg)
+			cfg, err := cf.prepare(cmd, true)
 			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
+				return err
+			}
+			backend := newLegacyBackend()
+			cluster, cleanup, _, _, err := backend.Connect(cmd.Context(), cfg)
+			if err != nil {
+				return failure("", err)
 			}
 			defer cleanup()
 			s := server.New()
 			s.Cluster = cluster
 			ok, err := s.BucketExists(args[0])
 			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
+				return failure("", err)
 			}
 			if ok {
 				logging.Println("true")
 			} else {
 				logging.Println("false")
-			}
-			return nil
-		},
-	}
-	cf.addTo(cmd)
-	return cmd
-}
-
-func withCapellaSDK(cf capellaFlags, fn func(*server.Server, *capella.Backend) error) error {
-	backend := capella.NewBackend()
-	cfg := cf.config()
-	cluster, cleanup, _, _, err := backend.Connect(cfg)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-	s := server.New()
-	s.Cluster = cluster
-	s.Config = cfg
-	return fn(s, backend)
-}
-
-func newCapellaScopeCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "scope",
-		Short: "Capella scope operations",
-		Run:   func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
-	}
-	cmd.AddCommand(newCapellaScopeCreateCmd())
-	cmd.AddCommand(newCapellaScopeExistsCmd())
-	return cmd
-}
-
-func newCapellaScopeCreateCmd() *cobra.Command {
-	var (
-		cf     capellaFlags
-		bucket string
-	)
-	cmd := &cobra.Command{
-		Use:   "create [name]",
-		Short: "Create a scope on Capella",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			err := withCapellaSDK(cf, func(s *server.Server, _ *capella.Backend) error {
-				return s.CreateScope(bucket, name)
-			})
-			if err != nil {
-				logging.Error("Failed to create scope: %v", err)
-				exitErr()
-			}
-			logging.Info("Scope %q created in bucket %q", name, bucket)
-			return nil
-		},
-	}
-	cf.addTo(cmd)
-	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "Parent bucket name")
-	_ = cmd.MarkFlagRequired("bucket")
-	return cmd
-}
-
-func newCapellaScopeExistsCmd() *cobra.Command {
-	var (
-		cf     capellaFlags
-		bucket string
-	)
-	cmd := &cobra.Command{
-		Use:   "exists [name]",
-		Short: "Print whether a Capella scope exists",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			err := withCapellaSDK(cf, func(s *server.Server, _ *capella.Backend) error {
-				ok, err := s.ScopeExists(bucket, args[0])
-				if err != nil {
-					return err
-				}
-				if ok {
-					logging.Println("true")
-				} else {
-					logging.Println("false")
-				}
-				return nil
-			})
-			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
-			}
-			return nil
-		},
-	}
-	cf.addTo(cmd)
-	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "Parent bucket name")
-	_ = cmd.MarkFlagRequired("bucket")
-	return cmd
-}
-
-func newCapellaCollectionCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "collection",
-		Short: "Capella collection operations",
-		Run:   func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
-	}
-	cmd.AddCommand(newCapellaCollectionCreateCmd())
-	cmd.AddCommand(newCapellaCollectionExistsCmd())
-	return cmd
-}
-
-func newCapellaCollectionCreateCmd() *cobra.Command {
-	var (
-		cf     capellaFlags
-		bucket string
-		scope  string
-	)
-	cmd := &cobra.Command{
-		Use:   "create [name]",
-		Short: "Create a collection on Capella",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
-			err := withCapellaSDK(cf, func(s *server.Server, _ *capella.Backend) error {
-				return s.CreateCollection(bucket, scope, name)
-			})
-			if err != nil {
-				logging.Error("Failed to create collection: %v", err)
-				exitErr()
-			}
-			logging.Info("Collection %q created in bucket %q scope %q", name, bucket, scope)
-			return nil
-		},
-	}
-	cf.addTo(cmd)
-	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "Parent bucket name")
-	cmd.Flags().StringVarP(&scope, "scope", "s", "", "Parent scope name")
-	_ = cmd.MarkFlagRequired("bucket")
-	_ = cmd.MarkFlagRequired("scope")
-	return cmd
-}
-
-func newCapellaCollectionExistsCmd() *cobra.Command {
-	var (
-		cf     capellaFlags
-		bucket string
-		scope  string
-	)
-	cmd := &cobra.Command{
-		Use:   "exists [name]",
-		Short: "Print whether a Capella collection exists",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			err := withCapellaSDK(cf, func(s *server.Server, _ *capella.Backend) error {
-				ok, err := s.CollectionExists(bucket, scope, args[0])
-				if err != nil {
-					return err
-				}
-				if ok {
-					logging.Println("true")
-				} else {
-					logging.Println("false")
-				}
-				return nil
-			})
-			if err != nil {
-				logging.Error("%v", err)
-				exitErr()
-			}
-			return nil
-		},
-	}
-	cf.addTo(cmd)
-	cmd.Flags().StringVarP(&bucket, "bucket", "b", "", "Parent bucket name")
-	cmd.Flags().StringVarP(&scope, "scope", "s", "", "Parent scope name")
-	_ = cmd.MarkFlagRequired("bucket")
-	_ = cmd.MarkFlagRequired("scope")
-	return cmd
-}
-
-func newCapellaImportCmd() *cobra.Command {
-	var cf capellaFlags
-	cmd := &cobra.Command{
-		Use:   "import [jsonl-file] [bucket.scope.collection]",
-		Short: "Import JSON Lines into an empty Capella collection",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			path := args[0]
-			parts := strings.Split(args[1], ".")
-			if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-				return fmt.Errorf("keyspace must use bucket.scope.collection format")
-			}
-			bucket, scope, collection := parts[0], parts[1], parts[2]
-			err := withCapellaSDK(cf, func(s *server.Server, _ *capella.Backend) error {
-				if _, err := s.EnsureCollection(bucket, scope, collection); err != nil {
-					return err
-				}
-				empty, err := s.CollectionIsEmpty(bucket, scope, collection)
-				if err != nil {
-					return err
-				}
-				if !empty {
-					logging.Warning("Collection not empty")
-					return nil
-				}
-				imported, err := s.PopulateCollection(path, bucket, scope, collection)
-				if err != nil {
-					return err
-				}
-				logging.Info("Imported %d documents", imported)
-				return nil
-			})
-			if err != nil {
-				logging.Error("Failed to import JSON Lines file: %v", err)
-				exitErr()
 			}
 			return nil
 		},

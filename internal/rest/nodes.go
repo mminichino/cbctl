@@ -26,21 +26,37 @@ func ParseUseExtAPI(options map[string]string) bool {
 	}
 }
 
-// ParseHostPort splits host:port with a default port.
+// ParseHostPort splits host:port with a default port. IPv6 literals are accepted bare ("::1")
+// or bracketed ("[::1]", "[::1]:9000") and are returned without brackets.
 func ParseHostPort(value string, defaultPort int) (string, int) {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return config.DefaultHostname, defaultPort
 	}
 	hostValue := strings.SplitN(value, "/", 2)[0]
-	if host, portText, ok := strings.Cut(hostValue, ":"); ok {
-		port, err := strconv.Atoi(portText)
-		if err != nil {
-			return host, defaultPort
+	if rest, ok := strings.CutPrefix(hostValue, "["); ok {
+		host, after, closed := strings.Cut(rest, "]")
+		if !closed {
+			return rest, defaultPort
 		}
-		return host, port
+		return host, portOr(strings.TrimPrefix(after, ":"), defaultPort)
+	}
+	// More than one colon without brackets can only be a bare IPv6 address.
+	if strings.Count(hostValue, ":") > 1 {
+		return hostValue, defaultPort
+	}
+	if host, portText, ok := strings.Cut(hostValue, ":"); ok {
+		return host, portOr(portText, defaultPort)
 	}
 	return hostValue, defaultPort
+}
+
+func portOr(text string, def int) int {
+	port, err := strconv.Atoi(text)
+	if err != nil || port <= 0 || port > 65535 {
+		return def
+	}
+	return port
 }
 
 // APIHostForNode returns the management host (and optional :port) for a node.

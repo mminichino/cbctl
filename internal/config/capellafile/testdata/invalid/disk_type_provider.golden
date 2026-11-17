@@ -1,0 +1,3 @@
+disk_type_provider.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › node.disk.type (line 15)
+    disk type P20 is not valid for aws (use: gp3, io2)

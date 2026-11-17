@@ -41,7 +41,6 @@ const (
 
 	DefaultCapellaAPIHost     = "cloudapi.cloud.couchbase.com"
 	DefaultCapellaProjectName = "default"
-	DefaultCapellaAllowCIDR   = "0.0.0.0/0"
 )
 
 // Config is a mutable connection configuration.

@@ -1,0 +1,3 @@
+hibernation_minutes.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › hibernation.weekdays (line 20)
+    start minute must be 00 or 30 (got 08:15)

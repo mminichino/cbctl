@@ -1,0 +1,16 @@
+apiVersion: cbctl/v1
+projects:
+  - name: free-project
+    clusters:
+      - name: free-1
+        tier: free
+        cloudProvider: { type: aws, region: us-east-2 }
+        allowedCidrs:
+          - cidr: 203.0.113.10
+        buckets:
+          - name: scratch
+            memoryAllocationInMb: 100
+            scopes:
+              - name: app
+                collections:
+                  - name: docs

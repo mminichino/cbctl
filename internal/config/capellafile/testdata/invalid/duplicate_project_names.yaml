@@ -1,0 +1,6 @@
+apiVersion: cbctl/v1
+projects:
+  - name: same
+  - name: same
+  - id: abc
+    name: same

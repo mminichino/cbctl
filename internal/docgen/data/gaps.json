@@ -1,0 +1,3 @@
+[
+  "**`GET \u2026/allowedcidrs/{id}`** is wired in `internal/capellaapi/inventory.go` but never called. Keep it for symmetry or drop it from `Inventory`."
+]

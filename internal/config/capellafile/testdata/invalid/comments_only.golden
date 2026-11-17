@@ -1,0 +1,4 @@
+comments_only.yaml has 1 problem:
+  comments_only.yaml (line 1)
+    comments_only.yaml is empty
+    action: add 'apiVersion: cbctl/v1' and your projects, or run 'cbctl capella sync' to write the file from Capella

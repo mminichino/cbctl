@@ -1,6 +1,7 @@
 package capella
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/mminichino/cbctl/internal/logging"
@@ -168,10 +169,10 @@ func (o *Organization) defaultOrg() (*OrganizationData, error) {
 	}
 	orgs, err := o.List()
 	if err != nil {
-		return nil, fmt.Errorf("Can not find the Capella Organization: %w", err)
+		return nil, fmt.Errorf("cannot find the Capella organization: %w", err)
 	}
 	if len(orgs) == 0 {
-		return nil, fmt.Errorf("Can not find the Capella Organization")
+		return nil, errors.New("cannot find the Capella organization")
 	}
 	return &orgs[0], nil
 }

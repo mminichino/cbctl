@@ -1,0 +1,4 @@
+empty.yaml has 1 problem:
+  empty.yaml (line 1)
+    empty.yaml is empty
+    action: add 'apiVersion: cbctl/v1' and your projects, or run 'cbctl capella sync' to write the file from Capella

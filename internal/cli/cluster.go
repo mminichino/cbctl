@@ -127,8 +127,7 @@ func newClusterCreateCmd() *cobra.Command {
 				}
 				created, err := server.BootstrapPrimary(opts)
 				if err != nil {
-					logging.Error("Failed to create cluster: %v", err)
-					exitErr()
+					return failure("Failed to create cluster", err)
 				}
 				if !created {
 					logging.Info("Cluster already configured")
@@ -199,8 +198,7 @@ func newClusterCreateCmd() *cobra.Command {
 
 			created, err := server.CreateCluster(cfg, options)
 			if err != nil {
-				logging.Error("Failed to create cluster: %v", err)
-				exitErr()
+				return failure("Failed to create cluster", err)
 			}
 			if !created {
 				logging.Info("Cluster already configured")
@@ -271,8 +269,7 @@ func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, service
 	}
 	joined, err := server.JoinNode(opts)
 	if err != nil {
-		logging.Error("Failed to join node: %v", err)
-		exitErr()
+		return failure("Failed to join node", err)
 	}
 	if !joined {
 		logging.Info("Node already configured")
@@ -360,8 +357,7 @@ func newClusterRebalanceCmd() *cobra.Command {
 				SSL:            cf.ssl,
 			}
 			if err := server.RebalanceCluster(opts); err != nil {
-				logging.Error("Failed to rebalance cluster: %v", err)
-				exitErr()
+				return failure("Failed to rebalance cluster", err)
 			}
 			logging.Info("Cluster rebalanced")
 			return nil
@@ -399,8 +395,7 @@ func newClusterMapCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			text, err := server.ClusterMap(cf.config())
 			if err != nil {
-				logging.Error("Failed to read cluster map: %v", err)
-				exitErr()
+				return failure("Failed to read cluster map", err)
 			}
 			logging.Println("%s", text)
 			return nil
@@ -452,13 +447,11 @@ func newClusterTestCmd() *cobra.Command {
 			}()
 
 			if err := s.Connect(cmd.Context(), cfg); err != nil {
-				logging.Error("Cluster test failed: %v", err)
-				exitErr()
+				return failure("Cluster test failed", err)
 			}
 			logging.Info("Connected to %s", cf.host)
 			if err := s.ClusterTest(bucket); err != nil {
-				logging.Error("Cluster test failed: %v", err)
-				exitErr()
+				return failure("Cluster test failed", err)
 			}
 			logging.Info("Cluster test passed")
 			return nil

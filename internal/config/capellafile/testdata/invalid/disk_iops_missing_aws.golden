@@ -1,0 +1,3 @@
+disk_iops_missing_aws.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › node.disk.iops (line 15)
+    iops is required for aws disks

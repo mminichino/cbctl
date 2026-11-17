@@ -1,0 +1,18 @@
+apiVersion: cbctl/v1
+organizationId: ${CAPELLA_ORG_ID}
+project:
+  name: nova-dev
+  description: Nova development environment
+clusters:
+  - name: nova-dev-01
+    description: Nova development cluster
+    cloudProvider: { type: aws, region: us-east-1, cidr: 10.10.0.0/24 }
+    configurationType: singleNode
+    availability: { type: multi }
+    support: { plan: developer pro, timezone: PT }
+    serviceGroups:
+      - node:
+          compute: { cpu: 4, ram: 16 }
+          disk: { type: gp3, storage: 50, iops: 3000 }
+        numOfNodes: 3
+        services: [data, index, query]

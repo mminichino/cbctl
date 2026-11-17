@@ -1,14 +1,18 @@
-//go:build integration
+//go:build integration && server
+
+// The Server Docker flow is built only with -tags=integration,server (make test-server-it):
+// it needs Docker and a Couchbase Server image, so it stays out of the Capella fake and
+// sandbox suites and runs in its own CI job (P-TST-18, ci-sandbox-findings §server-it).
 
 package integration_test
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/netip"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,6 +29,17 @@ import (
 func TestServerCLIFlow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
+	}
+	// Capella fake/sandbox suite (make test-integration-fake) must stay offline and fast.
+	if os.Getenv("CBCTL_IT_TARGET") == "fake" {
+		t.Skip("CBCTL_IT_TARGET=fake: Server Docker flow is separate from Capella integration")
+	}
+	if !dockerAvailable() {
+		// In the server-it CI job a silent skip would hide the coverage this test provides.
+		if os.Getenv("CBCTL_IT_REQUIRE_DOCKER") == "1" {
+			t.Fatal("docker is not available and CBCTL_IT_REQUIRE_DOCKER=1")
+		}
+		t.Skip("docker is not available; skipping Server container integration")
 	}
 	ctx := context.Background()
 
@@ -142,7 +157,7 @@ func TestServerCLIFlow(t *testing.T) {
 	if !empty {
 		t.Fatal("expected empty collection")
 	}
-	n, err := s.PopulateCollection(jsonl, bucket, scope, collection)
+	n, err := s.PopulateCollection(context.Background(), jsonl, bucket, scope, collection)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
@@ -174,18 +189,7 @@ func waitForPools(t *testing.T, mgmtHost string, timeout time.Duration) {
 	t.Fatalf("timed out waiting for %s", url)
 }
 
-func TestCapellaSkippedWithoutToken(t *testing.T) {
-	token := os.Getenv("CAPELLA_TOKEN")
-	if token == "" {
-		t.Skip("CAPELLA_TOKEN not set; skipping live Capella integration")
-	}
-	t.Logf("CAPELLA_TOKEN present; extend this test for live Capella flows")
-	_ = fmt.Sprintf("%s", token[:min(4, len(token))])
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+func dockerAvailable() bool {
+	cmd := exec.Command("docker", "info")
+	return cmd.Run() == nil
 }

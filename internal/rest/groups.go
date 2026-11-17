@@ -161,7 +161,7 @@ func (c *Client) AssignNodeServerGroup(endpoint Endpoint, username, password, no
 		otp, fromURI, err := findNodeInGroups(groups.Groups, nodeHost)
 		if err != nil {
 			last = err
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 		if groupNameByURI(groups.Groups, fromURI) == serverGroup {
@@ -176,7 +176,7 @@ func (c *Client) AssignNodeServerGroup(endpoint Endpoint, username, password, no
 		}
 		if toURI == "" {
 			last = fmt.Errorf("server group %q not found after create", serverGroup)
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 
@@ -184,29 +184,29 @@ func (c *Client) AssignNodeServerGroup(endpoint Endpoint, username, password, no
 		path := serverGroupsUpdatePath(groups.URI, groups.Rev)
 		if path == "" {
 			last = fmt.Errorf("server group revision missing")
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 		if err := c.PutJSON(endpoint, Ptr(username), Ptr(password), path, payload); err != nil {
 			last = err
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 		confirmed, err := c.GetServerGroups(endpoint, username, password)
 		if err != nil {
 			last = err
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 		_, confirmedURI, err := findNodeInGroups(confirmed.Groups, nodeHost)
 		if err != nil {
 			last = err
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 		if groupNameByURI(confirmed.Groups, confirmedURI) != serverGroup {
 			last = fmt.Errorf("node %s still in group %q", nodeHost, groupNameByURI(confirmed.Groups, confirmedURI))
-			time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			c.sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
 			continue
 		}
 		return nil

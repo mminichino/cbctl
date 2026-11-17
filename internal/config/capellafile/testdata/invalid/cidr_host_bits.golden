@@ -1,0 +1,3 @@
+cidr_host_bits.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › allowed IP range 203.0.113.10/24 (line 19)
+    203.0.113.10/24 is not a network address (did you mean 203.0.113.0/24?)

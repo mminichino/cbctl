@@ -1,0 +1,3 @@
+hibernation_order.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › hibernation.weekdays (line 20)
+    the on-window must start before it ends (got 18:00-08:00)

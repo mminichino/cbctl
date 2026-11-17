@@ -32,7 +32,7 @@ func TestDecodeJSONLLine(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected invalid JSON error")
 	}
-	want := "Invalid JSON on line 3 of data.jsonl"
+	want := "invalid JSON on line 3 of data.jsonl"
 	if err.Error() != want {
 		t.Fatalf("error = %q, want %q", err.Error(), want)
 	}
@@ -66,7 +66,7 @@ func TestForEachJSONLDocumentInvalid(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	want := "Invalid JSON on line 2 of bad.jsonl"
+	want := "invalid JSON on line 2 of bad.jsonl"
 	if err.Error() != want {
 		t.Fatalf("error = %q, want %q", err.Error(), want)
 	}
@@ -92,6 +92,9 @@ func TestIsRetryableIndexError(t *testing.T) {
 
 	if !isRetryableIndexError(errString("rebalance in progress")) {
 		t.Fatal("expected retryable")
+	}
+	if !isRetryableIndexError(errString("service not available | CREATE PRIMARY INDEX")) {
+		t.Fatal("expected Capella/Server 'service not available' to be retryable")
 	}
 	if isRetryableIndexError(errString("index already exists")) {
 		t.Fatal("expected non-retryable")

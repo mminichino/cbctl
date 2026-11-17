@@ -1,0 +1,3 @@
+bucket_replicas_single.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › bucket c › replicas (line 21)
+    single-node clusters only support replicas: 0 (there is no second node to hold a copy)

@@ -1,0 +1,3 @@
+hibernation_no_timezone.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › hibernation (line 18)
+    timezone is required (for example US/Pacific)

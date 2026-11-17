@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,8 +13,9 @@ import (
 )
 
 // PopulateCollection ensures the keyspace exists, imports JSONL documents with UUID keys,
-// and returns the number of documents upserted.
-func (s *Server) PopulateCollection(path, bucketName, scopeName, collectionName string) (int, error) {
+// and returns the number of documents upserted. It stops before the next document once ctx is done
+// and returns ctx.Err() along with the count imported so far.
+func (s *Server) PopulateCollection(ctx context.Context, path, bucketName, scopeName, collectionName string) (int, error) {
 	if _, err := s.EnsureCollection(bucketName, scopeName, collectionName); err != nil {
 		return 0, err
 	}
@@ -22,10 +24,13 @@ func (s *Server) PopulateCollection(path, bucketName, scopeName, collectionName 
 	if err != nil {
 		return 0, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only handle
 
 	imported := 0
 	err = forEachJSONLDocument(f, path, func(doc any) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := s.Upsert(uuid.NewString(), doc); err != nil {
 			return err
 		}
@@ -43,7 +48,7 @@ func DecodeJSONLLine(line string, lineNumber int, path string) (any, error) {
 	}
 	var doc any
 	if err := json.Unmarshal([]byte(trimmed), &doc); err != nil {
-		return nil, fmt.Errorf("Invalid JSON on line %d of %s", lineNumber, path)
+		return nil, fmt.Errorf("invalid JSON on line %d of %s", lineNumber, path)
 	}
 	return doc, nil
 }

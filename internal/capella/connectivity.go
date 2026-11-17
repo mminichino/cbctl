@@ -1,12 +1,15 @@
 package capella
 
 import (
+	"context"
 	"net"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mminichino/cbctl/internal/engine"
 )
 
 const (
@@ -30,6 +33,15 @@ type HostPort struct {
 type Connectivity struct {
 	SRVLookupTimeout      time.Duration
 	SRVLookupPollInterval time.Duration
+	// Clock paces the polls and measures the deadlines; nil uses engine.RealClock.
+	Clock engine.Clock
+}
+
+func (c *Connectivity) clock() engine.Clock {
+	if c.Clock == nil {
+		return engine.RealClock{}
+	}
+	return c.Clock
 }
 
 // NewConnectivity returns connectivity checker defaults.
@@ -40,27 +52,29 @@ func NewConnectivity() *Connectivity {
 	}
 }
 
-// CheckConnectivity polls until a manager port is reachable or timeout elapses.
-func (c *Connectivity) CheckConnectivity(connectString string, tls bool, timeout time.Duration) bool {
+// CheckConnectivity polls until a manager port is reachable, timeout elapses, or ctx is done.
+// Callers check ctx.Err() on false to tell cancellation from an unreachable cluster.
+func (c *Connectivity) CheckConnectivity(ctx context.Context, connectString string, tls bool, timeout time.Duration) bool {
 	if c == nil {
 		c = NewConnectivity()
 	}
 	if timeout <= 0 {
 		timeout = 60 * time.Second
 	}
-	targets := c.ResolveTargets(connectString, tls, true)
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	clk := c.clock()
+	targets := c.resolveTargets(ctx, connectString, tls, true)
+	deadline := clk.Now().Add(timeout)
+	for clk.Now().Before(deadline) {
 		for _, t := range targets {
-			if canConnect(t.Host, t.Port) {
+			if canConnect(ctx, t.Host, t.Port) {
 				return true
 			}
 		}
-		refreshed := c.ResolveTargets(connectString, tls, false)
+		refreshed := c.resolveTargets(ctx, connectString, tls, false)
 		if len(refreshed) > 0 {
 			targets = refreshed
 		}
-		remaining := time.Until(deadline)
+		remaining := deadline.Sub(clk.Now())
 		if remaining <= 0 {
 			break
 		}
@@ -68,13 +82,19 @@ func (c *Connectivity) CheckConnectivity(connectString string, tls bool, timeout
 		if sleep > remaining {
 			sleep = remaining
 		}
-		time.Sleep(sleep)
+		if clk.Sleep(ctx, sleep) != nil {
+			return false
+		}
 	}
 	return false
 }
 
 // ResolveTargets resolves connect-string hosts to manager HostPorts.
 func (c *Connectivity) ResolveTargets(connectString string, tls bool, waitForSRV bool) []HostPort {
+	return c.resolveTargets(context.Background(), connectString, tls, waitForSRV)
+}
+
+func (c *Connectivity) resolveTargets(ctx context.Context, connectString string, tls bool, waitForSRV bool) []HostPort {
 	if c == nil {
 		c = NewConnectivity()
 	}
@@ -94,7 +114,7 @@ func (c *Connectivity) ResolveTargets(connectString string, tls bool, waitForSRV
 			continue
 		}
 		if srvCandidate != "" && h.host == srvCandidate {
-			targets = append(targets, c.resolveSRVTargets(h.host, tls, defaultPort, waitForSRV)...)
+			targets = append(targets, c.resolveSRVTargets(ctx, h.host, tls, defaultPort, waitForSRV)...)
 		} else {
 			targets = append(targets, HostPort{Host: h.host, Port: defaultPort})
 		}
@@ -105,13 +125,16 @@ func (c *Connectivity) ResolveTargets(connectString string, tls bool, waitForSRV
 	return targets
 }
 
-func (c *Connectivity) resolveSRVTargets(hostname string, tls bool, defaultPort int, waitForSRV bool) []HostPort {
-	deadline := time.Now()
+// resolveSRVTargets looks up SRV records, polling until SRVLookupTimeout when waitForSRV is set.
+// A cancelled ctx stops the polling and falls back to the bare hostname.
+func (c *Connectivity) resolveSRVTargets(ctx context.Context, hostname string, tls bool, defaultPort int, waitForSRV bool) []HostPort {
+	clk := c.clock()
+	deadline := clk.Now()
 	if waitForSRV {
-		deadline = time.Now().Add(c.SRVLookupTimeout)
+		deadline = deadline.Add(c.SRVLookupTimeout)
 	}
 	for {
-		names, err := LookupSRVHostnames(hostname, tls)
+		names, err := lookupSRVHostnames(hostname, tls)
 		if err == nil && len(names) > 0 {
 			out := make([]HostPort, 0, len(names))
 			for _, n := range names {
@@ -119,7 +142,7 @@ func (c *Connectivity) resolveSRVTargets(hostname string, tls bool, defaultPort 
 			}
 			return out
 		}
-		remaining := time.Until(deadline)
+		remaining := deadline.Sub(clk.Now())
 		if remaining <= 0 {
 			break
 		}
@@ -127,10 +150,15 @@ func (c *Connectivity) resolveSRVTargets(hostname string, tls bool, defaultPort 
 		if sleep > remaining {
 			sleep = remaining
 		}
-		time.Sleep(sleep)
+		if clk.Sleep(ctx, sleep) != nil {
+			break
+		}
 	}
 	return []HostPort{{Host: hostname, Port: defaultPort}}
 }
+
+// lookupSRVHostnames is LookupSRVHostnames; a variable so tests can avoid real DNS.
+var lookupSRVHostnames = LookupSRVHostnames
 
 // LookupSRVHostnames looks up _couchbases._tcp or _couchbase._tcp records.
 func LookupSRVHostnames(hostname string, tls bool) ([]string, error) {
@@ -215,8 +243,9 @@ func bareHostname(connectString string) string {
 	return connectString
 }
 
-func canConnect(host string, port int) bool {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, strconv.Itoa(port)), defaultDialTO)
+func canConnect(ctx context.Context, host string, port int) bool {
+	d := net.Dialer{Timeout: defaultDialTO}
+	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false
 	}

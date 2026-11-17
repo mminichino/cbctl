@@ -1,0 +1,3 @@
+schema_unknown_field.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › descripton (line 8)
+    unknown field 'descripton' (did you mean 'description'?)

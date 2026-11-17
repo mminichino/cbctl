@@ -1,0 +1,3 @@
+schema_enum_plan.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › support.plan (line 11)
+    must be one of: basic, developer pro, enterprise, Basic, Developer Pro, Enterprise

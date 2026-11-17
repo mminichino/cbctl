@@ -118,7 +118,7 @@ func (b *Buckets) Create(settings CreateBucketSettings) (*CapellaBucketData, err
 	}
 	data, err := b.GetByID(idResp.ID)
 	if err != nil {
-		return nil, fmt.Errorf("Bucket creation failed: %w", err)
+		return nil, fmt.Errorf("bucket creation failed: %w", err)
 	}
 	b.Bucket = data
 	return data, nil

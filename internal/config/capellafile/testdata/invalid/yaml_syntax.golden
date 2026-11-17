@@ -1,0 +1,3 @@
+yaml_syntax.yaml has 1 problem:
+  yaml_syntax.yaml (line 8)
+    invalid YAML: did not find expected node content

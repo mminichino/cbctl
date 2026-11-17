@@ -1,0 +1,96 @@
+[
+  {
+    "name": "configure",
+    "stories": [
+      "CAP-037",
+      "CAP-047"
+    ],
+    "note": "Saves a profile and stores the API key in the OS keychain. Calls `GET /v4/organizations`; with an existing capella.yaml, also `GET …/projects` to check it (CAP-047)."
+  },
+  {
+    "name": "configure list / show / remove",
+    "stories": [
+      "CAP-037"
+    ],
+    "note": "No API calls."
+  },
+  {
+    "name": "init",
+    "stories": [
+      "CAP-035"
+    ],
+    "note": "Wizard that writes capella.yaml."
+  },
+  {
+    "name": "import",
+    "stories": [
+      "CAP-036",
+      "CAP-047",
+      "CAP-048",
+      "CAP-054"
+    ],
+    "note": "Hidden alias of `sync` since CAP-054. Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml."
+  },
+  {
+    "name": "validate",
+    "stories": [
+      "CAP-002"
+    ],
+    "note": "Offline check of schema, references and password rules."
+  },
+  {
+    "name": "plan",
+    "stories": [
+      "CAP-005",
+      "CAP-048"
+    ],
+    "note": "Diffs projects, clusters, deletion protection, schedules, CIDRs, buckets, scopes, collections and credentials."
+  },
+  {
+    "name": "apply",
+    "stories": [
+      "CAP-006",
+      "CAP-016",
+      "CAP-019",
+      "CAP-031"
+    ],
+    "note": "Same coverage as `plan`; `--prune`, `--rotate-passwords`, `--power-on` and the scale-in flags."
+  },
+  {
+    "name": "sync",
+    "stories": [
+      "CAP-038",
+      "CAP-048",
+      "CAP-054"
+    ],
+    "note": "Refreshes capella.yaml from Capella; with CAP-054 it covers every project in the organization and `import` becomes its alias."
+  },
+  {
+    "name": "destroy",
+    "stories": [
+      "CAP-030"
+    ],
+    "note": "Deletes every declared resource in reverse order; capella.yaml is kept."
+  },
+  {
+    "name": "drift",
+    "stories": [
+      "CAP-031"
+    ],
+    "note": "Read-only: changed, missing and unmanaged resources; `--detailed-exitcode`."
+  },
+  {
+    "name": "help / completion",
+    "stories": [
+      "CAP-034"
+    ],
+    "note": "No API calls."
+  },
+  {
+    "name": "cluster disk-types",
+    "stories": [
+      "CAP-060"
+    ],
+    "note": "No API calls: disk types, sizes and IOPS from `config/disks.yaml` (Capella's documentation; the spec has only the type names)."
+  }
+]

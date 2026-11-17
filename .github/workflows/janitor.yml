@@ -1,0 +1,48 @@
+name: janitor
+# Weekly sweep of cbctl-ci-* sandbox projects that a nightly left behind (CAP-032).
+# Same credentials as nightly.yml: secret CAPELLA_SANDBOX_API_KEY, variable CAPELLA_SANDBOX_ORG_ID.
+
+on:
+  schedule:
+    - cron: "0 9 * * 0"     # Sundays at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sandbox-janitor
+  cancel-in-progress: false
+
+jobs:
+  janitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CAPELLA_API_KEY: ${{ secrets.CAPELLA_SANDBOX_API_KEY }}
+      CAPELLA_ORG_ID: ${{ vars.CAPELLA_SANDBOX_ORG_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Preflight (credentials present)
+        run: |
+          if [ -z "$CAPELLA_API_KEY" ]; then
+            echo "::error::secret CAPELLA_SANDBOX_API_KEY is empty"; exit 1
+          fi
+          if [ -z "$CAPELLA_ORG_ID" ]; then
+            echo "::error::variable CAPELLA_SANDBOX_ORG_ID is empty"; exit 1
+          fi
+
+      # Projects younger than 24 hours may belong to a nightly in progress. Finding any
+      # leftover is red: a nightly leaked it, even though it is deleted now.
+      - name: Delete cbctl-ci-* projects older than 24 hours
+        run: >-
+          go run ./cmd/cbctl capella janitor --prefix cbctl-ci- --older-than-hours 24
+          --max-total-minutes 100 --fail-on-leftovers --yes

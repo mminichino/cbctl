@@ -1,0 +1,46 @@
+version: "2"
+
+run:
+  timeout: 10m
+  build-tags:
+    - integration
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      exclude-functions:
+        # Terminal/log writes: a failed write to stdout/stderr has no recovery path.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+    staticcheck:
+      checks:
+        - all
+        # Style-only quick fixes; not worth churn.
+        - -QF1001 # De Morgan rewrites; the original form is often clearer.
+        - -ST1000 # package comments: tracked separately under the doc-comment rule.
+        - -ST1003 # naming (e.g. ID vs Id): would rename exported API fields.
+        - -ST1016 # receiver-name consistency: cosmetic; renaming adds churn without value.
+  exclusions:
+    rules:
+      # Messages that start with the product name "Capella" are correctly capitalized.
+      - linters: [staticcheck]
+        text: "ST1005"
+        source: '"Capella '
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  # Report every issue; the defaults hide repeats and would mask regressions.
+  max-issues-per-linter: 0
+  max-same-issues: 0

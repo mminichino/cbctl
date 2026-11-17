@@ -112,7 +112,7 @@ func (p *Project) GetDefaultCluster() (*Cluster, error) {
 		if p.Org.Client.hasDatabaseID() {
 			label = p.Org.Client.DatabaseID
 		}
-		return nil, fmt.Errorf("Can not find cluster %s: %w", label, err)
+		return nil, fmt.Errorf("cannot find cluster %s: %w", label, err)
 	}
 	if c.Data != nil {
 		p.RegisterCluster(c)
@@ -134,13 +134,13 @@ func (p *Project) CreateCluster(clusterName string, cfg *ClusterConfig) (*Cluste
 	}
 	if cached := p.FindClusterByName(clusterName); cached != nil {
 		if err := cached.Create(clusterName, cfg); err != nil {
-			return nil, fmt.Errorf("Can not create cluster %s: %w", clusterName, err)
+			return nil, fmt.Errorf("cannot create cluster %s: %w", clusterName, err)
 		}
 		return cached, nil
 	}
 	c := NewCluster(p)
 	if err := c.Create(clusterName, cfg); err != nil {
-		return nil, fmt.Errorf("Can not create cluster %s: %w", clusterName, err)
+		return nil, fmt.Errorf("cannot create cluster %s: %w", clusterName, err)
 	}
 	p.RegisterCluster(c)
 	return c, nil
@@ -153,7 +153,7 @@ func (p *Project) AddCluster(clusterName string) (*Cluster, error) {
 	}
 	c := NewCluster(p)
 	if err := c.Add(clusterName); err != nil {
-		return nil, fmt.Errorf("Can not add cluster %s: %w", clusterName, err)
+		return nil, fmt.Errorf("cannot add cluster %s: %w", clusterName, err)
 	}
 	return c, nil
 }

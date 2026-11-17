@@ -1,0 +1,3 @@
+single_node_extra_group.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › serviceGroups (line 13)
+    singleNode clusters have exactly one service group

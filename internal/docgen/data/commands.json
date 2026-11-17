@@ -1,0 +1,1191 @@
+{
+  "project list": {
+    "stories": [
+      "CAP-009",
+      "CAP-039"
+    ],
+    "left": ""
+  },
+  "project get": {
+    "stories": [
+      "CAP-009",
+      "CAP-039"
+    ],
+    "left": ""
+  },
+  "project create": {
+    "stories": [
+      "CAP-009",
+      "CAP-039"
+    ],
+    "left": ""
+  },
+  "project update": {
+    "stories": [
+      "CAP-009",
+      "CAP-039"
+    ],
+    "left": ""
+  },
+  "project delete": {
+    "stories": [
+      "CAP-010"
+    ],
+    "left": ""
+  },
+  "cluster options": {
+    "stories": [
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "cluster list": {
+    "stories": [
+      "CAP-038"
+    ],
+    "left": ""
+  },
+  "cluster get": {
+    "stories": [
+      "CAP-038",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "cluster create": {
+    "stories": [
+      "CAP-011",
+      "CAP-038",
+      "CAP-041",
+      "CAP-051",
+      "CAP-053",
+      "CAP-060"
+    ],
+    "left": "Multi-dimensional service groups (`--group SPEC`, CAP-051); `--server-version`, `--single-node`, `--zone`, `--cmek-id`, `--private-dns`, `--disk-auto-expansion` (CAP-053); disk type picker and size-based IOPS (CAP-060)."
+  },
+  "cluster update": {
+    "stories": [
+      "CAP-012",
+      "CAP-017",
+      "CAP-053",
+      "CAP-060"
+    ],
+    "left": "Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6); `--disk-auto-expansion` on Azure (CAP-053); `--disk-type` (CAP-060)."
+  },
+  "cluster scale": {
+    "stories": [
+      "CAP-015",
+      "CAP-016",
+      "CAP-018"
+    ],
+    "left": "Scale out and in (capacity checks); `--step ±1` within `--min/--max`, `--all-groups`."
+  },
+  "cluster group list": {
+    "stories": [
+      "CAP-052"
+    ],
+    "left": "Service groups with nodes, compute and disk."
+  },
+  "cluster group add": {
+    "stories": [
+      "CAP-052",
+      "CAP-060"
+    ],
+    "left": "Adds a service group; size defaults to the data group; disk type picker (CAP-060)."
+  },
+  "cluster group remove": {
+    "stories": [
+      "CAP-052"
+    ],
+    "left": "Removes a service group with the CAP-016 scale-in guards."
+  },
+  "cluster clone": {
+    "stories": [
+      "CAP-049"
+    ],
+    "left": "Copies size, services, buckets, scopes and collections to another region; `--with-cidrs`, `--with-credentials` (new passwords)."
+  },
+  "cluster delete": {
+    "stories": [
+      "CAP-014",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "cluster protect": {
+    "stories": [
+      "CAP-013"
+    ],
+    "left": ""
+  },
+  "cluster power on": {
+    "stories": [
+      "CAP-019"
+    ],
+    "left": "Waits until healthy; `--with-app-service`; `apply --power-on`."
+  },
+  "cluster power off": {
+    "stories": [
+      "CAP-019"
+    ],
+    "left": "Waits until turned off; shows when the schedule turns it on again."
+  },
+  "cluster schedule show": {
+    "stories": [
+      "CAP-020"
+    ],
+    "left": "Weekly grid and next transition."
+  },
+  "cluster schedule set": {
+    "stories": [
+      "CAP-020"
+    ],
+    "left": "Records the schedule in capella.yaml and applies it."
+  },
+  "cluster schedule apply": {
+    "stories": [
+      "CAP-020"
+    ],
+    "left": ""
+  },
+  "cluster schedule delete": {
+    "stories": [
+      "CAP-020"
+    ],
+    "left": "Also removes `hibernation` from capella.yaml."
+  },
+  "cluster schedule pause": {
+    "stories": [
+      "CAP-021"
+    ],
+    "left": "Records `paused` in capella.yaml."
+  },
+  "cluster schedule resume": {
+    "stories": [
+      "CAP-021"
+    ],
+    "left": "Records `paused` in capella.yaml."
+  },
+  "cidr list": {
+    "stories": [
+      "CAP-022"
+    ],
+    "left": ""
+  },
+  "cidr create": {
+    "stories": [
+      "CAP-022"
+    ],
+    "left": ""
+  },
+  "cidr delete": {
+    "stories": [
+      "CAP-022"
+    ],
+    "left": ""
+  },
+  "bucket list": {
+    "stories": [
+      "CAP-023",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "bucket get": {
+    "stories": [
+      "CAP-023",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "bucket create": {
+    "stories": [
+      "CAP-023",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "bucket update": {
+    "stories": [
+      "CAP-023",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "bucket delete": {
+    "stories": [
+      "CAP-024",
+      "CAP-041"
+    ],
+    "left": ""
+  },
+  "scope list": {
+    "stories": [
+      "CAP-025"
+    ],
+    "left": ""
+  },
+  "scope create": {
+    "stories": [
+      "CAP-025"
+    ],
+    "left": ""
+  },
+  "scope delete": {
+    "stories": [
+      "CAP-026"
+    ],
+    "left": ""
+  },
+  "collection list": {
+    "stories": [
+      "CAP-025"
+    ],
+    "left": ""
+  },
+  "collection create": {
+    "stories": [
+      "CAP-025"
+    ],
+    "left": ""
+  },
+  "collection update": {
+    "stories": [
+      "CAP-025"
+    ],
+    "left": ""
+  },
+  "collection delete": {
+    "stories": [
+      "CAP-026"
+    ],
+    "left": ""
+  },
+  "credential list": {
+    "stories": [
+      "CAP-046"
+    ],
+    "left": ""
+  },
+  "credential get": {
+    "stories": [
+      "CAP-046"
+    ],
+    "left": ""
+  },
+  "credential create": {
+    "stories": [
+      "CAP-027",
+      "CAP-046"
+    ],
+    "left": ""
+  },
+  "credential update": {
+    "stories": [
+      "CAP-027",
+      "CAP-028",
+      "CAP-046"
+    ],
+    "left": ""
+  },
+  "credential delete": {
+    "stories": [
+      "CAP-029"
+    ],
+    "left": ""
+  },
+  "cluster backup schedule show": {
+    "stories": [
+      "CAP-056"
+    ],
+    "left": "Cloud snapshot schedule; `backupSchedule` in capella.yaml."
+  },
+  "cluster backup schedule options": {
+    "stories": [
+      "CAP-056"
+    ],
+    "left": "Cloud snapshot schedule; `backupSchedule` in capella.yaml."
+  },
+  "cluster backup schedule set": {
+    "stories": [
+      "CAP-056"
+    ],
+    "left": "Cloud snapshot schedule; `backupSchedule` in capella.yaml."
+  },
+  "cluster backup schedule delete": {
+    "stories": [
+      "CAP-056"
+    ],
+    "left": "Cloud snapshot schedule; `backupSchedule` in capella.yaml."
+  },
+  "cluster backup list": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "cluster backup create": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "cluster backup retain": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "cluster backup delete": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "cluster backup restore": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "cluster backup restores": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "cluster backup regions": {
+    "stories": [
+      "CAP-057"
+    ],
+    "left": "Cloud snapshot backups of the whole cluster."
+  },
+  "bucket backup schedule show": {
+    "stories": [
+      "CAP-058"
+    ],
+    "left": "Weekly full + incremental; `backupSchedule` under the bucket."
+  },
+  "bucket backup schedule set": {
+    "stories": [
+      "CAP-058"
+    ],
+    "left": "Weekly full + incremental; `backupSchedule` under the bucket."
+  },
+  "bucket backup schedule delete": {
+    "stories": [
+      "CAP-058"
+    ],
+    "left": "Weekly full + incremental; `backupSchedule` under the bucket."
+  },
+  "bucket backup cycle list": {
+    "stories": [
+      "CAP-058"
+    ],
+    "left": ""
+  },
+  "bucket backup cycle get": {
+    "stories": [
+      "CAP-058"
+    ],
+    "left": ""
+  },
+  "bucket backup list": {
+    "stories": [
+      "CAP-059"
+    ],
+    "left": "Bucket backups; `delete` removes the whole cycle."
+  },
+  "bucket backup get": {
+    "stories": [
+      "CAP-059"
+    ],
+    "left": "Bucket backups; `delete` removes the whole cycle."
+  },
+  "bucket backup create": {
+    "stories": [
+      "CAP-059"
+    ],
+    "left": "Bucket backups; `delete` removes the whole cycle."
+  },
+  "bucket backup delete": {
+    "stories": [
+      "CAP-059"
+    ],
+    "left": "Bucket backups; `delete` removes the whole cycle."
+  },
+  "bucket backup restore": {
+    "stories": [
+      "CAP-059"
+    ],
+    "left": "Bucket backups; `delete` removes the whole cycle."
+  },
+  "bucket backup export": {
+    "stories": [
+      "CAP-059"
+    ],
+    "left": "Bucket backups; `delete` removes the whole cycle."
+  },
+  "db-role privileges": {
+    "stories": [
+      "CAP-064"
+    ],
+    "left": "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."
+  },
+  "db-role list": {
+    "stories": [
+      "CAP-064"
+    ],
+    "left": "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."
+  },
+  "db-role get": {
+    "stories": [
+      "CAP-064"
+    ],
+    "left": "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."
+  },
+  "db-role create": {
+    "stories": [
+      "CAP-064"
+    ],
+    "left": "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."
+  },
+  "db-role update": {
+    "stories": [
+      "CAP-064"
+    ],
+    "left": "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."
+  },
+  "db-role delete": {
+    "stories": [
+      "CAP-064"
+    ],
+    "left": "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."
+  },
+  "sample-bucket load": {
+    "stories": [
+      "CAP-065"
+    ],
+    "left": "Imperative; samples are not drift."
+  },
+  "sample-bucket list": {
+    "stories": [
+      "CAP-065"
+    ],
+    "left": "Imperative; samples are not drift."
+  },
+  "sample-bucket get": {
+    "stories": [
+      "CAP-065"
+    ],
+    "left": "Imperative; samples are not drift."
+  },
+  "sample-bucket delete": {
+    "stories": [
+      "CAP-065"
+    ],
+    "left": "Imperative; samples are not drift."
+  },
+  "bucket flush": {
+    "stories": [
+      "CAP-066"
+    ],
+    "left": "Typed confirmation; needs `flush: true` on the bucket."
+  },
+  "index create": {
+    "stories": [
+      "CAP-067"
+    ],
+    "left": "`indexes` under a collection; changed keys are a replace; deferred create + one build."
+  },
+  "index drop": {
+    "stories": [
+      "CAP-067"
+    ],
+    "left": "`indexes` under a collection; changed keys are a replace; deferred create + one build."
+  },
+  "index build": {
+    "stories": [
+      "CAP-067"
+    ],
+    "left": "`indexes` under a collection; changed keys are a replace; deferred create + one build."
+  },
+  "index list": {
+    "stories": [
+      "CAP-067"
+    ],
+    "left": "`indexes` under a collection; changed keys are a replace; deferred create + one build."
+  },
+  "index get": {
+    "stories": [
+      "CAP-067"
+    ],
+    "left": "`indexes` under a collection; changed keys are a replace; deferred create + one build."
+  },
+  "index status": {
+    "stories": [
+      "CAP-067"
+    ],
+    "left": "`indexes` under a collection; changed keys are a replace; deferred create + one build."
+  },
+  "eventing list": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing get": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing create": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing update": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing delete": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing code get": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing code set": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing state": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "eventing logs": {
+    "stories": [
+      "CAP-068"
+    ],
+    "left": "`eventingFunctions` with code from files; pause/resume around changes."
+  },
+  "data-api show": {
+    "stories": [
+      "CAP-069"
+    ],
+    "left": "`dataApi` block; private endpoints accepted from the CLI."
+  },
+  "data-api update": {
+    "stories": [
+      "CAP-069"
+    ],
+    "left": "`dataApi` block; private endpoints accepted from the CLI."
+  },
+  "data-api endpoint-command": {
+    "stories": [
+      "CAP-069"
+    ],
+    "left": "`dataApi` block; private endpoints accepted from the CLI."
+  },
+  "data-api endpoint list": {
+    "stories": [
+      "CAP-069"
+    ],
+    "left": "`dataApi` block; private endpoints accepted from the CLI."
+  },
+  "data-api endpoint accept": {
+    "stories": [
+      "CAP-069"
+    ],
+    "left": "`dataApi` block; private endpoints accepted from the CLI."
+  },
+  "data-api endpoint reject": {
+    "stories": [
+      "CAP-069"
+    ],
+    "left": "`dataApi` block; private endpoints accepted from the CLI."
+  },
+  "replication list": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication get": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication create": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication update": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication delete": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication pause": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication resume": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "replication job": {
+    "stories": [
+      "CAP-070"
+    ],
+    "left": "`replications` under the source cluster; deleted before their buckets."
+  },
+  "cluster backup clone": {
+    "stories": [
+      "CAP-071"
+    ],
+    "left": "New cluster from a snapshot backup."
+  },
+  "cluster migrate-buckets": {
+    "stories": [
+      "CAP-072"
+    ],
+    "left": "Couchstore ↔ Magma."
+  },
+  "cluster certificate": {
+    "stories": [
+      "CAP-073"
+    ],
+    "left": "Prints or saves the CA certificate."
+  },
+  "peer create": {
+    "stories": [
+      "CAP-074"
+    ],
+    "left": "`networkPeers`; a change is a replace."
+  },
+  "peer list": {
+    "stories": [
+      "CAP-074"
+    ],
+    "left": "`networkPeers`; a change is a replace."
+  },
+  "peer get": {
+    "stories": [
+      "CAP-074"
+    ],
+    "left": "`networkPeers`; a change is a replace."
+  },
+  "peer delete": {
+    "stories": [
+      "CAP-074"
+    ],
+    "left": "`networkPeers`; a change is a replace."
+  },
+  "peer azure-command": {
+    "stories": [
+      "CAP-074"
+    ],
+    "left": "`networkPeers`; a change is a replace."
+  },
+  "private-endpoint show": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint enable": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint update": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint disable": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint list": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint command": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint accept": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "private-endpoint reject": {
+    "stories": [
+      "CAP-075"
+    ],
+    "left": "`privateEndpointService` with routes and accepted endpoints."
+  },
+  "audit-log get": {
+    "stories": [
+      "CAP-076"
+    ],
+    "left": "`auditLog` by event, name or module; exports downloaded."
+  },
+  "audit-log update": {
+    "stories": [
+      "CAP-076"
+    ],
+    "left": "`auditLog` by event, name or module; exports downloaded."
+  },
+  "audit-log events": {
+    "stories": [
+      "CAP-076"
+    ],
+    "left": "`auditLog` by event, name or module; exports downloaded."
+  },
+  "audit-log export create": {
+    "stories": [
+      "CAP-076"
+    ],
+    "left": "`auditLog` by event, name or module; exports downloaded."
+  },
+  "audit-log export list": {
+    "stories": [
+      "CAP-076"
+    ],
+    "left": "`auditLog` by event, name or module; exports downloaded."
+  },
+  "audit-log export get": {
+    "stories": [
+      "CAP-076"
+    ],
+    "left": "`auditLog` by event, name or module; exports downloaded."
+  },
+  "cmek accounts": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek azure-app": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek create": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek list": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek get": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek history": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek rotate": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek delete": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek enable-provider": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek associate": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "cmek unassociate": {
+    "stories": [
+      "CAP-077"
+    ],
+    "left": "Organization and Azure project keys; rotation, never pruned."
+  },
+  "org update": {
+    "stories": [
+      "CAP-078"
+    ],
+    "left": "Subdomain, with `If-Match`."
+  },
+  "user list": {
+    "stories": [
+      "CAP-079"
+    ],
+    "left": "Organization and project roles; imperative."
+  },
+  "user get": {
+    "stories": [
+      "CAP-079"
+    ],
+    "left": "Organization and project roles; imperative."
+  },
+  "user create": {
+    "stories": [
+      "CAP-079"
+    ],
+    "left": "Organization and project roles; imperative."
+  },
+  "user update": {
+    "stories": [
+      "CAP-079"
+    ],
+    "left": "Organization and project roles; imperative."
+  },
+  "user delete": {
+    "stories": [
+      "CAP-079"
+    ],
+    "left": "Organization and project roles; imperative."
+  },
+  "apikey list": {
+    "stories": [
+      "CAP-080"
+    ],
+    "left": "Token stored in a profile, a file or shown once."
+  },
+  "apikey get": {
+    "stories": [
+      "CAP-080"
+    ],
+    "left": "Token stored in a profile, a file or shown once."
+  },
+  "apikey create": {
+    "stories": [
+      "CAP-080"
+    ],
+    "left": "Token stored in a profile, a file or shown once."
+  },
+  "apikey delete": {
+    "stories": [
+      "CAP-080"
+    ],
+    "left": "Token stored in a profile, a file or shown once."
+  },
+  "apikey rotate": {
+    "stories": [
+      "CAP-080"
+    ],
+    "left": "Token stored in a profile, a file or shown once."
+  },
+  "alert create": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "alert list": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "alert channels": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "alert get": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "alert update": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "alert delete": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "alert test": {
+    "stories": [
+      "CAP-081"
+    ],
+    "left": "`alertIntegrations` per project; secrets only as `${env:…}`."
+  },
+  "event list": {
+    "stories": [
+      "CAP-082"
+    ],
+    "left": "Filters, pagination and `--follow`."
+  },
+  "event get": {
+    "stories": [
+      "CAP-082"
+    ],
+    "left": "Filters, pagination and `--follow`."
+  },
+  "billing get": {
+    "stories": [
+      "CAP-083"
+    ],
+    "left": "Categorized and itemized reports."
+  },
+  "billing prepaid": {
+    "stories": [
+      "CAP-083"
+    ],
+    "left": "Categorized and itemized reports."
+  },
+  "billing payg": {
+    "stories": [
+      "CAP-083"
+    ],
+    "left": "Categorized and itemized reports."
+  },
+  "billing download": {
+    "stories": [
+      "CAP-083"
+    ],
+    "left": "Categorized and itemized reports."
+  },
+  "insights list": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights get": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights create": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights update": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights delete": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights power on": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights power off": {
+    "stories": [
+      "CAP-084"
+    ],
+    "left": "`insightsClusters` per project."
+  },
+  "insights schedule show": {
+    "stories": [
+      "CAP-085"
+    ],
+    "left": "Same model as `cluster schedule` (CAP-020)."
+  },
+  "insights schedule set": {
+    "stories": [
+      "CAP-085"
+    ],
+    "left": "Same model as `cluster schedule` (CAP-020)."
+  },
+  "insights schedule delete": {
+    "stories": [
+      "CAP-085"
+    ],
+    "left": "Same model as `cluster schedule` (CAP-020)."
+  },
+  "insights cidr list": {
+    "stories": [
+      "CAP-086"
+    ],
+    "left": "Same model as `cidr` (CAP-022)."
+  },
+  "insights cidr get": {
+    "stories": [
+      "CAP-086"
+    ],
+    "left": "Same model as `cidr` (CAP-022)."
+  },
+  "insights cidr create": {
+    "stories": [
+      "CAP-086"
+    ],
+    "left": "Same model as `cidr` (CAP-022)."
+  },
+  "insights cidr delete": {
+    "stories": [
+      "CAP-086"
+    ],
+    "left": "Same model as `cidr` (CAP-022)."
+  },
+  "insights backup list": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup create": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup retain": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup delete": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup restore": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup restores": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup schedule show": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup schedule set": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights backup schedule delete": {
+    "stories": [
+      "CAP-087"
+    ],
+    "left": "Same model as `cluster backup` (CAP-056, CAP-057)."
+  },
+  "insights private-endpoint show": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  },
+  "insights private-endpoint enable": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  },
+  "insights private-endpoint disable": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  },
+  "insights private-endpoint command": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  },
+  "insights private-endpoint list": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  },
+  "insights private-endpoint accept": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  },
+  "insights private-endpoint reject": {
+    "stories": [
+      "CAP-088"
+    ],
+    "left": "Same model as `private-endpoint` (CAP-075)."
+  }
+}

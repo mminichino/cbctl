@@ -1,0 +1,3 @@
+group_node_limits.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › service group search › numOfNodes (line 21)
+    additional service groups allow 2–24 nodes

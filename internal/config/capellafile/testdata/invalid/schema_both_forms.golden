@@ -1,0 +1,3 @@
+schema_both_forms.yaml has 1 problem:
+  (root) (line 1)
+    use either projects: or the single-project project:/clusters:, not both

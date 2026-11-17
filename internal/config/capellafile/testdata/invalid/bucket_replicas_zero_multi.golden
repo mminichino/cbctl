@@ -1,0 +1,3 @@
+bucket_replicas_zero_multi.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › bucket c › replicas (line 20)
+    replicas: 0 is only for single-node clusters; use 1, 2 or 3

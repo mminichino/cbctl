@@ -1,0 +1,7 @@
+bucket_ephemeral_rules.yaml has 3 problems:
+  project nova-dev › cluster nova-dev-01 › bucket e › storageBackend (line 21)
+    not allowed for ephemeral buckets (they keep data in memory only)
+  project nova-dev › cluster nova-dev-01 › bucket e › evictionPolicy (line 22)
+    fullEviction is not valid for ephemeral buckets (use noEviction or nruEviction)
+  project nova-dev › cluster nova-dev-01 › bucket e › durabilityLevel (line 23)
+    persistToMajority needs disk persistence; ephemeral buckets allow none or majority

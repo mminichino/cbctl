@@ -1,0 +1,5 @@
+single_node_rules.yaml has 2 problems:
+  project nova-dev › cluster nova-dev-01 › availability.type (line 11)
+    singleNode clusters must use availability: single
+  project nova-dev › cluster nova-dev-01 › service group data,index,query › numOfNodes (line 17)
+    singleNode clusters have exactly 1 node; create a multiNode cluster to scale out

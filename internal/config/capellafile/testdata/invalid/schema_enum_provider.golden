@@ -1,0 +1,3 @@
+schema_enum_provider.yaml has 1 problem:
+  project nova-dev › cluster nova-dev-01 › cloudProvider.type (line 9)
+    must be one of: aws, gcp, azure
