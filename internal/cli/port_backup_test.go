@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/clitest"
 	"gopkg.in/yaml.v3"
 )
@@ -549,4 +550,475 @@ func TestClusterBackupSchedule_CAP056_AC7_Help(t *testing.T) {
 	wantContains(t, r.Stdout, "Cluster backup", "Bucket backup", "backupSchedule")
 	r = mustScenario(t, s.Run("capella", "guide", "config", "clusters.backupSchedule"), "guide config")
 	wantContains(t, r.Stdout, "Cloud snapshot backups")
+}
+
+// bucketWorld is capellactl's `world` fixture: nova-dev-01 with buckets orders and users, a
+// second cluster nova-dr-01, a full and an incremental backup of orders in cycle cy-1 and a manual
+// backup of users.
+type bucketWorld struct {
+	backupEnv
+	dr, full, inc, users string
+}
+
+func newBucketWorld(t *testing.T) bucketWorld {
+	t.Helper()
+	e := newBackupEnv(t)
+	f := e.s.Fake
+	dr := f.SeedCluster(e.pid, "nova-dr-01", "healthy")
+	f.SeedBucket(e.cid, "orders")
+	f.SeedBucket(e.cid, "users")
+	w := bucketWorld{backupEnv: e, dr: dr}
+	w.full = f.SeedBucketBackup(e.cid, "orders", "full", "scheduled",
+		capellafake.WithField("cycleID", "cy-1"), capellafake.WithField("date", "2026-10-25T02:00:00Z"))
+	w.inc = f.SeedBucketBackup(e.cid, "orders", "incremental", "scheduled",
+		capellafake.WithField("cycleID", "cy-1"), capellafake.WithField("date", "2026-10-26T02:00:00Z"))
+	w.users = f.SeedBucketBackup(e.cid, "users", "full", "manual",
+		capellafake.WithField("cycleID", "cy-u"), capellafake.WithField("date", "2026-10-24T02:00:00Z"))
+	e.must(t, "sync")
+	f.ResetCalls()
+	return w
+}
+
+func dataLines(out string) []string {
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	return lines[1:]
+}
+
+// TestBucketBackup_CAP059_AC1_List: the latest backup of each bucket, newest first with the ID
+// last; with BUCKET every backup of it; JSON carries bucketName; an empty list says so.
+func TestBucketBackup_CAP059_AC1_List(t *testing.T) {
+	w := newBucketWorld(t)
+	r := w.must(t, "bucket", "backup", "list", "nova-dev-01")
+	lines := strings.Split(strings.TrimRight(r.Stdout, "\n"), "\n")
+	wantFields(t, lines[0], "BUCKET", "DATE", "METHOD", "SOURCE", "STATUS", "SIZE", "ITEMS", "EXPIRES", "ID")
+	var buckets []string
+	for _, l := range lines[1:] {
+		buckets = append(buckets, fields(l)[0])
+	}
+	if !reflect.DeepEqual(buckets, []string{"orders", "users"}) {
+		t.Errorf("buckets = %v", buckets)
+	}
+	if lastField(lines[1]) != w.inc {
+		t.Errorf("latest orders backup = %q, want %s", lines[1], w.inc)
+	}
+	var ids []string
+	for _, l := range dataLines(w.must(t, "bucket", "backup", "list", "nova-dev-01", "orders").Stdout) {
+		ids = append(ids, lastField(l))
+	}
+	if !reflect.DeepEqual(ids, []string{w.inc, w.full}) {
+		t.Errorf("orders backups = %v", ids)
+	}
+	var data []map[string]any
+	if err := json.Unmarshal([]byte(w.must(t, "-o", "json", "bucket", "backup", "list", "nova-dev-01").Stdout), &data); err != nil {
+		t.Fatal(err)
+	}
+	names := map[any]bool{}
+	for _, d := range data {
+		names[d["bucketName"]] = true
+	}
+	if !names["orders"] || !names["users"] || len(names) != 2 {
+		t.Errorf("bucketName = %v", names)
+	}
+	w.must(t, "--yes", "bucket", "backup", "delete", "nova-dev-01", w.full)
+	w.must(t, "--yes", "bucket", "backup", "delete", "nova-dev-01", w.users)
+	w.s.Fake.ResetCalls()
+	wantContains(t, w.must(t, "bucket", "backup", "list", "nova-dev-01").Stdout, "no backups")
+	clitest.AssertNoWrites(t, w.s.Fake)
+}
+
+// TestBucketBackup_CAP059_AC2_Create: create POSTs to the bucket's backups and waits until ready;
+// --no-wait returns once started.
+func TestBucketBackup_CAP059_AC2_Create(t *testing.T) {
+	w := newBucketWorld(t)
+	w.s.Fake.SettlePolls(1)
+	r := w.must(t, "--yes", "bucket", "backup", "create", "nova-dev-01", "orders")
+	posts := w.s.Fake.Calls("POST", clusterPath+"/buckets/*/backups")
+	if len(posts) != 1 || !strings.HasSuffix(posts[0].Path, "/buckets/b3JkZXJz/backups") {
+		t.Fatalf("POSTs = %v", posts)
+	}
+	wantContains(t, r.Stderr, "backup of orders: ready")
+	wantContains(t, r.Stdout, "of orders is ready")
+	r = w.must(t, "--yes", "--no-wait", "bucket", "backup", "create", "nova-dev-01", "users")
+	wantContains(t, r.Stdout, "started (--no-wait)")
+}
+
+// TestBucketBackup_CAP059_AC2_CreateFailedAndRefused: a failed backup exits 1 and says so; an
+// unknown bucket is refused before any write (cbctl: exit 3 for not found).
+func TestBucketBackup_CAP059_AC2_CreateFailedAndRefused(t *testing.T) {
+	w := newBucketWorld(t)
+	w.s.Fake.FailNextBucketBackup()
+	wantCode(t, w.run("--yes", "bucket", "backup", "create", "nova-dev-01", "orders"), 1, "backup of orders ended failed")
+	w.s.Fake.ResetCalls()
+	wantCode(t, w.run("--yes", "bucket", "backup", "create", "nova-dev-01", "nope"), 3, "bucket nope not found")
+	clitest.AssertNoWrites(t, w.s.Fake)
+}
+
+// TestBucketBackup_CAP059_AC3_DeleteCycle: delete says it removes the whole cycle; the bucket name
+// must be typed; the right name deletes both backups of the cycle with one DELETE.
+func TestBucketBackup_CAP059_AC3_DeleteCycle(t *testing.T) {
+	w := newBucketWorld(t)
+	w.s.TTY(true)
+	w.s.Answers("users")
+	r := w.must(t, "bucket", "backup", "delete", "nova-dev-01", w.inc)
+	wantContains(t, r.Stdout+r.Stderr, "deletes cycle 2026-10-25 02:00 with 2 backups of orders", "cancelled")
+	clitest.AssertNoWrites(t, w.s.Fake)
+	w.s.Answers("orders")
+	w.must(t, "bucket", "backup", "delete", "nova-dev-01", w.inc)
+	if n := len(w.s.Fake.Calls("DELETE", clusterPath+"/backups/*")); n != 1 {
+		t.Errorf("DELETE calls = %d, want 1", n)
+	}
+	w.s.TTY(false)
+	out := w.must(t, "bucket", "backup", "list", "nova-dev-01").Stdout
+	if strings.Contains(out, w.full) || strings.Contains(out, w.inc) || !strings.Contains(out, w.users) {
+		t.Errorf("after delete:\n%s", out)
+	}
+}
+
+// TestBucketBackup_CAP059_AC4_RestoreConfirm: a wrong typed name cancels the restore.
+func TestBucketBackup_CAP059_AC4_RestoreConfirm(t *testing.T) {
+	w := newBucketWorld(t)
+	w.s.TTY(true)
+	w.s.Answers("orders")
+	r := w.must(t, "bucket", "backup", "restore", "nova-dev-01", w.full)
+	wantContains(t, r.Stdout+r.Stderr, "cancelled; nothing was restored")
+	clitest.AssertNoWrites(t, w.s.Fake)
+}
+
+// TestBucketBackup_CAP059_AC5_RestoreOptionsBody: every restore flag reaches the POST body.
+func TestBucketBackup_CAP059_AC5_RestoreOptionsBody(t *testing.T) {
+	w := newBucketWorld(t)
+	r := w.must(t, "--yes", "bucket", "backup", "restore", "nova-dev-01", w.full, "--to-cluster", "nova-dr-01",
+		"--include-data", "orders.sales", "--map-data", "orders=orders_copy", "--replace-ttl", "all",
+		"--replace-ttl-with", "2027-01-01T00:00:00Z", "--services", "query,data", "--force-updates",
+		"--auto-remove-collections", "--filter-keys", "^order::")
+	wantContains(t, r.Stdout, "into nova-dr-01", "overwrites newer documents (--force-updates)")
+	want, err := json.Marshal(map[string]any{
+		"targetClusterID": w.dr, "sourceClusterID": w.cid, "backupID": w.full,
+		"services": []string{"data", "query"}, "includeData": "orders.sales", "mapData": "orders=orders_copy",
+		"filterKeys": "^order::", "replaceTTL": "all", "replaceTTLWith": "2027-01-01T00:00:00Z", "forceUpdates": true,
+		"autoRemoveCollections": true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantBody(t, bodies(w.s, "POST", clusterPath+"/backups/*/restore"), string(want))
+}
+
+// TestBucketBackup_CAP059_AC5_RestoreRefused: bad option combinations and an unknown target are
+// refused with exit 3 before any write.
+func TestBucketBackup_CAP059_AC5_RestoreRefused(t *testing.T) {
+	cases := []struct {
+		name  string
+		extra []string
+		msg   string
+	}{
+		{"ttl-with alone", []string{"--replace-ttl-with", "2027-01-01T00:00:00Z"}, "--replace-ttl-with was given without --replace-ttl"},
+		{"ttl none", []string{"--replace-ttl", "none", "--replace-ttl-with", "2027-01-01T00:00:00Z"}, "--replace-ttl-with was given without --replace-ttl"},
+		{"index service", []string{"--services", "data,index"}, "--services"},
+		{"unknown target", []string{"--to-cluster", "nope-01"}, "cluster nope-01 not found"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := newBucketWorld(t)
+			wantCode(t, w.run(append([]string{"--yes", "bucket", "backup", "restore", "nova-dev-01", w.full}, tc.extra...)...), 3, tc.msg)
+			clitest.AssertNoWrites(t, w.s.Fake)
+		})
+	}
+}
+
+// TestBucketBackup_CAP059_AC5_RestoreTargetTurnedOff: a turned-off target cluster is refused (4).
+func TestBucketBackup_CAP059_AC5_RestoreTargetTurnedOff(t *testing.T) {
+	w := newBucketWorld(t)
+	w.s.Fake.SetClusterState(w.dr, "turnedOff")
+	wantCode(t, w.run("--yes", "bucket", "backup", "restore", "nova-dev-01", w.full, "--to-cluster", "nova-dr-01"), 4,
+		"nova-dr-01 is turned off")
+	clitest.AssertNoWrites(t, w.s.Fake)
+}
+
+// TestBucketBackup_CAP059_AC6_ExportExistingAndRefused: the download link is printed once and never
+// logged; a second export of the same cycle says one already exists; a backup that is not ready
+// cannot be exported (exit 4).
+func TestBucketBackup_CAP059_AC6_ExportExistingAndRefused(t *testing.T) {
+	w := newBucketWorld(t)
+	r := w.must(t, "--log-level", "debug", "bucket", "backup", "export", "nova-dev-01", w.full)
+	out := r.Stdout + r.Stderr
+	if !strings.Contains(r.Stderr, "/exports/") {
+		t.Errorf("no debug request lines:\n%s", r.Stderr)
+	}
+	if n := strings.Count(out, "https://capella-fake.test/exports/"); n != 1 {
+		t.Errorf("download link appears %d times, want 1:\n%s", n, out)
+	}
+	w.s.Fake.ResetCalls()
+	r = w.must(t, "bucket", "backup", "export", "nova-dev-01", w.inc)
+	wantContains(t, r.Stdout, "already has an export (Capella allows one per cycle)")
+	if n := len(w.s.Fake.Writes()); n != 1 {
+		t.Errorf("writes = %d, want the refused POST only", n)
+	}
+	pending := w.s.Fake.SeedBucketBackup(w.cid, "users", "full", "manual",
+		capellafake.WithField("cycleID", "cy-p"), capellafake.WithField("status", "pending"))
+	wantCode(t, w.run("bucket", "backup", "export", "nova-dev-01", pending), 4, "Capella cannot export this backup", "ready")
+}
+
+// TestBucketBackup_CAP059_AC7_Help: the group lists every verb and each verb's help has examples.
+func TestBucketBackup_CAP059_AC7_Help(t *testing.T) {
+	s := newScenario(t)
+	r := mustScenario(t, s.Run("capella", "bucket", "backup", "--help"), "bucket backup --help")
+	for _, verb := range []string{"list", "get", "create", "delete", "restore", "export", "schedule", "cycle"} {
+		wantContains(t, r.Stdout, verb)
+		h := mustScenario(t, s.Run("capella", "bucket", "backup", verb, "--help"), verb, "--help")
+		if !strings.Contains(h.Stdout, "Examples:") {
+			t.Errorf("bucket backup %s --help has no Examples:\n%s", verb, h.Stdout)
+		}
+	}
+}
+
+// bucketScheduleDefaults is what a bare `bucket backup schedule set` records and sends.
+const bucketScheduleDefaults = `{dayOfWeek: sunday, startAt: 0, incrementalEvery: 24, retentionTime: 30days, costOptimizedRetention: false}`
+
+// newOrdersEnv is capellactl's bucket-schedule `imported` fixture: nova-dev-01 with bucket orders.
+func newOrdersEnv(t *testing.T) backupEnv {
+	t.Helper()
+	e := newBackupEnv(t)
+	e.s.Fake.SeedBucket(e.cid, "orders")
+	e.must(t, "sync")
+	e.s.Fake.ResetCalls()
+	return e
+}
+
+// ordersEntry returns the orders bucket entry of capella.yaml as an ordered mapping node.
+func ordersEntry(t *testing.T, s *clitest.Scenario) *yaml.Node {
+	t.Helper()
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(s.ReadFile("capella.yaml")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	var find func(n *yaml.Node) *yaml.Node
+	find = func(n *yaml.Node) *yaml.Node {
+		if n.Kind == yaml.MappingNode {
+			for i := 0; i+1 < len(n.Content); i += 2 {
+				if n.Content[i].Value == "name" && n.Content[i+1].Value == "orders" {
+					return n
+				}
+			}
+		}
+		for _, c := range n.Content {
+			if m := find(c); m != nil {
+				return m
+			}
+		}
+		return nil
+	}
+	m := find(&doc)
+	if m == nil {
+		t.Fatal("capella.yaml has no bucket orders")
+	}
+	return m
+}
+
+func ordersSchedule(t *testing.T, s *clitest.Scenario) map[string]any {
+	t.Helper()
+	var m map[string]any
+	if err := ordersEntry(t, s).Decode(&m); err != nil {
+		t.Fatal(err)
+	}
+	sch, _ := m["backupSchedule"].(map[string]any)
+	return sch
+}
+
+func setOrders(e backupEnv, extra ...string) clitest.Result {
+	return e.run(append([]string{"--yes", "bucket", "backup", "schedule", "set", "nova-dev-01", "orders"}, extra...)...)
+}
+
+const ordersBucketID = "b3JkZXJz" // the fake's bucket ID is the base64 of the name
+
+func (e backupEnv) ordersSchedule(t *testing.T) capellaapi.Object {
+	t.Helper()
+	got, err := e.s.Fake.Client().GetBucketBackupSchedule(context.Background(), e.pid, e.cid, ordersBucketID)
+	if err != nil {
+		return nil
+	}
+	return got
+}
+
+// TestBucketBackupSchedule_CAP058_AC1_SetCreate: a bare set plans the defaults, POSTs them, records
+// them as the bucket's last key, and the next plan is clean.
+func TestBucketBackupSchedule_CAP058_AC1_SetCreate(t *testing.T) {
+	e := newOrdersEnv(t)
+	r := mustScenario(t, setOrders(e), "set")
+	wantContains(t, r.Stdout, "+ bucket-backup-schedule nova-dev-01/orders  weekly full on sunday at 00:00 UTC · "+
+		"incremental every 24 h · kept 30 days")
+	wantBody(t, bodies(e.s, "POST", clusterPath+"/buckets/*/backup/schedules"),
+		`{"type":"weekly","weeklySchedule":{"dayOfWeek":"sunday","startAt":0,"incrementalEvery":24,"retentionTime":"30days","costOptimizedRetention":false}}`)
+	wantYAML(t, ordersSchedule(t, e.s), bucketScheduleDefaults)
+	entry := ordersEntry(t, e.s)
+	if last := entry.Content[len(entry.Content)-2].Value; last != "backupSchedule" {
+		t.Errorf("last key of the bucket = %q, want backupSchedule", last)
+	}
+	wantContains(t, e.must(t, "plan").Stdout, planNoChanges)
+}
+
+// TestBucketBackupSchedule_CAP058_AC1_SetUpdate: changing one field shows its diff, PUTs once
+// (no POST) and updates the file.
+func TestBucketBackupSchedule_CAP058_AC1_SetUpdate(t *testing.T) {
+	e := newOrdersEnv(t)
+	mustScenario(t, setOrders(e), "set")
+	e.s.Fake.ResetCalls()
+	r := mustScenario(t, setOrders(e, "--incremental-every", "12"), "set --incremental-every 12")
+	wantContains(t, r.Stdout, "incrementalEvery:  24 → 12")
+	puts := bodies(e.s, "PUT", clusterPath+"/buckets/*/backup/schedules")
+	if len(puts) != 1 {
+		t.Fatalf("PUTs = %v", puts)
+	}
+	ws := puts[0].(map[string]any)["weeklySchedule"].(map[string]any)
+	if intOf(ws["incrementalEvery"]) != 12 || ws["dayOfWeek"] != "sunday" || ws["retentionTime"] != "30days" {
+		t.Errorf("weeklySchedule = %v", ws)
+	}
+	if n := len(e.s.Fake.Calls("POST", clusterPath+"/buckets/*/backup/schedules")); n != 0 {
+		t.Errorf("POSTs = %d, want 0", n)
+	}
+	wantYAML(t, ordersSchedule(t, e.s), `{dayOfWeek: sunday, startAt: 0, incrementalEvery: 12, retentionTime: 30days, costOptimizedRetention: false}`)
+}
+
+// TestBucketBackupSchedule_CAP058_AC1_SetInteractive: at a terminal without flags, set asks for
+// each field and creates what was answered.
+func TestBucketBackupSchedule_CAP058_AC1_SetInteractive(t *testing.T) {
+	e := newOrdersEnv(t)
+	e.s.TTY(true)
+	e.s.Answers("y") // apply the plan
+	r := e.s.RunWith("monday\n3\n12\n90days\nn\n", "capella", "bucket", "backup", "schedule", "set", "nova-dev-01", "orders")
+	mustScenario(t, r, "set (interactive)")
+	wantContains(t, r.Stderr, "Day of the weekly full backup", "Hours between incremental backups")
+	wantBody(t, bodies(e.s, "POST", clusterPath+"/buckets/*/backup/schedules"),
+		`{"type":"weekly","weeklySchedule":{"dayOfWeek":"monday","startAt":3,"incrementalEvery":12,"retentionTime":"90days","costOptimizedRetention":false}}`)
+}
+
+// TestBucketBackupSchedule_CAP058_AC3_FreeTier: free-tier clusters have no backups (exit 4).
+func TestBucketBackupSchedule_CAP058_AC3_FreeTier(t *testing.T) {
+	s := newScenario(t)
+	pid := s.Fake.SeedProject("nova-dev")
+	fid := s.Fake.SeedFreeCluster(pid, "try-01", "healthy")
+	s.Fake.SeedBucket(fid, "free-b")
+	mustScenario(t, s.Run("capella", "sync"), "sync")
+	s.Fake.ResetCalls()
+	before := s.ReadFile("capella.yaml")
+	wantCode(t, s.Run("capella", "--yes", "bucket", "backup", "schedule", "set", "try-01", "free-b"), 4,
+		"free-tier clusters have no backups")
+	clitest.AssertNoWrites(t, s.Fake)
+	if s.ReadFile("capella.yaml") != before {
+		t.Error("capella.yaml changed")
+	}
+}
+
+// TestBucketBackupSchedule_CAP058_AC4_Show: show says when there is none, then prints the summary
+// line of a schedule made in Capella, and the JSON form.
+func TestBucketBackupSchedule_CAP058_AC4_Show(t *testing.T) {
+	e := newOrdersEnv(t)
+	wantContains(t, e.must(t, "bucket", "backup", "schedule", "show", "nova-dev-01", "orders").Stdout, "has no backup schedule")
+	err := e.s.Fake.Client().CreateBucketBackupSchedule(context.Background(), e.pid, e.cid, ordersBucketID, capellaapi.Object{
+		"type": "weekly", "weeklySchedule": map[string]any{"dayOfWeek": "sunday", "startAt": 2, "incrementalEvery": 24,
+			"retentionTime": "1year", "costOptimizedRetention": false},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantContains(t, e.must(t, "bucket", "backup", "schedule", "show", "nova-dev-01", "orders").Stdout,
+		"weekly full on sunday at 02:00 UTC · incremental every 24 h · kept 1 year")
+	var data map[string]any
+	if err := json.Unmarshal([]byte(e.must(t, "-o", "json", "bucket", "backup", "schedule", "show", "nova-dev-01", "orders").Stdout), &data); err != nil {
+		t.Fatal(err)
+	}
+	ws, _ := data["weeklySchedule"].(map[string]any)
+	if data["type"] != "weekly" || intOf(ws["startAt"]) != 2 {
+		t.Errorf("json = %v", data)
+	}
+}
+
+// TestBucketBackupSchedule_CAP058_AC4_DeleteMissing: deleting a missing schedule in managed mode
+// is a no-op with capellactl's wording.
+func TestBucketBackupSchedule_CAP058_AC4_DeleteMissing(t *testing.T) {
+	e := newOrdersEnv(t)
+	r := e.must(t, "--yes", "bucket", "backup", "schedule", "delete", "nova-dev-01", "orders")
+	wantContains(t, r.Stdout, "has no backup schedule; nothing to do")
+	clitest.AssertNoWrites(t, e.s.Fake)
+}
+
+// TestBucketBackupSchedule_CAP058_AC5_Cycles: cycle list is newest first with its count and
+// latest status; cycle get lists the backups of a cycle; an unknown cycle is refused (exit 3).
+func TestBucketBackupSchedule_CAP058_AC5_Cycles(t *testing.T) {
+	e := newOrdersEnv(t)
+	f := e.s.Fake
+	f.SeedBucketBackup(e.cid, "orders", "full", "scheduled", capellafake.WithField("cycleID", "cy-1"), capellafake.WithField("date", "2026-10-18T00:00:00Z"))
+	f.SeedBucketBackup(e.cid, "orders", "incremental", "scheduled", capellafake.WithField("cycleID", "cy-1"), capellafake.WithField("date", "2026-10-19T00:00:00Z"))
+	f.SeedBucketBackup(e.cid, "orders", "full", "scheduled", capellafake.WithField("cycleID", "cy-2"), capellafake.WithField("date", "2026-10-25T00:00:00Z"))
+	f.SeedBucketBackup(e.cid, "orders", "incremental", "manual", capellafake.WithField("cycleID", "cy-2"),
+		capellafake.WithField("date", "2026-10-26T00:00:00Z"), capellafake.WithField("status", "failed"))
+
+	lines := strings.Split(strings.TrimRight(e.must(t, "bucket", "backup", "cycle", "list", "nova-dev-01", "orders").Stdout, "\n"), "\n")
+	wantFields(t, lines[0], "STARTED", "BACKUPS", "LATEST", "STATUS", "ID")
+	wantFields(t, lines[1], "2026-10-25", "00:00", "2", "failed", "cy-2")
+	wantFields(t, lines[2], "2026-10-18", "00:00", "2", "ready", "cy-1")
+
+	lines = strings.Split(strings.TrimRight(e.must(t, "bucket", "backup", "cycle", "get", "nova-dev-01", "orders", "cy-2").Stdout, "\n"), "\n")
+	wantFields(t, lines[0], "DATE", "METHOD", "SOURCE", "STATUS", "SIZE", "ITEMS", "EXPIRES", "ID")
+	if got := fields(lines[1])[2:5]; !reflect.DeepEqual(got, []string{"incremental", "manual", "failed"}) {
+		t.Errorf("row 1 = %v", got)
+	}
+	if got := fields(lines[2])[2:5]; !reflect.DeepEqual(got, []string{"full", "scheduled", "ready"}) {
+		t.Errorf("row 2 = %v", got)
+	}
+	wantCode(t, e.run("bucket", "backup", "cycle", "get", "nova-dev-01", "orders", "nope"), 3, "cycle nope of orders not found")
+}
+
+// TestBucketBackupSchedule_CAP058_AC6_ApplySyncDrift: an undeclared schedule is left alone by
+// plan and shown by drift; sync records it; a change in the Capella UI shows in drift and apply
+// restores the file's value; a deleted schedule is recreated by apply.
+func TestBucketBackupSchedule_CAP058_AC6_ApplySyncDrift(t *testing.T) {
+	e := newOrdersEnv(t)
+	ctx := context.Background()
+	c := e.s.Fake.Client()
+	ws := map[string]any{"dayOfWeek": "monday", "startAt": 0, "incrementalEvery": 24, "retentionTime": "30days", "costOptimizedRetention": false}
+	if err := c.CreateBucketBackupSchedule(ctx, e.pid, e.cid, ordersBucketID, capellaapi.Object{"type": "weekly", "weeklySchedule": ws}); err != nil {
+		t.Fatal(err)
+	}
+	r := e.must(t, "plan")
+	wantContains(t, r.Stdout, planNoChanges)
+	if strings.Contains(r.Stdout, "+ bucket-backup-schedule") || strings.Contains(r.Stdout, "~ bucket-backup-schedule") ||
+		strings.Contains(r.Stdout, "- bucket-backup-schedule") {
+		t.Errorf("plan changes the undeclared schedule:\n%s", r.Stdout)
+	}
+	wantContains(t, e.must(t, "drift").Stdout, "bucket-backup-schedule nova-dev-01/orders  weekly full on monday")
+	e.must(t, "sync")
+	wantYAML(t, ordersSchedule(t, e.s), `{dayOfWeek: monday, startAt: 0, incrementalEvery: 24, retentionTime: 30days, costOptimizedRetention: false}`)
+	e.s.Fake.ResetCalls()
+	wantContains(t, e.must(t, "--yes", "apply").Stdout, "No changes")
+	clitest.AssertNoWrites(t, e.s.Fake)
+
+	ws["startAt"] = 5 // changed in the Capella UI
+	if err := c.UpdateBucketBackupSchedule(ctx, e.pid, e.cid, ordersBucketID, capellaapi.Object{"type": "weekly", "weeklySchedule": ws}); err != nil {
+		t.Fatal(err)
+	}
+	wantContains(t, e.must(t, "drift").Stdout, "startAt")
+	e.must(t, "--yes", "apply")
+	if got := e.ordersSchedule(t); got == nil || intOf(got["weeklySchedule"].(map[string]any)["startAt"]) != 0 {
+		t.Errorf("after apply = %v, want startAt 0", got)
+	}
+
+	if err := c.DeleteBucketBackupSchedule(ctx, e.pid, e.cid, ordersBucketID); err != nil {
+		t.Fatal(err)
+	}
+	e.must(t, "--yes", "apply")
+	if e.ordersSchedule(t) == nil {
+		t.Error("apply did not recreate the deleted schedule")
+	}
+}
+
+// TestBucketBackupSchedule_CAP058_AC7_Help: schedule and cycle verbs have examples, and the guide
+// covers bucket backups.
+func TestBucketBackupSchedule_CAP058_AC7_Help(t *testing.T) {
+	s := newScenario(t)
+	for _, args := range [][]string{{"schedule", "show"}, {"schedule", "set"}, {"schedule", "delete"}, {"cycle", "list"}, {"cycle", "get"}} {
+		r := mustScenario(t, s.Run(append(append([]string{"capella", "bucket", "backup"}, args...), "--help")...), args...)
+		wantContains(t, r.Stdout, "Examples:", "cbctl capella bucket backup")
+	}
+	wantContains(t, mustScenario(t, s.Run("capella", "guide", "backup"), "guide backup").Stdout, "Bucket backup")
 }
