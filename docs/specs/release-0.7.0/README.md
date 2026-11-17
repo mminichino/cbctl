@@ -8,7 +8,12 @@ Status: plan, not started. Base: `main` at `7394ed2` (v0.6.1). Author branch: `m
 2. **`cbctl apply -f`** manifests (`CouchbaseServer`, `CouchbaseCapella`) from `cbctl-apply-manifest-spec.md`. See [02-manifest-apply.md](02-manifest-apply.md) (model, reuse, spec conflicts) and [02b-manifest-execution.md](02b-manifest-execution.md) (execution, errors, edge cases, acceptance).
 3. **Consistent output and color** for every command, from `cbctl-output-color-design.md`. See [03-output.md](03-output.md).
 
-The test plan, release gate, risks and open questions are in [04-test-and-release.md](04-test-and-release.md).
+The test plan, release gate, risks, decisions and open questions are in [04-test-and-release.md](04-test-and-release.md).
+
+Decided (2026-11-17, see 04 §4):
+- **D1**: `[ok]`/`[info]` stay on stdout.
+- **D2**: YAML library is `go.yaml.in/yaml/v3` behind the internal `sigs.k8s.io/yaml`-style wrapper `internal/yamlio`.
+- **D3**: `cbctl apply` never rotates credential passwords in v1, and the manifest spec is amended to say so.
 
 Each file covers the six required sections: file and module structure, interfaces and signatures, data models, error handling, edge cases, and acceptance criteria.
 
@@ -50,7 +55,8 @@ The branch `mm--release-0-7-0` already exists locally at `main` and has no commi
 | `[error]` and `[warning]` from `printError`, `printNotice` and the wizard are now colored on a TTY (before: never). | P2 | Visual only. |
 | `capella.yaml` managed edits and `sync`: no intended byte change. P1 has a byte-identical golden gate. | P1 | No one, if the gate holds. |
 | `profiles.yaml` is now written in struct field order rather than yaml.v3 struct order, with the same keys. | P1 | No one: the file is machine-managed. |
-| `[ok]`/`[info]` stream: stdout, unchanged (Option B, recommended; see Q1). | — | No one, if Q1 = B. |
+| `[ok]`/`[info]` stream: stdout, unchanged (**Decided D1**, see 04 §4). | — | No one. |
+| Credential passwords are never rotated by `cbctl apply` in v1 (**Decided D3**). The manifest spec is amended to say so. | P5 | Anyone expecting rotation from a changed `${VAR}`. They use `capella credential update --rotate-password`. |
 | `cbctl apply -f` added at the top level. It is new and does not conflict with `cbctl capella apply` (see 02 §conflicts). | P4/P5 | — |
 
 Unchanged stdout contracts, guarded by tests in P2 and P6:

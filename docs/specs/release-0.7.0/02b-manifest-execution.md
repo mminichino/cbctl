@@ -125,7 +125,7 @@ P4 (Server):
 7. `cbctl import` output and behaviour are byte-identical before and after the `ImportDocuments` refactor.
 
 P5 (Capella):
-8. Fake: create from scratch (`size: small` and `serviceGroups`). Re-apply with no writes. Scale-out applied. Group removal exit 4. Region change exit 3. Absent `deletionProtection` leaves protection on. Generated credential printed once and saved 0600. Import with credential. JSON matches the schema.
+8. Fake: create from scratch (`size: small` and `serviceGroups`). Re-apply with no writes. Scale-out applied. Group removal exit 4. Region change exit 3. Absent `deletionProtection` leaves protection on. Generated credential printed once and saved 0600. An existing credential re-applied with a changed `${VAR}` value is not rotated: no update call, and an `[info] - credential X exists; password not changed` line (D3). Import with credential. JSON matches the schema.
 9. `capella.yaml` is never read or written: the test runs in a dir with a `capella.yaml` and asserts identical bytes and mtime. No `.bak` is created.
 10. Sandbox: one live run with `CBCTL_IT_CLUSTERS=1`, project prefix `cbctl-ci-`, cleaned by the janitor.
 

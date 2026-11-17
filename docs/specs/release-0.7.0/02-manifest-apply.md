@@ -177,7 +177,7 @@ Issues are rendered like `capellafile` issues: `couchbase.yaml:14:7 (document 1,
 
 ## 5. Conflicts, ambiguities and open questions in the spec
 
-Each item has a recommended default. None are decided silently: the user confirms them (summarised in 04 §Open questions).
+Each item has a recommended default. None are decided silently: the user confirms them (summarised in 04 §4). Items marked **Decided** have been confirmed.
 
 | # | Issue | Recommended default |
 |---|---|---|
@@ -186,7 +186,7 @@ Each item has a recommended default. None are decided silently: the user confirm
 | C3 | Capella `replicas` defaults to 1, but a single-node cluster needs 0 (`capellafile.BucketDefaults(singleNode)`). | Default 1, or 0 on single-node (`size: dev`). An explicit value > 0 on single-node exits 3. |
 | C4 | Capella import needs the host inside `allowedCidrs`. That cannot be checked offline. | Offline: no check. Online: before import, compare the public egress IP (if known) with the CIDRs and warn. An SDK connect timeout exits 1 with the hint "is this host in spec.allowedCidrs?". No implicit allow-list entry is added. |
 | C5 | Generated credential passwords are saved under `.cbctl/credentials` "but apply never writes files". | Saving is allowed: it is the secret store, not `capella.yaml`. The directory is relative to the manifest's directory (cwd with `-f -`). The existing `NotIgnoredError` git check applies (exit 4 unless the file is ignored). No `--force-overwrite-secret` in v1: an existing file for a new credential exits 4 with a hint. |
-| C6 | "Passwords rotate only when the referenced value changes": Capella never returns passwords, and apply keeps no state. | v1 never rotates an existing credential's password (same as `capella apply` without `--rotate-passwords`). It prints `[info] - credential X exists; password not changed (cbctl apply cannot detect a changed value)`. The spec text needs to change. Alternative: a `rotate: true` field. Deferred to v2. |
+| C6 | "Passwords rotate only when the referenced value changes": Capella never returns passwords, and apply keeps no state, so a changed value cannot be detected. | **Decided (D3):** `cbctl apply` never rotates an existing credential's password in v1 (same as `capella apply` without `--rotate-passwords`). It prints `[info] - credential X exists; password not changed`. Rotation is done with `cbctl capella credential update --rotate-password` (or `--password-env`/`--password-file`). The manifest spec's step 7 text is amended (see 04 §2 docs gate). |
 | C7 | Immutable changes (`provider`, `region`, `cidr`, `availability`, `serverVersion`, `storageBackend`) must "exit 3", but the engine marks them `Blocked` (exit 4). A removed group must "exit 4". | `capellaapply` pre-checks immutables against the observed cluster and exits 3 before planning. Group removal stays engine `Blocked` → exit 4. |
 | C8 | `serverGroup` is "created if missing (Enterprise)". | On Community, a non-default group exits 1 with "server groups need Enterprise Edition". The default `Group 1` is a no-op. |
 | C9 | Should `metadata.name` (kebab) become the Server cluster name? `cluster create --name` accepts anything. | Yes, as the spec says. Document that Terraform `var.cluster_name` must satisfy the rule. |

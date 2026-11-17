@@ -60,6 +60,7 @@ Docs (project rules):
 - [ ] `README.md`: new "Manifests (`cbctl apply`)" section with both kinds, units table and Terraform example. "Output and color" section (labels, `--color`, env vars, stream decision). Every `[info] - <success>` example changed to `[ok]`. Install pin `v0.6.1` → `v0.7.0`.
 - [ ] `.cursor/rules/cbctl.mdc`: command map line for `cbctl apply -f FILE|- [--dry-run] [-o json] [-y]`; a behaviour section for `apply`; `--color` among the shared flags; agent rule 3 updated to treat `[ok]`/`[info]` "already configured" as success; a `cluster join --arbiter` line (currently undocumented in the rule).
 - [ ] `.cursor/rules/cli-logging.mdc` rewritten (it currently mandates blue info and `fatih/color`, which contradicts the design).
+- [ ] The manifest spec is amended (D3). Capella step 7 and `spec.credentials[].password` say that `cbctl apply` never rotates an existing credential's password in v1, and they point to `cbctl capella credential update --rotate-password`. The spec is checked in as `docs/specs/release-0.7.0/manifest-spec-cbctl-v1.md`, copied from `cbctl-apply-manifest-spec.md`, with the amendment. `docs/manifests.md` states the same.
 - [ ] `docs/manifests.md` exists. `docs/capella/terraform.md` points to the manifest flow. The guide topics `ci.md`/`migrate.md` are updated. `make docs` has been run, so the generated reference, index and doc-map are current.
 - [ ] `THIRD_PARTY_NOTICES.md` and `NOTICE` are updated for `go.yaml.in/yaml/v3` (and the removal of `gopkg.in/yaml.v3` and `fatih/color`). `cbdev ci notices` passes.
 
@@ -77,7 +78,7 @@ Release process (same as 0.6.1):
 | Risk | Likelihood / impact | Mitigation |
 |---|---|---|
 | The YAML swap silently changes how `capella.yaml` is interpreted (numbers, timestamps, booleans) | M / H (wrong plan against prod) | Frozen-`Obj` compat goldens (01 AC5). Byte-identity of sync output. P1 merges first and soaks through at least 3 nightlies before P5. |
-| Picking `sigs.k8s.io/yaml` later "for purity" brings YAML 1.1 booleans | L / H | Documented rejection (01 §2). A test asserts `weekend: off` stays `"off"`. |
+| A later change switches to `sigs.k8s.io/yaml` "for purity" and brings back YAML 1.1 booleans | L / H | Decided D2, with the rationale in 01 §2. A test asserts `weekend: off` stays `"off"`. |
 | Comment loss in managed edits | L / H | The editor algorithm is unchanged. The existing byte-identity tests gate it. |
 | `[ok]` rename breaks user scripts | H / M | CHANGELOG breaking note and README migration tip. Exit codes and JSON are unchanged. Hold the rename to P6 so it is one reviewable diff. |
 | A per-stream color bug leaks ANSI into JSON or `exists` | L / H | Contract tests (03 §6) across the env matrix. |
@@ -88,16 +89,21 @@ Release process (same as 0.6.1):
 | Live Capella costs and leftovers | M / M | `size: dev`, `CBCTL_IT_CLUSTERS` gate, `cbctl-ci-` prefix, janitor. |
 | Windows color: legacy console shows raw escapes | L / L | VT enable, otherwise no color. A Windows CI job asserts no escapes when it is not a TTY. |
 
-## 4. Open questions for the user (recommended defaults in bold)
+## 4. Decisions and open questions
 
-1. **Q1 Stream for `[ok]`/`[info]`:** **Option B, stay on stdout**, or Option A (stderr, clig.dev)?
-2. **Q2 YAML library:** **`go.yaml.in/yaml/v3` v3.0.6 under an internal `sigs.k8s.io/yaml`-style API (`internal/yamlio`)**, or depend on `sigs.k8s.io/yaml` v1.6.0 directly and accept YAML 1.1 booleans, no line numbers and sorted output keys?
-3. **Q3 Unicode glyphs (`→ · ± … ••••`):** **Unicode on a color TTY, ASCII otherwise**, or ASCII everywhere (changes `--version` and the plan on a TTY too)?
-4. **Q4 Capella manifest confirmations:** **no prompt for additive changes; `-y` required without a TTY for protection-off and scale-in**, or always require `-y` without a TTY like `capella apply`?
-5. **Q5 `cbctl apply --dry-run` (plan, exit 2 on changes):** **add it in 0.7.0**, or defer?
-6. **Q6 Server TLS CA:** **add optional `spec.tls.caFile`**, or system trust only?
-7. **Q7 Credential rotation (C6):** **never rotate in v1, and amend the spec text**, or add `rotate: true`?
-8. **Q8 Absent `deletionProtection`/`description` on existing clusters (C18):** **leave as is (presence semantics) and amend the spec**, or apply the spec defaults?
-9. **Q9 `size: dev` vs default `availability: multi` and the 3-node minimum (C2/C3):** **the preset wins, single-node replicas default to 0**?
-10. **Q10 Mixed kinds in one file (C12):** **allowed, in order, stop at the first failure**?
-11. **Q11 `FORCE_COLOR` alias:** **yes**. `[debug]` dim: **yes**. Remove `fatih/color`: **yes**.
+### Decided (2026-11-17)
+
+- **D1 (was Q1) `[ok]`/`[info]` stream: stdout.** Text mode is unchanged, and `-o json` keeps them on stderr. Rationale in 03 §2.
+- **D2 (was Q2) YAML library: `go.yaml.in/yaml/v3` v3.0.6 behind the internal `sigs.k8s.io/yaml`-style API `internal/yamlio`.** It keeps YAML 1.2 booleans, line numbers, comments and key order. Rationale in 01 §2.
+- **D3 (was Q7) Credential rotation: `cbctl apply` never rotates passwords in v1.** The manifest spec is amended to say so. Rationale in 02 §5 C6.
+
+### Open (recommended defaults in bold)
+
+- **Q3 Unicode glyphs (`→ · ± … ••••`):** **Unicode on a color TTY, ASCII otherwise**, or ASCII everywhere (changes `--version` and the plan on a TTY too)?
+- **Q4 Capella manifest confirmations:** **no prompt for additive changes; `-y` required without a TTY for protection-off and scale-in**, or always require `-y` without a TTY like `capella apply`?
+- **Q5 `cbctl apply --dry-run` (plan, exit 2 on changes):** **add it in 0.7.0**, or defer?
+- **Q6 Server TLS CA:** **add optional `spec.tls.caFile`**, or system trust only?
+- **Q8 Absent `deletionProtection`/`description` on existing clusters (C18):** **leave as is (presence semantics) and amend the spec**, or apply the spec defaults?
+- **Q9 `size: dev` vs default `availability: multi` and the 3-node minimum (C2/C3):** **the preset wins, single-node replicas default to 0**?
+- **Q10 Mixed kinds in one file (C12):** **allowed, in order, stop at the first failure**?
+- **Q11 `FORCE_COLOR` alias:** **yes**. `[debug]` dim: **yes**. Remove `fatih/color`: **yes**.

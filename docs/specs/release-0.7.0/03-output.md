@@ -34,9 +34,11 @@ Per command group (P6 migrates each row; ✓ = already uses `Renderer` for its d
 | `apply -f` (new) | per 02b §2 | per 02b §2 | JSON report |
 | errors (all) | — | — | stderr `[error]` + action |
 
-## 2. Decisions (design §10 open decisions, recommended)
+## 2. Decisions (design §10 open decisions)
 
-1. **Stream: Option B.** `[ok]` and `[info]` stay on stdout in text mode (and on stderr in `-o json`, as today). The README already documents these strings, and the cbctl rule tells agents to read them. Option A would be a second breaking change in the same release. Revisit in 1.0.
+Item 1 is **Decided (D1)**. Items 2–5 are recommendations that are still open (04 §4).
+
+1. **Stream: Decided (D1, 2026-11-17).** `[ok]` and `[info]` stay on stdout in text mode (and on stderr in `-o json`, as today). Rationale: the README already documents these strings, the cbctl rule tells agents to read them, and moving them would be a second breaking change in the same release.
 2. `FORCE_COLOR` is accepted as an alias of `CLICOLOR_FORCE`, at the same precedence. `FORCE_COLOR=0` means off.
 3. **Replace `fatih/color`** with the internal SGR implementation. Its decision is global and keyed on stdout, so it cannot do per-stream checks or `--color`. `mattn/go-colorable` stays an indirect dependency only if Windows legacy consoles need it. The plan: enable VT processing via `golang.org/x/sys/windows` (`SetConsoleMode` + `ENABLE_VIRTUAL_TERMINAL_PROCESSING`) in `output/term_windows.go`. If that fails, no color.
 4. `[debug]` is dim (`2`).

@@ -25,15 +25,17 @@ All of these use `gopkg.in/yaml.v3 v3.0.1`.
 
 The `capellafile` package doc says on purpose that *"the desired state is held as generic maps rather than typed structs: the engine only compares fields that are present in the file, which needs presence semantics."* The plan (`internal/plan`) and all reconcilers (`internal/resources`) work on `Obj`. **This plan keeps `Obj` as the in-memory model for `capella.yaml`** and puts JSON in the middle of the pipeline (YAML → JSON bytes → `Obj` via `json.Decoder.UseNumber`). Converting the engine to typed structs would rewrite about 6k lines of reconcilers. It brings no user value, and the JSON Schema already gives typed validation. New code (manifests, profiles, presets, completion, doctor) uses typed `json`-tagged structs.
 
-## 2. Library choice
+## 2. Library choice: Decided (D2)
 
-| Option | Verdict |
+**Decided 2026-11-17:** `go.yaml.in/yaml/v3`, behind the internal `sigs.k8s.io/yaml`-style wrapper `internal/yamlio`. `sigs.k8s.io/yaml` is not a dependency. The rationale for each library:
+
+| Library | Verdict |
 |---|---|
-| `sigs.k8s.io/yaml` v1.6.0 (latest; go.mod requires `go.yaml.in/yaml/v2 v2.4.2`, `go.yaml.in/yaml/v3 v3.0.3`) | **Not as the runtime codec.** The source confirms (`yaml.go` imports `go.yaml.in/yaml/v2`) that `YAMLToJSON` parses with yaml v2, i.e. YAML 1.1. Unquoted `on`/`off`/`yes`/`no`/`y`/`n` become booleans when decoded into `interface{}`, so `weekend: off` would become `false`. capella.yaml relies on these words (see the CAP-020 AC10 comment in the fixtures). It also loses line numbers: unknown-field errors carry no position. It drops all comments. `JSONToYAML` decodes into a map, so output keys come out sorted, not in canonical or struct order. |
+| `sigs.k8s.io/yaml` v1.6.0 (latest; go.mod requires `go.yaml.in/yaml/v2 v2.4.2`, `go.yaml.in/yaml/v3 v3.0.3`) | **Rejected.** The source confirms (`yaml.go` imports `go.yaml.in/yaml/v2`) that `YAMLToJSON` parses with yaml v2, i.e. YAML 1.1. Unquoted `on`/`off`/`yes`/`no`/`y`/`n` become booleans when decoded into `interface{}`, so `weekend: off` would become `false`. capella.yaml relies on these words (see the CAP-020 AC10 comment in the fixtures). It also loses line numbers: unknown-field errors carry no position. It drops all comments. `JSONToYAML` decodes into a map, so output keys come out sorted, not in canonical or struct order. |
 | `gopkg.in/yaml.v3` v3.0.1 (current) | Unmaintained: the upstream repo is archived and ownership moved to the YAML org. |
 | **`go.yaml.in/yaml/v3` v3.0.6** (latest at the time of writing; re-check before pinning) | **Chosen.** Same API as `gopkg.in/yaml.v3`, so the switch is an import-path change. YAML 1.2 core schema: `off` stays a string in `interface{}`. Keeps `Node` comments and line numbers. It is already the yaml v3 that `sigs.k8s.io/yaml` itself uses. |
 
-Recommended design (Q2 in 04): a small internal package `internal/yamlio` exposes a **`sigs.k8s.io/yaml`-compatible API** built on `go.yaml.in/yaml/v3`. Call sites read like Kubernetes code. Behaviour is YAML 1.2, with line numbers and with the existing comment-preserving editor. No new third-party dependency (it replaces one). `THIRD_PARTY_NOTICES.md` needs updating: the license is the same (MIT + Apache-2.0), the module path is different.
+Design: a small internal package `internal/yamlio` exposes a **`sigs.k8s.io/yaml`-compatible API** built on `go.yaml.in/yaml/v3`. Call sites read like Kubernetes code. Behaviour is YAML 1.2, with line numbers and with the existing comment-preserving editor. No new third-party dependency (it replaces one). `THIRD_PARTY_NOTICES.md` needs updating: the license is the same (MIT + Apache-2.0), the module path is different.
 
 ## 3. File and module structure
 
