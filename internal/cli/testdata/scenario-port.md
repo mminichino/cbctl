@@ -33,9 +33,9 @@ The counts below are generated; do not edit them.
 | binary | 4 | 0 (0) | 0 | 2 | 2 | 50% |
 | contract | 26 | 23 (0) | 2 | 1 | 0 | 88% |
 | integration | 10 | 6 (0) | 4 | 0 | 0 | 60% |
-| scenario | 586 | 252 (0) | 223 | 109 | 2 | 43% |
+| scenario | 586 | 257 (0) | 220 | 108 | 1 | 44% |
 | unit | 252 | 129 (0) | 47 | 32 | 44 | 69% |
-| **all** | 878 | 410 (0) | 276 | 144 | 48 | 52% |
+| **all** | 878 | 415 (0) | 273 | 143 | 47 | 53% |
 
 | capellactl file | Tests | C | P | M | N/A | Status |
 |---|---|---|---|---|---|---|
@@ -67,7 +67,7 @@ The counts below are generated; do not edit them.
 | `scenario/test_bucket_backup_schedule.py` | 11 | 3 | 7 | 1 | 0 | partial |
 | `scenario/test_bucket_delete.py` | 9 | 8 | 1 | 0 | 0 | partial |
 | `scenario/test_bucket_free_tier.py` | 7 | 2 | 3 | 2 | 0 | partial |
-| `scenario/test_ci_mode.py` | 10 | 5 | 3 | 1 | 1 | partial |
+| `scenario/test_ci_mode.py` | 10 | 10 | 0 | 0 | 0 | **ported** |
 | `scenario/test_cluster_backup.py` | 14 | 4 | 9 | 1 | 0 | partial |
 | `scenario/test_cluster_backup_schedule.py` | 14 | 4 | 9 | 1 | 0 | partial |
 | `scenario/test_cluster_cli.py` | 26 | 6 | 13 | 7 | 0 | partial |

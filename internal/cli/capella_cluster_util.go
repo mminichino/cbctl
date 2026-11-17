@@ -552,7 +552,7 @@ func confirmTyped(rt *runtime, question, want string) (bool, error) {
 	}
 	in, errOut := stdinFrom(rt.cmd), stderrFrom(rt.cmd)
 	if !ttyCheck(in) {
-		return false, blockedError("re-run with --yes", "confirmation required but no terminal is attached")
+		return false, noApprovalError(rt.cmd)
 	}
 	if p := prompterFor(rt); p != nil {
 		return p.Typed(fmt.Sprintf("%s (%s)", question, want), want)

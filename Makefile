@@ -90,7 +90,7 @@ ac-coverage:
 	go run ./cmd/cbdev docs ac-coverage --docs docs/backlog/release-1.5.0
 
 # capellactl test parity. PORT_MIN ratchets up as gaps close; the merge-to-main bar is 100.
-PORT_MIN ?= 51.5
+PORT_MIN ?= 52.5
 PORT_ARGS = --port-table internal/cli/testdata/port-map.tsv \
 	--source-list internal/cli/testdata/capellactl-tests.txt \
 	--footer internal/cli/testdata/scenario-port.md

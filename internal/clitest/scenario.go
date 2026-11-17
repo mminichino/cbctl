@@ -84,10 +84,33 @@ func (s *Scenario) RunWith(stdin string, args ...string) Result {
 // RunContext invokes the CLI with ctx, so a test can cancel it mid-command (Ctrl-C).
 func (s *Scenario) RunContext(ctx context.Context, stdin string, args ...string) Result {
 	s.T.Helper()
+	return s.RunReader(ctx, strings.NewReader(stdin), args...)
+}
+
+// RunReader invokes the CLI with stdin read from r. Pass ForbiddenStdin to prove a command never
+// reads stdin.
+func (s *Scenario) RunReader(ctx context.Context, r io.Reader, args ...string) Result {
+	s.T.Helper()
 	var stdout, stderr bytes.Buffer
-	d := s.deps(&stdout, &stderr, strings.NewReader(stdin))
+	d := s.deps(&stdout, &stderr, r)
 	code := cli.Run(ctx, args, d)
 	return Result{Code: code, Stdout: stdout.String(), Stderr: stderr.String()}
+}
+
+// ForbiddenStdin is a stdin that fails the test when read: a command without a terminal must
+// never wait on input it cannot get.
+func ForbiddenStdin(t testing.TB, what string) io.Reader {
+	return forbiddenReader{t: t, what: what}
+}
+
+type forbiddenReader struct {
+	t    testing.TB
+	what string
+}
+
+func (f forbiddenReader) Read([]byte) (int, error) {
+	f.t.Errorf("%s read stdin with no terminal attached", f.what)
+	return 0, io.EOF
 }
 
 func (s *Scenario) deps(stdout, stderr io.Writer, stdin io.Reader) cli.Deps {

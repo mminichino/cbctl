@@ -281,7 +281,7 @@ func needTerminal(rt *runtime) error {
 		return nil
 	}
 	if _, ok := rt.terminalIn(); !ok {
-		return blockedError("re-run with --yes", "confirmation required but no terminal is attached")
+		return noApprovalError(rt.cmd)
 	}
 	return nil
 }
@@ -294,7 +294,7 @@ func confirmTypedFunc(rt *runtime, prompt, notes string, check func(typed string
 	}
 	in, ok := rt.terminalIn()
 	if !ok {
-		return false, blockedError("re-run with --yes", "confirmation required but no terminal is attached")
+		return false, noApprovalError(rt.cmd)
 	}
 	out := rt.errOut()
 	if notes != "" {

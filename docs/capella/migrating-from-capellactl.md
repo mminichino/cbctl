@@ -118,6 +118,10 @@ so you can go back during the migration. `cbctl capella doctor` lists files stil
 | `plan`/`drift --detailed-exitcode`, `sync --dry-run` found a difference | 2 | 2 |
 | Everything else (0, 1, 3, 4, 5, 130) | | same |
 
+The refusal text differs too. capellactl printed `refusing to <verb> without approval: there is no
+terminal to ask`. Every cbctl command prints `confirmation required but no terminal is attached`, with
+`re-run with --yes` as the action, or `add --yes to this pipeline step` when `CI` is set.
+
 Messages are prefixed `[error] -`, `[warning] -` and `→` for the suggested action, instead of
 `[ERROR]:`, `[WARNING]:` and `[ACTION]:`. Scripts that match on exit codes need only the two rows
 above; scripts that match on message text need the new prefixes.

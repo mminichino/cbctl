@@ -391,7 +391,7 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 	if !f.yes {
 		in := stdinFrom(cmd)
 		if !d.IsTTY(in) {
-			return Errorf(ExitBlocked, "re-run with --yes", "confirmation required but no terminal is attached")
+			return noApprovalError(cmd)
 		}
 		fmt.Fprintf(stderrFrom(cmd), "Remove profile %q? [y/N] ", profile)
 		line, _ := bufio.NewReader(in).ReadString('\n')
