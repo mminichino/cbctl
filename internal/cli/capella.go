@@ -36,6 +36,7 @@ func newCapellaCmd() *cobra.Command {
 	cmd.AddCommand(newCapellaInitCmd())
 	cmd.AddCommand(newCapellaGuideCmd())
 	cmd.AddCommand(newCapellaHelpAlias())
+	cmd.AddCommand(newCapellaDoctorCmd())
 	installManagedModes(cmd)
 	installLegacy(cmd)
 	for _, kind := range []string{"bucket", "scope", "collection"} {

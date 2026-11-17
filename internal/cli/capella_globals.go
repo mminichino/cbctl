@@ -244,7 +244,7 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 	}
 
 	d := depsFromCmd(cmd)
-	resolved, err := settings.Resolve(settings.Inputs{
+	resolved, err := resolveSettings(cmd, settings.Inputs{
 		Profile:       g.Profile,
 		Token:         f.token,
 		OrgID:         f.orgID,
@@ -252,15 +252,12 @@ func newRuntimeWith(cmd *cobra.Command, f *apiFlags, extra runtimeExtras) (*runt
 		ConfigFile:    flagIfChanged(cmd, "config"),
 		FileOrgID:     extra.FileOrgID,
 		FileOrgSource: extra.FileOrgSource,
-		Env:           d.Env,
-		Home:          d.Home,
-		Keyring:       d.Keyring,
 	})
 	if err != nil {
 		return nil, Errorf(ExitConfigInvalid, "", "%v", err)
 	}
 	for _, w := range resolved.Warnings {
-		logging.Warning("%s", w)
+		warnOnce(d, w)
 	}
 	if !resolved.APIKey.IsSet() {
 		msg := apiKeyMissing

@@ -19,12 +19,20 @@ type Keyring interface {
 	Delete(profile string) error
 }
 
-// OSKeyring wraps the OS credential store via go-keyring.
-type OSKeyring struct{}
+// OSKeyring wraps the OS credential store via go-keyring. Service is the keychain service; empty
+// is cbctl's ("cbctl"), LegacyKeyringService reads capellactl's entries.
+type OSKeyring struct{ Service string }
+
+func (k OSKeyring) service() string {
+	if k.Service == "" {
+		return keyringService
+	}
+	return k.Service
+}
 
 // Get returns the API key for profile.
-func (OSKeyring) Get(profile string) (string, error) {
-	v, err := keyring.Get(keyringService, profile)
+func (k OSKeyring) Get(profile string) (string, error) {
+	v, err := keyring.Get(k.service(), profile)
 	if err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
 			return "", ErrNotFound
@@ -38,13 +46,13 @@ func (OSKeyring) Get(profile string) (string, error) {
 }
 
 // Set stores the API key for profile.
-func (OSKeyring) Set(profile, apiKey string) error {
-	return keyring.Set(keyringService, profile, apiKey)
+func (k OSKeyring) Set(profile, apiKey string) error {
+	return keyring.Set(k.service(), profile, apiKey)
 }
 
 // Delete removes the API key for profile.
-func (OSKeyring) Delete(profile string) error {
-	err := keyring.Delete(keyringService, profile)
+func (k OSKeyring) Delete(profile string) error {
+	err := keyring.Delete(k.service(), profile)
 	if err != nil && errors.Is(err, keyring.ErrNotFound) {
 		return nil
 	}

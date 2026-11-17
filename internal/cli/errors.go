@@ -123,6 +123,12 @@ func HandleError(err error) ExitCode {
 		}
 		return code
 	}
+	var notIgnored *secrets.NotIgnoredError
+	if errors.As(err, &notIgnored) {
+		printError(notIgnored.Error())
+		printAction(notIgnored.Action())
+		return ExitBlocked
+	}
 	if errors.Is(err, context.Canceled) {
 		fmt.Fprintln(errorOut())
 		return ExitInterrupted

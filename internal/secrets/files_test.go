@@ -139,3 +139,86 @@ func TestGitWarningUsesDir(t *testing.T) {
 		t.Fatal("warned for a directory outside a git work tree")
 	}
 }
+
+// gitRepo makes a fresh git work tree; it skips when git is not installed.
+func gitRepo(t *testing.T) string {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", dir).CombinedOutput(); err != nil {
+		t.Skipf("git init: %v %s", err, out)
+	}
+	return dir
+}
+
+func TestCheckIgnoredAndEnsureGitignore(t *testing.T) {
+	repo := gitRepo(t)
+	creds := filepath.Join(repo, ".cbctl", "credentials") // not created yet
+	var ni *secrets.NotIgnoredError
+	if err := secrets.CheckIgnored(creds, false); !errors.As(err, &ni) {
+		t.Fatalf("unignored dir in a repo: err = %v, want NotIgnoredError", err)
+	}
+	if err := secrets.CheckIgnored(creds, true); err != nil {
+		t.Fatalf("force: %v", err)
+	}
+	added, err := secrets.EnsureGitignore(repo)
+	if err != nil || !added {
+		t.Fatalf("EnsureGitignore = %v, %v", added, err)
+	}
+	if err := secrets.CheckIgnored(creds, false); err != nil {
+		t.Fatalf("after .gitignore: %v", err)
+	}
+	if added, err := secrets.EnsureGitignore(repo); err != nil || added {
+		t.Fatalf("second EnsureGitignore = %v, %v; want no change", added, err)
+	}
+	raw, err := os.ReadFile(filepath.Join(repo, ".gitignore"))
+	if err != nil || strings.Count(string(raw), ".cbctl/") != 1 {
+		t.Fatalf(".gitignore = %q %v", raw, err)
+	}
+
+	outside := t.TempDir()
+	if added, err := secrets.EnsureGitignore(outside); err != nil || added {
+		t.Fatalf("outside a repo = %v, %v", added, err)
+	}
+	if err := secrets.CheckIgnored(filepath.Join(outside, ".cbctl", "credentials"), false); err != nil {
+		t.Fatalf("outside a repo: %v", err)
+	}
+}
+
+func TestResolveCredentialsDir(t *testing.T) {
+	t.Parallel()
+	mk := func(t *testing.T, base string, rel ...string) {
+		for _, r := range rel {
+			if err := os.MkdirAll(filepath.Join(base, filepath.FromSlash(r)), 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	cases := []struct {
+		name, configured string
+		dirs             []string
+		want             string
+		legacy, note     bool
+	}{
+		{"default", "", nil, secrets.DefaultDirName, false, false},
+		{"only legacy", "", []string{secrets.LegacyDirName}, secrets.LegacyDirName, true, true},
+		{"both", "", []string{secrets.LegacyDirName, secrets.DefaultDirName}, secrets.DefaultDirName, false, true},
+		{"configured wins", "out", []string{secrets.LegacyDirName}, "out", false, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			base := t.TempDir()
+			mk(t, base, c.dirs...)
+			dir, legacy, note := secrets.ResolveCredentialsDir(c.configured, base)
+			if dir != filepath.Join(base, filepath.FromSlash(c.want)) || legacy != c.legacy || (note != "") != c.note {
+				t.Errorf("= (%q, %v, %q)", dir, legacy, note)
+			}
+		})
+	}
+	if dir, _, _ := secrets.ResolveCredentialsDir("/abs/out", "/base"); dir != filepath.Clean("/abs/out") {
+		t.Errorf("absolute = %q", dir)
+	}
+}

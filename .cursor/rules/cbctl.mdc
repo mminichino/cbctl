@@ -30,6 +30,7 @@ cbctl collection exists <name> --bucket <bucket> --scope <scope> --host 127.0.0.
 # Capella auth / profiles
 cbctl configure [--profile NAME] [--org-id ID] [--api-host HOST] [--api-key-stdin]
 cbctl configure show|list|remove
+cbctl configure migrate [--from DIR] [--profile P]... [--dry-run] [--force] [--remove-legacy] [-o json] # alias import-capellactl; conflicts exit 4
 cbctl capella configure   # alias
 
 # Capella declarative workflow (capella.yaml; -c/--config FILE or CBCTL_CONFIG; default ./capella.yaml|yml)
@@ -38,9 +39,10 @@ cbctl capella validate   # offline, exit 3 on problems
 cbctl capella plan [--target KIND/NAME] [--detailed-exitcode]   # exit 2 = changes, 4 = blocked
 cbctl capella apply [--target KIND/NAME] [--prune] [--rotate-passwords] [--power-on] [--allow-service-removal] [--allow-service-group-removal] [--skip-capacity-check] [--force-overwrite-secret] -y
 cbctl capella drift [--detailed-exitcode]
-cbctl capella sync [--project P] [--cluster C] [--file F] [--dry-run] [--stdout] [--full] [--force]
+cbctl capella sync [--project P] [--cluster C] [--file F] [--dry-run] [--stdout] [--full] [--force] [--api-version cbctl/v1|capellactl/v1]
 cbctl capella destroy [--discard-snapshots] -y
 cbctl capella guide [topic|topics|config FIELD]
+cbctl capella doctor [--detailed-exitcode] [-o json] # offline, read-only capellactl leftovers; findings exit 4 with --detailed-exitcode
 # With a capella.yaml present these edit the file, plan, ask, save, apply; --no-apply only edits the file, --direct skips the file:
 cbctl capella project create|update|delete ... [--no-apply|--direct]
 cbctl capella cluster create|update|scale|protect|delete|clone ... [--no-apply|--direct]
@@ -240,6 +242,12 @@ Import JSON Lines into a keyspace.
 - `cluster schedule`, `cluster backup` and `bucket backup` are for provisioned clusters; free tier exits 4. A missing schedule on `show` is informational (bucket backup, exit 0) or exit 4 (cluster schedule).
 - `capella janitor` is hidden and for live-test cleanup only; `--prefix` needs at least 3 characters.
 - Declarative workflow: passwords in capella.yaml are only `${VAR}` / `${file:PATH}` references. `plan`/`drift --detailed-exitcode` and `sync --dry-run` exit 2 when there is a difference (not an error); a missing or invalid file exits 3; a plan with blocked (`!`) changes exits 4. A second `apply` of an unchanged file makes no writes and prints "No changes. Capella matches capella.yaml." `apply` pins created ids into the file (previous version in `.bak`). `--direct` and `--no-apply` are mutually exclusive.
+
+### capellactl settings
+- Legacy env vars are honored with a one-time stderr warning when the cbctl one is unset: `BEARER_TOKEN`→`CAPELLA_API_KEY`, `ORG_ID`→`CAPELLA_ORG_ID`, `API_BASE_URL`→`CAPELLA_API_BASE_URL`, `CAPELLACTL_CONFIG|PROFILE|QUIET|HOME`→`CBCTL_*`. Both set and different: the cbctl one wins (warning).
+- With the default cbctl home (or `CAPELLACTL_HOME` set), a profile or keychain key cbctl lacks is read from capellactl's `profiles.yaml` / keychain service `capellactl` (warning). `configure migrate` copies them; keys are never printed.
+- Credentials dir: without `credentialsOutput`, `./.capellactl/credentials` is used while `./.cbctl/credentials` does not exist. Generating a password into a dir inside a git work tree that does not ignore it exits 4 before any write unless `--force-overwrite-secret`. `init`/`sync` append `.cbctl/` to `.gitignore` in a git work tree.
+- `sync` keeps `apiVersion: capellactl/v1`; new files are `cbctl/v1` unless `--api-version`.
 
 ## Agent usage rules
 

@@ -19,6 +19,7 @@ import (
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -32,6 +33,9 @@ func capellaEnv(t *testing.T, f *capellafake.Fake) {
 	t.Setenv("CAPELLA_ORG_ID", f.OrgID)
 	for _, k := range []string{"CAPELLA_TOKEN", "CBCTL_PROFILE", "CBCTL_QUIET", "CI"} {
 		t.Setenv(k, "")
+	}
+	for legacy := range settings.LegacyEnv { // a developer's capellactl variables must not leak in
+		t.Setenv(legacy, "")
 	}
 	clk := engine.NewFakeClock(time.Time{})
 	old := clockFactory

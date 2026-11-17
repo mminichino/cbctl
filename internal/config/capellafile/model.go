@@ -11,8 +11,9 @@ package capellafile
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
+
+	"github.com/mminichino/cbctl/internal/secrets"
 )
 
 // Obj is a JSON-compatible mapping: its values are string, bool, int64, float64, []any, Obj or nil.
@@ -111,15 +112,21 @@ func (c *Config) ProjectNames() []string {
 
 // CredentialsOutput returns the directory for generated credential files; a relative setting is
 // resolved against the directory of the config file.
+// Without a setting, capellactl's ./.capellactl/credentials is used when only it exists.
 func (c *Config) CredentialsOutput() string {
-	dir := DefaultCredentialsOutput
-	if s, ok := c.Raw["credentialsOutput"].(string); ok && strings.TrimSpace(s) != "" {
-		dir = s
-	}
-	if filepath.IsAbs(dir) {
-		return filepath.Clean(dir)
-	}
-	return filepath.Join(c.baseDir, dir)
+	dir, _, _ := secrets.ResolveCredentialsDir(c.credentialsSetting(), c.baseDir)
+	return dir
+}
+
+// CredentialsOutputNote explains a capellactl credentials directory choice; empty otherwise.
+func (c *Config) CredentialsOutputNote() string {
+	_, _, note := secrets.ResolveCredentialsDir(c.credentialsSetting(), c.baseDir)
+	return note
+}
+
+func (c *Config) credentialsSetting() string {
+	s, _ := c.Raw["credentialsOutput"].(string)
+	return strings.TrimSpace(s)
 }
 
 // LineOf returns the 1-based line of p in the file, falling back to the nearest enclosing path

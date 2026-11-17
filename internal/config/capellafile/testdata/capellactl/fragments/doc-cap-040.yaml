@@ -1,0 +1,11 @@
+# Snapshot of the yaml fence in capellactl docs/release-1.0.0/CAP-040-multiple-projects-one-file.md
+apiVersion: capellactl/v1
+organizationId: 6af0…
+projects:
+  - name: demo
+    description: Demo environment
+    clusters:
+      - name: demo-01
+        …
+  - name: non-prod
+    clusters: []

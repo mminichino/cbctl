@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -184,9 +185,18 @@ func SavedMessage(path string) string {
 func GitWarning(dir string) (what, action string, ok bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	// git -C needs an existing directory: probe the nearest existing ancestor, so a secrets dir
+	// that is not created yet is still checked against the repository it will be in.
 	probe := dir
-	if _, err := os.Stat(probe); err != nil {
-		probe = filepath.Dir(dir)
+	for {
+		if st, err := os.Stat(probe); err == nil && st.IsDir() {
+			break
+		}
+		parent := filepath.Dir(probe)
+		if parent == probe {
+			return "", "", false
+		}
+		probe = parent
 	}
 	if err := exec.CommandContext(ctx, "git", "-C", probe, "rev-parse", "--show-toplevel").Run(); err != nil {
 		return "", "", false // not in a work tree, or git is missing
@@ -200,4 +210,95 @@ func GitWarning(dir string) (what, action string, ok bool) {
 		return "", "", false // ignored
 	}
 	return dir + " is not git-ignored", "Add .cbctl/ to .gitignore so the saved password is never committed.", true
+}
+
+// Default and capellactl credential directories, relative to the config file's directory.
+const (
+	DefaultDirName = ".cbctl/credentials"
+	LegacyDirName  = ".capellactl/credentials"
+)
+
+// ResolveCredentialsDir returns the directory generated passwords go to. configured is the
+// file's credentialsOutput (empty: unset) and base the directory relative paths resolve against.
+// With no setting, ./.cbctl/credentials is used, unless only capellactl's ./.capellactl/credentials
+// exists: then that one is used, so rotations update the files capellactl wrote. note explains a
+// legacy choice (or that the legacy directory is ignored because both exist).
+func ResolveCredentialsDir(configured, base string) (dir string, legacy bool, note string) {
+	if strings.TrimSpace(configured) != "" {
+		if filepath.IsAbs(configured) {
+			return filepath.Clean(configured), false, ""
+		}
+		return filepath.Join(base, configured), false, ""
+	}
+	cur := filepath.Join(base, filepath.FromSlash(DefaultDirName))
+	old := filepath.Join(base, filepath.FromSlash(LegacyDirName))
+	curOK, oldOK := isDir(cur), isDir(old)
+	switch {
+	case oldOK && !curOK:
+		return old, true, fmt.Sprintf("generated passwords are saved to capellactl's %s because %s does not exist; move the files and set credentialsOutput to change it",
+			old, cur)
+	case oldOK && curOK:
+		return cur, false, fmt.Sprintf("%s is ignored because %s exists; move its files there", old, cur)
+	}
+	return cur, false, ""
+}
+
+func isDir(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && st.IsDir()
+}
+
+// NotIgnoredError refuses to write a generated password into a directory git would commit.
+type NotIgnoredError struct {
+	Dir string
+}
+
+// Error implements error.
+func (e *NotIgnoredError) Error() string {
+	return fmt.Sprintf("refusing to save a generated password: %s is inside a git work tree and not git-ignored", e.Dir)
+}
+
+// Action is the fix printed under the error.
+func (e *NotIgnoredError) Action() string {
+	return "add .cbctl/ to .gitignore (or set credentialsOutput outside the repository), or pass --force-overwrite-secret to save it anyway"
+}
+
+// CheckIgnored returns NotIgnoredError when dir is in a git work tree that does not ignore it.
+// force skips the check.
+func CheckIgnored(dir string, force bool) error {
+	if force {
+		return nil
+	}
+	if _, _, bad := GitWarning(dir); bad {
+		return &NotIgnoredError{Dir: dir}
+	}
+	return nil
+}
+
+// EnsureGitignore appends ".cbctl/" to dir/.gitignore when dir is inside a git work tree that does
+// not ignore dir/.cbctl/credentials yet, so generated passwords are never committed. It reports
+// whether the file was changed. Outside a git work tree (or without git) it does nothing.
+func EnsureGitignore(dir string) (bool, error) {
+	if _, _, bad := GitWarning(filepath.Join(dir, filepath.FromSlash(DefaultDirName))); !bad {
+		return false, nil
+	}
+	path := filepath.Join(dir, ".gitignore")
+	old, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return false, fmt.Errorf("reading %s: %w", path, err)
+	}
+	for _, line := range strings.Split(string(old), "\n") {
+		if t := strings.TrimSpace(line); t == ".cbctl/" || t == ".cbctl" || t == "/.cbctl/" {
+			return false, nil // present but overridden by a later rule; leave the user's file alone
+		}
+	}
+	text := string(old)
+	if text != "" && !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+	text += ".cbctl/\n"
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil { //nolint:gosec // .gitignore is not secret
+		return false, fmt.Errorf("writing %s: %w", path, err)
+	}
+	return true, nil
 }

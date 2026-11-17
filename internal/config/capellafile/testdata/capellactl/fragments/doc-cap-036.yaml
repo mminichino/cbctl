@@ -1,0 +1,18 @@
+# Snapshot of the yaml fence in capellactl docs/release-1.0.0/CAP-036-import-existing-environment.md
+# Imported by capellactl 1.0.0 on 2026-10-05T17:20:11Z from org 6af0…, project nova-dev
+apiVersion: capellactl/v1
+organizationId: 6af0…          # the organization the API Key Token was used with
+project:
+  name: nova-dev
+clusters:
+  - name: nova-dev-01
+    deletionProtection: true
+    cloudProvider: { type: aws, region: us-east-1, cidr: 10.10.0.0/23 }
+    ...
+    databaseCredentials:
+      - name: orders_app
+        # password not exported (Capella never returns it). Existing password is unchanged.
+        # To rotate later: set password: ${ORDERS_APP_PASSWORD} and run credential update --rotate-password
+        access:
+          - privileges: [data_reader, data_writer]
+            resources: { buckets: [ { name: orders } ] }

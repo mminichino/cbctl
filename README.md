@@ -221,7 +221,24 @@ cbctl configure --api-key-stdin --org-id <id>   # validate key, save profile + k
 cbctl configure show
 cbctl configure list
 cbctl configure remove --profile default -y
+cbctl configure migrate         # copy capellactl profiles + keychain API keys (--dry-run, --force, --remove-legacy)
+cbctl capella doctor            # offline: list what is left from capellactl (--detailed-exitcode exits 4)
 ```
+
+**Coming from capellactl.** Its settings keep working, each with a one-time `[warning]` on stderr:
+
+| capellactl | cbctl | Rule |
+|---|---|---|
+| `BEARER_TOKEN`, `ORG_ID`, `API_BASE_URL` | `CAPELLA_API_KEY`, `CAPELLA_ORG_ID`, `CAPELLA_API_BASE_URL` | Used when the cbctl variable is unset; when both are set to different values the cbctl one wins. |
+| `CAPELLACTL_CONFIG`, `CAPELLACTL_PROFILE`, `CAPELLACTL_QUIET`, `CAPELLACTL_HOME` | `CBCTL_CONFIG`, `CBCTL_PROFILE`, `CBCTL_QUIET`, `CBCTL_HOME` | Same. |
+| `~/.config/capellactl/profiles.yaml` (`$XDG_CONFIG_HOME`, `%APPDATA%`, `CAPELLACTL_HOME`) | `~/.config/cbctl/profiles.yaml` | A profile cbctl does not have is read from capellactl's file. |
+| Keychain service `capellactl` | Keychain service `cbctl` | A key cbctl's keychain lacks is read from capellactl's entry for the same profile. |
+| `./.capellactl/credentials` | `./.cbctl/credentials` | Without `credentialsOutput`, capellactl's directory is used while `.cbctl/credentials` does not exist. |
+| `apiVersion: capellactl/v1` | `apiVersion: cbctl/v1` | Both are accepted; `sync` keeps the file's version (`--api-version` changes it). |
+
+`cbctl configure migrate` copies the profiles and keys for good (a profile that differs in cbctl is a conflict, exit 4, unless `--force`); keys are never printed. capellactl settings are only consulted when cbctl uses its default home (no `CBCTL_HOME`) or `CAPELLACTL_HOME` is set.
+
+**Saved passwords and git.** Generated passwords are written under the credentials directory (mode 0600). When that directory is inside a git work tree and not ignored, generating a password exits 4 before anything is created; add `.cbctl/` to `.gitignore` or pass `--force-overwrite-secret`. `init` and `sync` add `.cbctl/` to the `.gitignore` next to `capella.yaml` when it is in a git work tree.
 
 ### Exit codes
 
@@ -239,7 +256,7 @@ A group with no arguments prints its help and exits 0. An unknown subcommand (`c
 
 ### Declarative workflow (`capella.yaml`)
 
-Describe projects, clusters, buckets, scopes, collections, credentials, CIDRs, schedules and backups in one file and let `cbctl` reconcile Capella to it. The file is found in this order: `-c/--config FILE` → `CBCTL_CONFIG` → `configFile` of the profile (`cbctl configure --config-file`) → `./capella.yaml` → `./capella.yml` (both present is an error). The organization comes from `--org-id`, `CAPELLA_ORG_ID`, the profile, then `organizationId` in the file.
+Describe projects, clusters, buckets, scopes, collections, credentials, CIDRs, schedules and backups in one file and let `cbctl` reconcile Capella to it. The file is found in this order: `-c/--config FILE` → `CBCTL_CONFIG` (or capellactl's `CAPELLACTL_CONFIG`, with a warning) → `configFile` of the profile (`cbctl configure --config-file`) → `./capella.yaml` → `./capella.yml` (both present is an error). The organization comes from `--org-id`, `CAPELLA_ORG_ID`, the profile, then `organizationId` in the file.
 
 ```bash
 cbctl capella init --non-interactive --project demo --provider aws --region us-east-1 --preset small   # or: init (interview), sync (import what exists)
@@ -255,7 +272,7 @@ cbctl capella guide [TOPIC]     # built-in docs: getting-started, config, scalin
 | Command | Notes |
 |---|---|
 | `apply` | `--target`, `--prune` (delete what the file no longer lists), `--rotate-passwords`, `--power-on`, `--allow-service-removal`, `--allow-service-group-removal`, `--skip-capacity-check`, `--force-overwrite-secret`. Creating a bucket, scope or collection delete asks you to type its name. Created ids are pinned into the file (previous version kept as `capella.yaml.bak`). |
-| `sync` | Writes a new file, or refreshes an existing one: comments, `${VAR}` references and keys the importer cannot read are kept; renamed projects are followed by pinned `id`. `--dry-run` prints a diff and exits 2 when the file would change. |
+| `sync` | Writes a new file, or refreshes an existing one: comments, `${VAR}` references and keys the importer cannot read are kept; renamed projects are followed by pinned `id`. `--dry-run` prints a diff and exits 2 when the file would change. A `capellactl/v1` file stays `capellactl/v1`; `--api-version cbctl/v1\|capellactl/v1` sets it. |
 | `destroy` | Removes clusters and projects declared in the file; the file keeps its description but loses the ids. |
 | `init` | Interactive interview, or `--non-interactive` with flags (`--provider`, `--region`, `--preset`, `--nodes`, `--bucket`, `--credential`, ...). |
 

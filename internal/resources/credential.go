@@ -490,6 +490,9 @@ func (r *credentialRec) create(ctx context.Context, rc *plan.RunContext, a *plan
 	if _, err := secrets.Preflight(dir, cluster, name, r.opts.ForceOverwriteSecret); err != nil {
 		return err
 	}
+	if err := secrets.CheckIgnored(dir, r.opts.ForceOverwriteSecret); err != nil {
+		return err
+	}
 	generated, err := secrets.Generate(32)
 	if err != nil {
 		return err
@@ -552,6 +555,9 @@ func (r *credentialRec) update(ctx context.Context, rc *plan.RunContext, a *plan
 		}
 		password, _ := d["password"].(string)
 		if password == "" { // generated; saved before it is sent
+			if err := secrets.CheckIgnored(r.secretDir(rc), r.opts.ForceOverwriteSecret); err != nil {
+				return err
+			}
 			if password, err = secrets.Generate(32); err != nil {
 				return err
 			}

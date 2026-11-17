@@ -73,10 +73,17 @@ func Run(ctx context.Context, args []string, d Deps) (code int) {
 }
 
 func normalizeDeps(d Deps) Deps {
-	def := DefaultDeps()
-	if d.Env == nil {
-		d.Env = def.Env
+	if d.normalized {
+		return d
 	}
+	def := DefaultDeps()
+	switch {
+	case d.Env == nil:
+		d.Env = def.Env
+	case !d.envShimmed:
+		d.Env = settings.NewLegacyShim(d.Env, func(msg string) { logging.Warning("%s", msg) }).Env
+	}
+	d.envShimmed = true
 	if d.LookupEnv == nil {
 		d.LookupEnv = def.LookupEnv
 	}
@@ -104,6 +111,13 @@ func normalizeDeps(d Deps) Deps {
 	if d.Home == "" {
 		d.Home = settings.HomeDir(d.Env)
 	}
+	if d.LegacyHome == "" && d.LegacyKeyring == nil {
+		d.LegacyHome, d.LegacyKeyring = legacySources(d)
+	}
+	if d.warned == nil {
+		d.warned = &sync.Map{}
+	}
+	d.normalized = true
 	return d
 }
 

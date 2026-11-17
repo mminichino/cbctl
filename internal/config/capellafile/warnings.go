@@ -129,5 +129,8 @@ func warningsAt(cfg *Config, now time.Time) []Notice {
 			Action: "Tip: " + hint + ".",
 		})
 	}
+	if note := cfg.CredentialsOutputNote(); note != "" {
+		out = append(out, Notice{What: note, Action: "Run 'cbctl capella doctor' to list everything left from capellactl."})
+	}
 	return out
 }

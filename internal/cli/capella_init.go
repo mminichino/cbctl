@@ -611,6 +611,7 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 	if err := writeFileAtomic(path, text); err != nil {
 		return err
 	}
+	ignoreCredentials(errOut, path, g.Quiet)
 	if g.Output == "json" {
 		out.Object(map[string]any{"file": path, "written": true, "valid": true})
 		return nil
@@ -659,7 +660,7 @@ func initCheckFlags(f *initFlags) error {
 
 // initOrganization finds the organization (and a client for it when an API key is available).
 func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *initIO) (client *capellaapi.Client, orgID, orgName string, missing []string, err error) {
-	resolved, err := settings.Resolve(settings.Inputs{
+	resolved, err := resolveSettings(cmd, settings.Inputs{
 		Profile: mustProfile(cmd), Token: af.token, OrgID: af.orgID,
 		APIHost: flagIfChanged(cmd, "api-host"), ConfigFile: flagIfChanged(cmd, "config"),
 	})

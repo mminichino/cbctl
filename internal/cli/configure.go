@@ -77,7 +77,7 @@ func newConfigureCmd() *cobra.Command {
 	removeCmd.Flags().StringVar(&f.profile, "profile", "", "Profile name")
 	removeCmd.Flags().BoolVarP(&f.yes, "yes", "y", false, "Skip confirmation")
 
-	cmd.AddCommand(listCmd, showCmd, removeCmd)
+	cmd.AddCommand(listCmd, showCmd, removeCmd, newConfigureMigrateCmd())
 	return cmd
 }
 
@@ -108,7 +108,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 			return Errorf(ExitConfigInvalid, "", "%v", err)
 		}
 	} else {
-		resolved, rerr := settings.Resolve(settings.Inputs{Profile: profile, APIHost: "", Env: d.Env, Home: d.Home, Keyring: d.Keyring})
+		resolved, rerr := resolveSettings(cmd, settings.Inputs{Profile: profile})
 		if rerr != nil {
 			return rerr
 		}
@@ -283,10 +283,8 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 }
 
 func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
-	d := depsFromCmd(cmd)
-	resolved, err := settings.Resolve(settings.Inputs{
+	resolved, err := resolveSettings(cmd, settings.Inputs{
 		Profile: f.profile, ConfigFile: flagIfChanged(cmd, "config"),
-		Env: d.Env, Home: d.Home, Keyring: d.Keyring,
 	})
 	if err != nil {
 		return err

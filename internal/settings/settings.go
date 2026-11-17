@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -76,6 +77,12 @@ type Inputs struct {
 	Env           func(string) string
 	Home          string
 	Keyring       Keyring
+	// LegacyHome is capellactl's config directory; a profile cbctl does not have is read from
+	// there (with a warning). Empty: no legacy profiles.
+	LegacyHome string
+	// LegacyKeyring holds capellactl's API keys; it is read when Keyring has no key for the
+	// profile (with a warning). Nil: no legacy keychain.
+	LegacyKeyring Keyring
 }
 
 // Resolve applies precedence and sanitizes API key / base URL.
@@ -102,12 +109,32 @@ func Resolve(in Inputs) (*Settings, error) {
 		return nil, err
 	}
 	profile, profileOK := profiles[profileName]
+	legacyProfile := false
+	if !profileOK && in.LegacyHome != "" && filepath.Clean(in.LegacyHome) != filepath.Clean(home) {
+		legacy, lw, err := LoadLegacyProfiles(in.LegacyHome)
+		if err != nil {
+			return nil, err
+		}
+		if p, ok := legacy[profileName]; ok {
+			profile, profileOK, legacyProfile = p, true, true
+			warnings = append(warnings, lw...)
+			warnings = append(warnings, fmt.Sprintf("profile %q is read from capellactl's %s; run 'cbctl configure migrate' to copy it",
+				profileName, ProfilesPath(in.LegacyHome)))
+		}
+	}
 	if in.Profile != "" && !profileOK {
 		warnings = append(warnings, fmt.Sprintf(`profile %q not found; run 'cbctl configure --profile %s' to create it`, profileName, profileName))
 	}
 
-	apiKey, warn := resolveAPIKey(in.Token, env, kr, profileName, profileOK)
+	apiKey, warn := resolveAPIKey(in.Token, env, kr, profileName, profileOK && !legacyProfile)
 	warnings = append(warnings, warn...)
+	if !apiKey.IsSet() && profileOK && in.LegacyKeyring != nil {
+		if key, err := in.LegacyKeyring.Get(profileName); err == nil && key != "" {
+			apiKey = Value{Value: key, Source: SourceKeychain, Detail: profileName + " (capellactl)"}
+			warnings = append(warnings, fmt.Sprintf("the API key of profile %q is read from capellactl's keychain entry; run 'cbctl configure migrate' to copy it",
+				profileName))
+		}
+	}
 	if apiKey.IsSet() {
 		apiKey.Value = SanitizeAPIKey(apiKey.Value)
 		redact.Register(apiKey.Value)
@@ -152,6 +179,12 @@ func resolveConfigFile(flag string, env func(string) string, profile Profile, pr
 // LoadProfile returns the profile named by flag, CBCTL_PROFILE or "default" (empty when it does
 // not exist), so callers can use its settings before the full resolution runs.
 func LoadProfile(flag string, env func(string) string, home string) (Profile, error) {
+	return LoadProfileWithLegacy(flag, env, home, "")
+}
+
+// LoadProfileWithLegacy is LoadProfile that falls back to capellactl's profiles in legacyHome
+// (empty: none) when cbctl has no profile of that name.
+func LoadProfileWithLegacy(flag string, env func(string) string, home, legacyHome string) (Profile, error) {
 	if env == nil {
 		env = ProcessEnv
 	}
@@ -162,7 +195,15 @@ func LoadProfile(flag string, env func(string) string, home string) (Profile, er
 	if err != nil {
 		return Profile{}, err
 	}
-	return profiles[firstNonEmpty(flag, env(envProfile), defaultProfile)], nil
+	name := firstNonEmpty(flag, env(envProfile), defaultProfile)
+	if p, ok := profiles[name]; ok || legacyHome == "" || filepath.Clean(legacyHome) == filepath.Clean(home) {
+		return p, nil
+	}
+	legacy, _, err := LoadLegacyProfiles(legacyHome)
+	if err != nil {
+		return Profile{}, err
+	}
+	return legacy[name], nil
 }
 
 func resolveAPIKey(token string, env func(string) string, kr Keyring, profile string, profileOK bool) (Value, []string) {

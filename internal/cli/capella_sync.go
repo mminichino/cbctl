@@ -3,15 +3,18 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/importer"
+	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -19,7 +22,7 @@ import (
 
 type syncFlags struct {
 	projects, skip, projectIDs, clusters, clusterIDs []string
-	file                                             string
+	file, apiVersion                                 string
 	dryRun, stdout, full, force                      bool
 }
 
@@ -47,8 +50,13 @@ func newCapellaSyncCmd() *cobra.Command {
 	f.BoolVar(&sf.dryRun, "dry-run", false, "Show the difference without writing; exit 2 when out of sync")
 	f.BoolVar(&sf.stdout, "stdout", false, "Print the YAML instead of writing the file")
 	f.BoolVar(&sf.full, "full", false, "Write every field, including values equal to the defaults")
+	f.StringVar(&sf.apiVersion, "api-version", "", "apiVersion to write: cbctl/v1 or capellactl/v1 (default: keep the file's, cbctl/v1 for a new file)")
 	f.BoolVar(&sf.force, "force", false, "Replace a file that is not a cbctl file, or one for another organization (a .bak is kept)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		if sf.apiVersion != "" && !slices.Contains(capellafile.SupportedAPIVersions, sf.apiVersion) {
+			return Errorf(ExitConfigInvalid, "", "--api-version must be one of %s (got %q)",
+				strings.Join(capellafile.SupportedAPIVersions, ", "), sf.apiVersion)
+		}
 		return runSync(cmd, af, &sf)
 	}
 	return cmd
@@ -107,7 +115,7 @@ func runSync(cmd *cobra.Command, af *apiFlags, sf *syncFlags) error {
 	}
 	extra := runtimeExtras{}
 	if fileOrg != "" {
-		explicit, rerr := settings.Resolve(settings.Inputs{Profile: mustProfile(cmd), OrgID: af.orgID, ConfigFile: flagIfChanged(cmd, "config")})
+		explicit, rerr := resolveSettings(cmd, settings.Inputs{Profile: mustProfile(cmd), OrgID: af.orgID, ConfigFile: flagIfChanged(cmd, "config")})
 		if rerr != nil || !explicit.OrgID.IsSet() {
 			extra = runtimeExtras{FileOrgID: fileOrg, FileOrgSource: filepath.Base(path)}
 		}
@@ -273,6 +281,9 @@ func (s *syncer) fresh(exists bool, oldText string) error {
 		}
 		res.Data["skipProjects"] = skips
 	}
+	if sf.apiVersion != "" {
+		res.Data["apiVersion"] = sf.apiVersion
+	}
 	text, err := importer.Render(res, s.orgName())
 	if err != nil {
 		return fmt.Errorf("rendering %s: %w", s.name, err)
@@ -295,6 +306,7 @@ func (s *syncer) fresh(exists bool, oldText string) error {
 	if err := writeFileAtomic(s.path, text); err != nil {
 		return err
 	}
+	ignoreCredentials(rt.errOut(), s.path, rt.Quiet)
 	for _, w := range res.Warnings {
 		printNotice(rt.errOut(), w.What, w.Action)
 	}
@@ -324,6 +336,20 @@ func sortedUnique(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// ignoreCredentials adds .cbctl/ to the .gitignore next to a written capella.yaml when that
+// directory is in a git work tree, so passwords generated later are never committed. A failure
+// only warns: the config file is already written.
+func ignoreCredentials(w io.Writer, configPath string, quiet bool) {
+	added, err := secrets.EnsureGitignore(filepath.Dir(configPath))
+	switch {
+	case err != nil:
+		printNotice(w, fmt.Sprintf("could not add .cbctl/ to .gitignore: %v", err),
+			"Add .cbctl/ to .gitignore so generated passwords are never committed.")
+	case added && !quiet:
+		fmt.Fprintf(w, "added .cbctl/ to %s\n", displayPath(filepath.Join(filepath.Dir(configPath), ".gitignore")))
+	}
 }
 
 func writeFileAtomic(path, text string) error {
@@ -675,6 +701,14 @@ func (s *syncer) refresh(oldText string, old capellafile.Obj) error {
 	if out, ok := old["credentialsOutput"].(string); ok && out != "" {
 		combined.Data["credentialsOutput"] = out
 	}
+	// A capellactl/v1 file stays capellactl/v1 (rollback to capellactl keeps working) unless
+	// --api-version says otherwise.
+	if v, ok := old["apiVersion"].(string); ok && slices.Contains(capellafile.SupportedAPIVersions, v) {
+		combined.Data["apiVersion"] = v
+	}
+	if sf.apiVersion != "" {
+		combined.Data["apiVersion"] = sf.apiVersion
+	}
 	if len(skipped) > 0 {
 		list := make([]any, len(skipped))
 		for i, n := range skipped {
@@ -783,6 +817,7 @@ func (s *syncer) refresh(oldText string, old capellafile.Obj) error {
 	if err := writeFileAtomic(s.path, newText); err != nil {
 		return err
 	}
+	ignoreCredentials(rt.errOut(), s.path, rt.Quiet)
 	for _, k := range kept {
 		fmt.Fprintf(rt.errOut(), "kept %s\n", k)
 	}

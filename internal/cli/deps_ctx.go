@@ -24,7 +24,7 @@ func depsFromCmd(cmd *cobra.Command) Deps {
 			}
 		}
 	}
-	return DefaultDeps()
+	return normalizeDeps(DefaultDeps())
 }
 
 // envFrom returns the Env lookup from cmd's Deps.

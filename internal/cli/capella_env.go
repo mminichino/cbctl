@@ -63,8 +63,9 @@ func discoverConfig(cmd *cobra.Command) (capellafile.Discovery, error) {
 	if err != nil {
 		return capellafile.Discovery{}, fmt.Errorf("finding the working directory: %w", err)
 	}
-	env := envFrom(cmd)
-	profile, err := settings.LoadProfile(g.Profile, env, "")
+	d := depsFromCmd(cmd)
+	env := d.Env
+	profile, err := settings.LoadProfileWithLegacy(g.Profile, env, d.Home, d.LegacyHome)
 	if err != nil {
 		return capellafile.Discovery{}, Errorf(ExitConfigInvalid, "", "%v", err)
 	}

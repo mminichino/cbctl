@@ -195,7 +195,7 @@ func (f *capellaFlags) configFrom(cmd *cobra.Command) *config.Config {
 		apiHostInput = f.apiHost
 	}
 
-	resolved, err := settings.Resolve(settings.Inputs{
+	resolved, err := resolveSettings(cmd, settings.Inputs{
 		Token:   f.token,
 		OrgID:   f.orgID,
 		APIHost: apiHostInput,
