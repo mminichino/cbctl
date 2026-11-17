@@ -307,19 +307,22 @@ func allFieldPaths() []string {
 
 func closeFields(want string) []string {
 	all := allFieldPaths()
+	want = strings.ToLower(want)
 	last := want
 	if i := strings.LastIndex(want, "."); i >= 0 {
 		last = want[i+1:]
 	}
 	var out []string
 	for _, f := range all {
-		if f == last || strings.HasSuffix(f, "."+last) {
+		lf := strings.ToLower(f)
+		if lf == last || strings.HasSuffix(lf, "."+last) {
 			out = append(out, f)
 		}
 	}
 	if len(out) == 0 {
 		for _, f := range all {
-			if strings.HasPrefix(f, want) || (len(want) > 3 && strings.Contains(f, want)) {
+			lf := strings.ToLower(f)
+			if strings.HasPrefix(lf, want) || (len(want) > 3 && strings.Contains(lf, want)) {
 				out = append(out, f)
 			}
 		}

@@ -454,7 +454,7 @@ func (e *envRuntime) applyFailure(result *plan.ApplyResult, o applyOptions) erro
 			msg += "\n" + undone
 		}
 	}
-	action := failureAction(failed, result.Err, "Then run the command again; completed changes are not repeated.")
+	action := failureAction(failed, result.Err, "Run the command again; completed changes are not repeated.")
 	return &CLIError{Code: code, Message: msg, Action: action, Err: result.Err}
 }
 

@@ -120,7 +120,7 @@ func checkAPIVersion(data Obj, lines lineIndex) []Issue {
 	line := lines.of(Path{"apiVersion"})
 	if !present || v == nil {
 		return []Issue{{Path: "apiVersion", Message: "missing required field 'apiVersion'", Line: 1, Topic: "config",
-			Fix: "add apiVersion: " + APIVersion}}
+			Fix: "the file must start with apiVersion " + APIVersion + " ('cbctl capella init' writes a new file)"}}
 	}
 	s, _ := v.(string)
 	for _, ok := range SupportedAPIVersions {
@@ -133,7 +133,7 @@ func checkAPIVersion(data Obj, lines lineIndex) []Issue {
 		Message: fmt.Sprintf("unsupported apiVersion %v; supported values: %s", v, strings.Join(SupportedAPIVersions, ", ")),
 		Line:    line,
 		Topic:   "config",
-		Fix:     "set apiVersion: " + APIVersion,
+		Fix:     "the file must start with apiVersion " + APIVersion + " ('cbctl capella init' writes a new file)",
 	}}
 }
 

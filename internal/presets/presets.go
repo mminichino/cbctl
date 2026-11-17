@@ -155,9 +155,22 @@ func load() {
 			}
 		}
 		mustDecode("presets.yaml", presetsYAML, &presetMap)
-		mustDecode("compute.yaml", computeYAML, &computeMap)
+		m, err := decodeCompute(computeYAML)
+		if err != nil {
+			panic(fmt.Sprintf("presets: parse compute.yaml: %v", err))
+		}
+		computeMap = m
 		mustDecode("disks.yaml", disksYAML, &diskMap)
 	})
+}
+
+// decodeCompute parses a compute.yaml document: the node sizes come only from this text.
+func decodeCompute(data []byte) (map[string]Compute, error) {
+	var out map[string]Compute
+	if err := yaml.Unmarshal(data, &out); err != nil {
+		return nil, fmt.Errorf("decoding compute sizes: %w", err)
+	}
+	return out, nil
 }
 
 func mustDecode(name string, data []byte, out any) {

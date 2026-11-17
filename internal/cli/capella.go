@@ -48,6 +48,7 @@ func newCapellaCmd() *cobra.Command {
 		shareAddFlags(c)
 	}
 	installNegations(cmd)
+	installClusterCompletion(cmd)
 	return cmd
 }
 

@@ -38,8 +38,13 @@ func NewRootCmd(d Deps) *cobra.Command {
 	} else {
 		root.Version = versionString
 	}
+	// The second line names the Capella API the commands speak (capellactl printed it too).
+	root.SetVersionTemplate("{{.Name}} version {{.Version}}\nCapella Management API " + capellaAPIVersion + "\n")
 	return root
 }
+
+// capellaAPIVersion is the Capella Management API version the Capella commands use.
+const capellaAPIVersion = "v4.0"
 
 var enablePrefixMatchingOnce sync.Once
 
@@ -63,7 +68,10 @@ func buildRootCmd() *cobra.Command {
 	root.AddCommand(newCapellaCmd())
 	root.AddCommand(newConfigureCmd())
 	root.SetFlagErrorFunc(flagError)
+	root.InitDefaultCompletionCmd() // normally added at Execute; built here so it gets examples too
+	writeCompletionToCmdOut(root)
 	hardenTree(root)
+	installGroupExamples(root)
 	return root
 }
 
@@ -205,7 +213,8 @@ func classifyCobraError(err error) error {
 	msg := err.Error()
 	for _, p := range cobraUsagePrefixes {
 		if strings.HasPrefix(msg, p) || strings.Contains(msg, p) {
-			return &CLIError{Code: ExitConfigInvalid, Message: msg, Err: err}
+			return &CLIError{Code: ExitConfigInvalid, Message: msg, Err: err,
+				Action: "run the command again with --help to see its flags"}
 		}
 	}
 	return err

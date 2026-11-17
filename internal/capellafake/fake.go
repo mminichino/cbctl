@@ -427,6 +427,7 @@ type failure struct {
 	left          int
 	dropAfterRead bool
 	applyThenDrop bool
+	applyThenFail bool
 	delay         time.Duration
 	before        func()
 }
@@ -535,6 +536,13 @@ func (f *Fake) dispatch(w http.ResponseWriter, r *http.Request) {
 			c.w = rec
 			f.dropConn(rec)
 			return
+		}
+		if fl.applyThenFail {
+			// Apply the real handler, discard its response and answer with the injected error
+			// (a concurrent writer created the resource first).
+			c.w = discardingWriter{}
+			f.serveRoute(c, r)
+			c.w = rec
 		}
 		for k, vs := range fl.headers {
 			for _, v := range vs {

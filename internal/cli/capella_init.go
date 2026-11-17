@@ -665,7 +665,7 @@ func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *ini
 		APIHost: flagIfChanged(cmd, "api-host"), ConfigFile: flagIfChanged(cmd, "config"),
 	})
 	if err != nil {
-		return nil, "", "", nil, Errorf(ExitConfigInvalid, "", "%v", err)
+		return nil, "", "", nil, Errorf(ExitConfigInvalid, settingsAction, "%v", err)
 	}
 	defaultOrg := af.orgID
 	if defaultOrg == "" && resolved.OrgID.IsSet() {
@@ -690,7 +690,7 @@ func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *ini
 	}
 	c, err := capellaapi.New(resolved.APIKey.Value, opts...)
 	if err != nil {
-		return nil, "", "", nil, Errorf(ExitConfigInvalid, "", "%v", err)
+		return nil, "", "", nil, Errorf(ExitConfigInvalid, settingsAction, "%v", err)
 	}
 	ctx := cmd.Context()
 	orgs, err := c.ListOrganizations(ctx)

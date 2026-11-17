@@ -53,6 +53,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `cluster schedule apply`, `--no-disk-auto-expansion`, `--no-cost-optimized`, `--no-flush`,
   `--no-cross-cluster-versioning`, `configure --api-base-url`, and
   `configure list|show --output-format legacy`.
+- `cluster create` wizard: when the answers make the cluster invalid (for example size `dev` with
+  `--availability multi`), it explains why and asks the provider and size again, keeping the name.
+- Shell completion completes CLUSTER arguments from the cluster names in `capella.yaml`, and
+  `cbctl completion SHELL` writes to the command's output.
+- `--version` also prints `Capella Management API v4.0`.
+- No progress dots with `TERM=dumb` (as with `CI` set or off a terminal).
+- Every error has a next step, including wrapped Server command errors; config actions name a
+  command instead of a field to type into `capella.yaml`.
 
 ### Deprecated
 

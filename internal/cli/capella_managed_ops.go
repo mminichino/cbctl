@@ -16,6 +16,7 @@ import (
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1393,6 +1394,84 @@ func fileCIDRs(ed *capellafile.Editor) []string {
 	return out
 }
 
+// wizardAnswerFlags are the cluster create flags the wizard fills in; on a retry the ones the
+// user did not type are cleared and asked again.
+var wizardAnswerFlags = []string{"provider", "region", "size", "group", "cidr"}
+
+// wizardClusterCreate runs the cluster create wizard and builds the mutation from its answers.
+// When the answers together make capella.yaml invalid (for example a single-node size with
+// --availability multi), it shows the problems and asks the provider and size again, keeping the
+// name, at most wizardTries times; the last invalid answer is reported by the usual validation.
+func wizardClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *capellafile.Editor) (Mutation, error) {
+	given := map[string]bool{}
+	for _, f := range wizardAnswerFlags {
+		given[f] = cmd.Flags().Changed(f)
+	}
+	w := newClusterWizard(shareStdin(cmd), stderrFrom(cmd))
+	cidr := suggestCIDR(fileCIDRs(ed))
+	spec, err := w.run(cmd, cidr)
+	if err != nil {
+		return Mutation{}, err
+	}
+	for attempt := 1; ; attempt++ {
+		if err := spec.apply(cmd); err != nil {
+			return Mutation{}, err
+		}
+		m, err := managedClusterCreate(cmd, args, e, ed)
+		if err != nil || attempt >= wizardTries {
+			return m, err
+		}
+		var invalid *CLIError
+		if verr := trialEdit(cmd, ed, m); !errors.As(verr, &invalid) || invalid.Code != ExitConfigInvalid {
+			return m, nil
+		}
+		printError(invalid.Message)
+		printAction("Please try again: choose the cloud provider and size again.")
+		if err := clearFlags(cmd, wizardAnswerFlags, given); err != nil {
+			return Mutation{}, err
+		}
+		if spec, err = w.details(cmd, spec, cidr); err != nil {
+			return Mutation{}, err
+		}
+	}
+}
+
+// trialEdit applies m to a fresh copy of the file and validates the result, writing nothing.
+func trialEdit(cmd *cobra.Command, ed *capellafile.Editor, m Mutation) error {
+	trial, err := capellafile.OpenEditor(ed.Path)
+	if err != nil {
+		return nil // the real edit reports it
+	}
+	if err := m.Edit(trial); err != nil {
+		return err
+	}
+	text, err := trial.Text()
+	if err != nil {
+		return nil // the real edit reports it
+	}
+	_, err = validateCandidateEnv(trial, text, envFrom(cmd))
+	return err
+}
+
+// clearFlags resets the named flags the user did not give to their defaults and unset state.
+func clearFlags(cmd *cobra.Command, names []string, given map[string]bool) error {
+	for _, n := range names {
+		f := cmd.Flags().Lookup(n)
+		if f == nil || given[n] {
+			continue
+		}
+		if sv, ok := f.Value.(pflag.SliceValue); ok {
+			if err := sv.Replace(nil); err != nil {
+				return fmt.Errorf("resetting --%s: %w", n, err)
+			}
+		} else if err := f.Value.Set(f.DefValue); err != nil {
+			return fmt.Errorf("resetting --%s: %w", n, err)
+		}
+		f.Changed = false
+	}
+	return nil
+}
+
 func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *capellafile.Editor) (Mutation, error) {
 	ch := cmd.Flags().Changed
 	name, err := resolveClusterName(cmd, args, "name")
@@ -1401,14 +1480,7 @@ func managedClusterCreate(cmd *cobra.Command, args []string, e *envRuntime, ed *
 	}
 	if name == "" && e != nil && !e.Ephemeral {
 		if _, tty := e.terminalIn(); tty {
-			spec, err := newClusterWizard(shareStdin(cmd), stderrFrom(cmd)).run(cmd, suggestCIDR(fileCIDRs(ed)))
-			if err != nil {
-				return Mutation{}, err
-			}
-			if err := spec.apply(cmd); err != nil {
-				return Mutation{}, err
-			}
-			name = spec.Name
+			return wizardClusterCreate(cmd, args, e, ed)
 		}
 	}
 	if name == "" {

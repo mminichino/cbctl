@@ -18,6 +18,9 @@ type FaultOptions struct {
 	// ApplyThenDrop runs the real handler (mutating state) then drops the connection
 	// without delivering the response (ambiguous-write case).
 	ApplyThenDrop bool
+	// ApplyThenFail runs the real handler (mutating state), discards its response and answers
+	// with the injected Status instead (a concurrent writer got there first, e.g. 409 on create).
+	ApplyThenFail bool
 	Delay         time.Duration
 	Before        func()
 }
@@ -42,6 +45,7 @@ func (f *Fake) FailNextOpts(method, pathGlob string, o FaultOptions) {
 		left:          times,
 		dropAfterRead: o.DropAfterRead,
 		applyThenDrop: o.ApplyThenDrop,
+		applyThenFail: o.ApplyThenFail,
 		delay:         o.Delay,
 		before:        o.Before,
 	})

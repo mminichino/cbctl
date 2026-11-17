@@ -267,7 +267,7 @@ func TestAPIVersion(t *testing.T) {
 			if !errors.As(err, &ce) || !strings.Contains(ce.Error(), tt.wantErr) {
 				t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
 			}
-			if ce.Issues[0].Fix != "set apiVersion: cbctl/v1" || ce.Issues[0].Line != 1 {
+			if ce.Issues[0].Fix != "the file must start with apiVersion cbctl/v1 ('cbctl capella init' writes a new file)" || ce.Issues[0].Line != 1 {
 				t.Errorf("issue = %+v", ce.Issues[0])
 			}
 		})
@@ -276,7 +276,7 @@ func TestAPIVersion(t *testing.T) {
 
 func TestAPIVersionMissingHasFix(t *testing.T) {
 	ce := loadErr(t, strings.Replace(minimalYAML, "apiVersion: cbctl/v1\n", "", 1))
-	if len(ce.Issues) != 1 || ce.Issues[0].Message != "missing required field 'apiVersion'" || ce.Issues[0].Fix != "add apiVersion: cbctl/v1" {
+	if len(ce.Issues) != 1 || ce.Issues[0].Message != "missing required field 'apiVersion'" || ce.Issues[0].Fix != "the file must start with apiVersion cbctl/v1 ('cbctl capella init' writes a new file)" {
 		t.Errorf("issues = %+v", ce.Issues)
 	}
 }

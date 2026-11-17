@@ -3,6 +3,7 @@ package cli
 import (
 	"strings"
 
+	"github.com/mminichino/cbctl/internal/guide"
 	"github.com/spf13/cobra"
 )
 
@@ -41,11 +42,25 @@ func newHiddenApplyAlias(kind string) *cobra.Command {
 	return cmd
 }
 
-// newCapellaHelpAlias is capellactl's "help [TOPIC]", forwarded to "guide [TOPIC]".
+// newCapellaHelpAlias is capellactl's "help [TOPIC|COMMAND...]": a guide topic is forwarded to
+// "guide [TOPIC]", and a command path prints the same text as "COMMAND... --help".
 func newCapellaHelpAlias() *cobra.Command {
 	g := newCapellaGuideCmd()
-	g.Use = "help [TOPIC]"
+	g.Use = "help [TOPIC|COMMAND...]"
 	g.Hidden = true
 	g.Short = "Same as 'cbctl capella guide'"
+	g.Args = cobra.ArbitraryArgs
+	g.RunE = func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 && args[0] != "topics" && !guide.Exists(args[0]) && cmd.Parent() != nil {
+			if target, rest, err := cmd.Parent().Find(args); err == nil && target != cmd.Parent() && len(rest) == 0 {
+				target.InitDefaultHelpFlag() // cobra adds -h only on the --help path; list it the same way
+				return target.Help()
+			}
+		}
+		if len(args) > 2 {
+			return usageError("Run 'cbctl capella guide' to see the topics.", "help takes a topic or a command, got %q", strings.Join(args, " "))
+		}
+		return runGuide(cmd, args)
+	}
 	return g
 }

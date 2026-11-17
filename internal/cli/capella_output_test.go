@@ -249,6 +249,7 @@ func TestProgress(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("CI", tc.ci)
+			t.Setenv("TERM", "xterm-256color") // TERM=dumb also suppresses progress
 			old := terminalCheck
 			terminalCheck = func(any) bool { return tc.tty }
 			t.Cleanup(func() { terminalCheck = old })

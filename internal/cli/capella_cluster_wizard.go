@@ -30,7 +30,7 @@ const wizardTries = 3
 var clusterNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 _.-]{0,255}$`)
 
 // errWizardCancelled is input ending before the wizard finished (EOF or Ctrl-D).
-var errWizardCancelled = Errorf(ExitError, "", "Cancelled; nothing was changed.")
+var errWizardCancelled = Errorf(ExitError, "Run the command again when you are ready.", "Cancelled; nothing was changed.")
 
 // clusterWizard asks for the cluster create fields the flags did not give, capellactl style.
 type clusterWizard struct {
@@ -105,7 +105,6 @@ func oneOf(choices []string) func(string) error {
 
 // run asks for every field cmd's flags did not set. cidr is the suggested network.
 func (w *clusterWizard) run(cmd *cobra.Command, cidr string) (ClusterSpec, error) {
-	ch := cmd.Flags().Changed
 	spec := ClusterSpec{}
 	var err error
 	fmt.Fprintln(w.out, "New Capella cluster (press Enter to accept a default; Ctrl-D cancels)")
@@ -118,6 +117,15 @@ func (w *clusterWizard) run(cmd *cobra.Command, cidr string) (ClusterSpec, error
 	if err != nil {
 		return spec, err
 	}
+	return w.details(cmd, spec, cidr)
+}
+
+// details asks for the provider, region, size (or groups) and network the flags did not set.
+// It is asked again, keeping the name, when the answers together make capella.yaml invalid.
+func (w *clusterWizard) details(cmd *cobra.Command, spec ClusterSpec, cidr string) (ClusterSpec, error) {
+	ch := cmd.Flags().Changed
+	var err error
+	spec.Groups = nil
 	free := flagBool(cmd, "free-tier")
 	spec.Provider = flagString(cmd, "provider")
 	if !ch("provider") {

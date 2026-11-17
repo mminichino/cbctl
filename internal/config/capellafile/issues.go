@@ -10,6 +10,17 @@ import (
 // FixProblems is the action printed after a list of configuration problems.
 const FixProblems = "Fix each problem above (an 'action:' line says how), then run the command again."
 
+// FixProblemsFor is FixProblems plus a pointer to the guide topic that explains the first problem
+// whose rule has its own topic (anything but the general "config" page).
+func FixProblemsFor(issues []Issue) string {
+	for _, i := range issues {
+		if i.Topic != "" && i.Topic != "config" {
+			return FixProblems + " See 'cbctl capella guide " + i.Topic + "'."
+		}
+	}
+	return FixProblems
+}
+
 // Issue is one problem found in the configuration file.
 type Issue struct {
 	// Path is the location as FormatPath renders it, for example "projects[0].clusters[1].name".
