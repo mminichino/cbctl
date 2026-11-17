@@ -1,8 +1,9 @@
 package capellafake
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mminichino/cbctl/internal/engine"
@@ -80,15 +81,6 @@ func (f *Fake) findProject(id string) *project {
 	return nil
 }
 
-func (f *Fake) projectByName(name string) *project {
-	for _, p := range f.projects {
-		if str(p.obj, "name") == name {
-			return p
-		}
-	}
-	return nil
-}
-
 func (f *Fake) newProject(name, desc string) *project {
 	p := &project{res: res{ver: 1, obj: Obj{"id": uuid.NewString(), "name": name, "description": desc, "audit": f.audit(1)}}}
 	f.projects = append(f.projects, p)
@@ -121,10 +113,6 @@ func (c *rctx) createProject() {
 		c.err(http.StatusUnprocessableEntity, "name is required")
 		return
 	}
-	if c.f.projectByName(name) != nil {
-		c.err(http.StatusConflict, "a project named "+strconv.Quote(name)+" already exists")
-		return
-	}
 	p := c.f.newProject(name, str(body, "description"))
 	c.writeJSON(http.StatusCreated, Obj{"id": p.obj["id"]})
 }
@@ -148,10 +136,6 @@ func (c *rctx) updateProject() {
 	name := str(body, "name")
 	if name == "" {
 		c.err(http.StatusUnprocessableEntity, "name is required")
-		return
-	}
-	if other := c.f.projectByName(name); other != nil && other != p {
-		c.err(http.StatusConflict, "a project named "+strconv.Quote(name)+" already exists")
 		return
 	}
 	p.obj["name"] = name
@@ -207,19 +191,49 @@ func (p *project) removeCluster(cl *cluster) {
 	}
 }
 
-func (p *project) clusterByName(name string) *cluster {
-	for _, cl := range p.clusters {
-		if str(cl.obj, "name") == name {
-			return cl
+// azureFixedDisks are the size (GB) and IOPS of Azure premium disks. Capella sets them from the
+// type, refuses them in a request, and reports them on GET (observed 2026-10-07).
+var azureFixedDisks = map[string][2]int{
+	"P6": {64, 240}, "P10": {128, 500}, "P15": {256, 1100}, "P20": {512, 2300},
+	"P30": {1024, 5000}, "P40": {2048, 7500}, "P50": {4096, 7500}, "P60": {8192, 16000},
+}
+
+// withFixedDisks adds the storage and iops Capella reports for Azure premium disk types.
+func withFixedDisks(groups []any) []any {
+	for _, g := range groups {
+		gm, _ := g.(map[string]any)
+		disk := sub(sub(gm, "node"), "disk")
+		if disk == nil {
+			continue
+		}
+		if fixed, ok := azureFixedDisks[str(disk, "type")]; ok {
+			disk["storage"], disk["iops"] = fixed[0], fixed[1]
 		}
 	}
-	return nil
+	return groups
 }
 
 // newCluster adds a cluster in "deploying" that becomes healthy after the settle polls.
+// cidrTaken reports whether a cluster of any project in the organization already has the network:
+// Capella refuses a create with "CIDR ... is not unique within this organization". Deleted
+// clusters leave the project and give theirs back.
+func (f *Fake) cidrTaken(cidr string) bool {
+	if cidr == "" {
+		return false
+	}
+	for _, p := range f.projects {
+		for _, cl := range p.clusters {
+			if str(sub(cl.obj, "cloudProvider"), "cidr") == cidr {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (f *Fake) newCluster(p *project, body Obj, free bool) *cluster {
 	id := uuid.NewString()
-	groups := list(body, "serviceGroups")
+	groups := withFixedDisks(list(body, "serviceGroups"))
 	nodes := 0
 	for _, g := range groups {
 		if gm, ok := g.(map[string]any); ok {
@@ -248,10 +262,20 @@ func (f *Fake) newCluster(p *project, body Obj, free bool) *cluster {
 	if v := sub(body, "couchbaseServer"); v != nil && str(v, "version") != "" {
 		obj["couchbaseServer"] = clone(v)
 	}
+	// Create-only options Capella echoes back on GET.
+	for _, k := range []string{"zones", "cmekId", "enablePrivateDNSResolution"} {
+		if v, ok := body[k]; ok {
+			obj[k] = v
+		}
+	}
 	if sub(obj, "cloudProvider")["cidr"] == nil {
 		sub(obj, "cloudProvider")["cidr"] = "10.0.0.0/20"
 	}
 	cl := &cluster{res: res{obj: obj, ver: 1}, projectID: str(p.obj, "id"), free: free, target: "healthy"}
+	if f.failDeploy {
+		cl.target = "deploymentFailed"
+		f.failDeploy = false
+	}
 	p.clusters = append(p.clusters, cl)
 	return cl
 }
@@ -369,9 +393,14 @@ func (c *rctx) createCluster() {
 	case len(list(body, "serviceGroups")) == 0:
 		c.err(http.StatusUnprocessableEntity, "at least one service group is required")
 		return
-	}
-	if p.clusterByName(str(body, "name")) != nil {
-		c.err(http.StatusConflict, "a cluster named "+strconv.Quote(str(body, "name"))+" already exists in this project")
+	case strings.Count(str(sub(body, "couchbaseServer"), "version"), ".") > 1:
+		// Capella takes a release line (8.0) on create, not the patch it reports (8.0.3).
+		c.err(http.StatusUnprocessableEntity, fmt.Sprintf("The Couchbase Server version '%s' is not supported.",
+			str(sub(body, "couchbaseServer"), "version")))
+		return
+	case c.f.cidrTaken(str(sub(body, "cloudProvider"), "cidr")):
+		c.err(http.StatusUnprocessableEntity, fmt.Sprintf("Unable to process request for cluster deployment. The provided CIDR of %s is not unique within this organization.",
+			str(sub(body, "cloudProvider"), "cidr")))
 		return
 	}
 	cl := c.f.newCluster(p, body, false)
@@ -414,7 +443,7 @@ func (c *rctx) busy(cl *cluster) bool {
 }
 
 func (c *rctx) updateCluster() {
-	p, cl := c.cluster()
+	_, cl := c.cluster()
 	if cl == nil {
 		return
 	}
@@ -427,19 +456,16 @@ func (c *rctx) updateCluster() {
 		c.err(http.StatusUnprocessableEntity, "name is required")
 		return
 	}
-	if other := p.clusterByName(name); other != nil && other != cl {
-		c.err(http.StatusConflict, "a cluster named "+strconv.Quote(name)+" already exists in this project")
-		return
-	}
 	cl.obj["name"] = name
 	cl.obj["description"] = str(body, "description")
 	if s := sub(body, "support"); s != nil {
 		cl.obj["support"] = clone(s)
 	}
 	if groups := list(body, "serviceGroups"); len(groups) > 0 && !same(groups, cl.obj["serviceGroups"]) {
-		cl.obj["serviceGroups"] = groups
-		cl.transition("scaling", "healthy")
+		cl.obj["serviceGroups"] = withFixedDisks(groups)
 	}
+	// Capella runs a cluster job ("scaling") for every cluster update, settings-only ones too.
+	cl.transition("scaling", "healthy")
 	cl.touch(c.f)
 	c.noContent()
 }
@@ -584,10 +610,6 @@ func (c *rctx) createFreeCluster() {
 				return
 			}
 		}
-	}
-	if p.clusterByName(str(body, "name")) != nil {
-		c.err(http.StatusConflict, "a cluster named "+strconv.Quote(str(body, "name"))+" already exists in this project")
-		return
 	}
 	provider := clone(sub(body, "cloudProvider"))
 	if provider == nil {

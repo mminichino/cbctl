@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,9 @@ type Scenario struct {
 	Dir     string            // t.TempDir(): cwd for the CLI and home of capella.yaml
 	Keyring *settings.MemKeyring
 	Prompts *ScriptedPrompter
+	// HTTPClient, when set, carries the CLI's Capella API calls (for example to inject a
+	// transport that fails in a way the fake cannot).
+	HTTPClient *http.Client
 
 	tty bool
 }
@@ -78,10 +82,39 @@ func (s *Scenario) Run(args ...string) Result {
 // RunWith invokes the CLI with the given stdin contents.
 func (s *Scenario) RunWith(stdin string, args ...string) Result {
 	s.T.Helper()
+	return s.RunContext(context.Background(), stdin, args...)
+}
+
+// RunContext invokes the CLI with ctx, so a test can cancel it mid-command (Ctrl-C).
+func (s *Scenario) RunContext(ctx context.Context, stdin string, args ...string) Result {
+	s.T.Helper()
+	return s.RunReader(ctx, strings.NewReader(stdin), args...)
+}
+
+// RunReader invokes the CLI with stdin read from r. Pass ForbiddenStdin to prove a command never
+// reads stdin.
+func (s *Scenario) RunReader(ctx context.Context, r io.Reader, args ...string) Result {
+	s.T.Helper()
 	var stdout, stderr bytes.Buffer
-	d := s.deps(&stdout, &stderr, strings.NewReader(stdin))
-	code := cli.Run(context.Background(), args, d)
+	d := s.deps(&stdout, &stderr, r)
+	code := cli.Run(ctx, args, d)
 	return Result{Code: code, Stdout: stdout.String(), Stderr: stderr.String()}
+}
+
+// ForbiddenStdin is a stdin that fails the test when read: a command without a terminal must
+// never wait on input it cannot get.
+func ForbiddenStdin(t testing.TB, what string) io.Reader {
+	return forbiddenReader{t: t, what: what}
+}
+
+type forbiddenReader struct {
+	t    testing.TB
+	what string
+}
+
+func (f forbiddenReader) Read([]byte) (int, error) {
+	f.t.Errorf("%s read stdin with no terminal attached", f.what)
+	return 0, io.EOF
 }
 
 func (s *Scenario) deps(stdout, stderr io.Writer, stdin io.Reader) cli.Deps {
@@ -111,6 +144,7 @@ func (s *Scenario) deps(stdout, stderr io.Writer, stdin io.Reader) cli.Deps {
 		Keyring:        s.Keyring,
 		Clock:          s.Clock,
 		Prompter:       s.Prompts,
+		HTTPClient:     s.HTTPClient,
 		ResetRedaction: true,
 	}
 }

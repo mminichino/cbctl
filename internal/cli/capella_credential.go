@@ -11,6 +11,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/resources"
 	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +30,7 @@ func newCapellaCredentialCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "credential",
 		Short: "Capella database credential operations",
+		Long:  "Capella database credential operations.\n\n" + passwordRulesHelp,
 		Run:   func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
 	}
 	cmd.AddCommand(newCapellaCredentialListCmd())
@@ -54,9 +56,9 @@ type passwordFlags struct {
 	file string
 }
 
-const passwordRulesHelp = "Password rules: at least 8 characters with an upper-case letter, a lower-case letter, a digit and a " +
-	"special character, and none of < > ; . * & | £ =. Without --password-env or --password-file cbctl generates a " +
-	"32-character password and prints it once."
+const passwordRulesHelp = "Password rules (Capella; checked before anything is sent): at least 8 characters with an upper-case " +
+	"letter, a lower-case letter, a digit and one special character, and none of these characters: < > ; . * & | £ =. " +
+	"Without --password-env or --password-file cbctl generates a 32-character password and prints it once."
 
 func (a *accessFlags) add(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&a.privileges, "privileges", "", "Access level: read, write or read+write")
@@ -334,6 +336,9 @@ func newCapellaCredentialGetCmd() *cobra.Command {
 			return fmt.Errorf("reading credential %s: %w", args[1], err)
 		}
 		rt.Out.Object(cred)
+		if p := savedSecretPath(cmd, t.Cluster.Name, args[1]); p != "" && !rt.JSON {
+			rt.Out.Line("generated password saved in %s", p)
+		}
 		return nil
 	}
 	return cmd
@@ -575,9 +580,17 @@ func newCapellaCredentialDeleteCmd() *cobra.Command {
 			return err
 		}
 		name := args[1]
-		found, err := rt.requireCredential(t, name)
+		found, err := rt.findCredential(t, name)
 		if err != nil {
 			return err
+		}
+		if found == nil {
+			// Already gone: deleting again is a no-op, as in capellactl.
+			rt.report(credentialDoc{Name: name, Status: "not found"}, "credential %s/%s not found, nothing to do", t.Cluster.Name, name)
+			return nil
+		}
+		if !rt.JSON {
+			fmt.Fprintf(rt.errOut(), "  - credential %s/%s  %s\n", t.Cluster.Name, name, resources.AccessSummary(objOfJSON(found)["access"]))
 		}
 		question := fmt.Sprintf("Applications using %s will lose access to %s. Delete it?", name, t.Cluster.Name)
 		if ok, err := rt.confirmDelete(question); err != nil || !ok {
@@ -588,6 +601,9 @@ func newCapellaCredentialDeleteCmd() *cobra.Command {
 			return fmt.Errorf("deleting credential %s: %w", name, err)
 		}
 		rt.report(credentialDoc{ID: found.ID, Name: name, Status: "deleted"}, "deleted credential %s", name)
+		if p := savedSecretPath(cmd, t.Cluster.Name, name); p != "" && !rt.JSON {
+			rt.Out.Line("local secret file kept: %s (delete it if no longer needed)", p)
+		}
 		return nil
 	}
 	return cmd

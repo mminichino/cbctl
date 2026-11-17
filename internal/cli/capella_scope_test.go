@@ -155,10 +155,7 @@ func TestScopeDelete(t *testing.T) {
 		}
 	})
 	t.Run("unknown scope", func(t *testing.T) {
-		ce := wantExitErr(t, runResource(t, "scope", "delete", "clu", "orders", "ghost", "-y"), ExitConfigInvalid, "scope ghost not found")
-		if !strings.Contains(ce.Action, "scope list clu orders") {
-			t.Errorf("action = %q", ce.Action)
-		}
+		wantContains(t, mustRun(t, "scope", "delete", "clu", "orders", "ghost", "-y").Stdout, "scope clu/orders/ghost not found, nothing to do")
 	})
 	t.Run("deletion protection blocks", func(t *testing.T) {
 		if err := fx.Client.SetDeletionProtection(context.Background(), fx.ProjectID, fx.ClusterID, true); err != nil {

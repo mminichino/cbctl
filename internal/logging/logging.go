@@ -138,5 +138,6 @@ func Debug(msg string, args ...interface{}) {
 
 // Println writes a plain line to stdout (machine-readable output). Never suppressed.
 func Println(msg string, args ...interface{}) {
-	fmt.Fprintf(stdout, redact.String(msg)+"\n", args...)
+	// Redact the formatted text, not the format: a secret usually arrives as an argument.
+	fmt.Fprintln(stdout, redact.String(fmt.Sprintf(msg, args...)))
 }

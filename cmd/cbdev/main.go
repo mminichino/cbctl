@@ -42,8 +42,8 @@ func usage(w io.Writer) {
 	fmt.Fprint(w, `usage: cbdev <group> <command> [flags]
 
 groups:
-  docs   port | extract-data | index | coverage | ac-coverage | reference | links | doc-map
+  docs   port | port-list | extract-data | index | coverage | ac-coverage | reference | links | doc-map
   api    responses
-  ci     release-gate | scan-secrets | cover-gate | dedupe
+  ci     release-gate | scan-secrets | cover-gate | dedupe | notices
 `)
 }

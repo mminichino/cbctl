@@ -38,7 +38,7 @@ func (c *Client) WaitForNodeAPI(endpoint Endpoint, attempts int) error {
 		}
 		last = err
 		if i < attempts-1 {
-			time.Sleep(pollInterval)
+			c.sleep(pollInterval)
 		}
 	}
 	return fmt.Errorf("node API not ready on %s: %w", endpoint.Host, last)
@@ -67,7 +67,7 @@ func (c *Client) WaitForCluster(endpoint Endpoint, username, password string, at
 		} else {
 			last = err
 		}
-		time.Sleep(pollInterval)
+		c.sleep(pollInterval)
 	}
 	return fmt.Errorf("cluster not ready: %w", last)
 }
@@ -78,7 +78,7 @@ func (c *Client) WaitForRebalanceComplete(endpoint Endpoint, username, password 
 		if !c.isRebalanceInProgress(endpoint, username, password) {
 			return nil
 		}
-		time.Sleep(pollInterval)
+		c.sleep(pollInterval)
 	}
 	return fmt.Errorf("rebalance did not complete in time")
 }
@@ -121,13 +121,13 @@ func (c *Client) WaitForClusterServices(endpoint Endpoint, username, password st
 		var payload map[string]any
 		if _, err := c.GetJSON(endpoint, Ptr(username), Ptr(password), "/pools/default", &payload); err != nil {
 			last = err
-			time.Sleep(pollInterval)
+			c.sleep(pollInterval)
 			continue
 		}
 		nodes, _ := payload["nodes"].([]any)
 		if len(nodes) == 0 {
 			last = fmt.Errorf("no nodes")
-			time.Sleep(pollInterval)
+			c.sleep(pollInterval)
 			continue
 		}
 		node0, _ := nodes[0].(map[string]any)
@@ -142,7 +142,7 @@ func (c *Client) WaitForClusterServices(endpoint Endpoint, username, password st
 			return nil
 		}
 		last = fmt.Errorf("required services not ready: %v", services)
-		time.Sleep(pollInterval)
+		c.sleep(pollInterval)
 	}
 	return fmt.Errorf("cluster services not ready: %w", last)
 }
@@ -157,7 +157,7 @@ func (c *Client) WaitForQueryReady(endpoint Endpoint, username, password string,
 		} else {
 			last = err
 		}
-		time.Sleep(pollInterval)
+		c.sleep(pollInterval)
 	}
 	return fmt.Errorf("query service not ready: %w", last)
 }

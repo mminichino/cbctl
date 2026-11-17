@@ -197,7 +197,7 @@ func LoadLegacyProfiles(dir string) (map[string]Profile, []string, error) {
 			case "configFile":
 				p.ConfigFile = v
 			case "organizationName":
-				// informational in capellactl; cbctl does not keep it
+				p.OrganizationName = v
 			default:
 				warnings = append(warnings, fmt.Sprintf("capellactl profile %s: unknown key %q ignored", name, k))
 			}

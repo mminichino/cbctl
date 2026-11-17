@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
@@ -19,7 +20,23 @@ func (r *runtime) resolveProject(name string) (*capellaapi.Project, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing projects: %w", err)
 	}
-	return pickProject(projects, name)
+	p, err := pickProject(projects, name)
+	if err != nil && !slices.ContainsFunc(projects, func(p capellaapi.Project) bool { return p.Name == name || p.ID == name }) {
+		// As in capellactl, a cluster name given for a project points at the cluster's project.
+		for _, q := range projects {
+			clusters, lerr := r.Client.ListClusters(r.Ctx, q.ID)
+			if lerr != nil {
+				break
+			}
+			for _, c := range clusters {
+				if c.Name == name {
+					return nil, Errorf(ExitConfigInvalid, "Did you mean: --project "+q.Name,
+						"%s is a cluster in project %s, not a project", name, q.Name)
+				}
+			}
+		}
+	}
+	return p, err
 }
 
 func pickProject(projects []capellaapi.Project, name string) (*capellaapi.Project, error) {

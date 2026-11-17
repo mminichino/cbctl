@@ -1,14 +1,19 @@
 package rest
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mminichino/cbctl/internal/engine"
 )
 
 // Endpoint is a Couchbase management/query REST target.
@@ -45,18 +50,31 @@ func (e Endpoint) scheme() string {
 	return "http"
 }
 
+// JoinHostPort brackets IPv6 literals so the result is a valid URL authority.
 func (e Endpoint) adminURL(path string) string {
-	return fmt.Sprintf("%s://%s:%d%s", e.scheme(), e.Host, e.AdminPort, path)
+	return fmt.Sprintf("%s://%s%s", e.scheme(), net.JoinHostPort(e.Host, strconv.Itoa(e.AdminPort)), path)
 }
 
 func (e Endpoint) queryURL(path string) string {
-	return fmt.Sprintf("%s://%s:%d%s", e.scheme(), e.Host, e.QueryPort, path)
+	return fmt.Sprintf("%s://%s%s", e.scheme(), net.JoinHostPort(e.Host, strconv.Itoa(e.QueryPort)), path)
 }
 
 // Client performs form/JSON REST calls against a cluster endpoint.
 type Client struct {
 	HTTP    *http.Client
 	Timeout time.Duration
+	// Clock paces the wait and retry loops; nil uses engine.RealClock (tests inject a fake).
+	Clock engine.Clock
+}
+
+// sleep pauses between polls on the client's clock.
+func (c *Client) sleep(d time.Duration) {
+	clk := c.Clock
+	if clk == nil {
+		clk = engine.RealClock{}
+	}
+	// The Server REST API has no context yet; Background never cancels, so the error is always nil.
+	_ = clk.Sleep(context.Background(), d)
 }
 
 // NewClient returns a REST client that skips TLS verification (Server default).

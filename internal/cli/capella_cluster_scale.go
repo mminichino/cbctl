@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -16,11 +17,11 @@ import (
 // scaleResult is the outcome for one service group of cluster scale.
 type scaleResult struct {
 	Cluster   string `json:"cluster"`
-	ClusterID string `json:"clusterId,omitempty"`
+	ClusterID string `json:"-"` // not in the output: scale.schema.json (capellactl's shape) has no id
 	Group     string `json:"group"`
 	From      int    `json:"from"`
 	To        int    `json:"to"`
-	Status    string `json:"status"` // scaled | at_limit | unchanged | accepted
+	Status    string `json:"status"` // scaled | at_limit | unchanged | accepted | blocked | cancelled
 
 	limit int
 	step  int
@@ -141,6 +142,10 @@ func runClusterScale(rt *runtime, name string, o scaleOptions) error {
 		return &req, nil
 	})
 	if err != nil {
+		var ce *CLIError
+		if o.step != 0 && errors.As(err, &ce) && ce.Code == ExitBlocked && len(results) > 0 {
+			rt.printScale(markScale(results, "blocked"))
+		}
 		return err
 	}
 	if wrote {
@@ -156,6 +161,17 @@ func runClusterScale(rt *runtime, name string, o scaleOptions) error {
 	}
 	rt.printScale(results)
 	return nil
+}
+
+// markScale gives every result that was about to move the status (blocked or cancelled) and
+// resets its target, as capellactl reports a step that did not happen.
+func markScale(results []scaleResult, status string) []scaleResult {
+	for i := range results {
+		if results[i].Status == "scaled" {
+			results[i].Status, results[i].To = status, results[i].From
+		}
+	}
+	return results
 }
 
 func (rt *runtime) printScale(results []scaleResult) {
@@ -179,6 +195,8 @@ func (rt *runtime) printScale(results []scaleResult) {
 				word = "minimum"
 			}
 			rt.Out.Line("%s: already at %s (%d)", r.Group, word, r.limit)
+		case "blocked", "cancelled":
+			// The error or the cancel message already says what happened.
 		default:
 			rt.Out.Line("%s: already at %d nodes", r.Group, r.From)
 		}

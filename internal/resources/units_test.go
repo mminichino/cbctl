@@ -115,8 +115,22 @@ func TestScheduleExpansion(t *testing.T) {
 	if got := WeekSummary(body); got != "US/Eastern · Mon–Thu 08:00–18:00 · Fri 08:00–14:30 · Sat–Sun off" {
 		t.Fatalf("summary %q", got)
 	}
-	if e := ExpandDay("monday", "00:00-24:00"); intOf(objOf(e["to"])["hour"]) != 0 {
+	if e := ExpandDay("monday", "08:00-24:00"); intOf(objOf(e["to"])["hour"]) != 0 {
 		t.Fatalf("24:00 is sent as 0:00: %+v", e)
+	}
+	for _, w := range []string{"00:00-24:00", "0:00-24:00", " 00:00-24:00 "} {
+		if e := ExpandDay("monday", w); len(e) != 2 || e["state"] != "on" {
+			t.Fatalf("whole day %q should be sent as on: %+v", w, e)
+		}
+	}
+	whole := Obj{"day": "monday", "state": "custom", "from": Obj{"hour": 0, "minute": 0}, "to": Obj{"hour": 0, "minute": 0}}
+	if got := DayText(whole); got != "on" {
+		t.Fatalf("a custom 00:00-24:00 day reads as %q, want on (no diff against the on it is sent as)", got)
+	}
+	for _, w := range []string{"00:00-23:30", "00:30-24:00", "on", "garbage"} {
+		if WholeDay(w) {
+			t.Fatalf("WholeDay(%q) = true", w)
+		}
 	}
 	if got := DayText(ExpandDay("monday", "08:00-24:00")); got != "08:00–24:00" {
 		t.Fatalf("end of day %q", got)

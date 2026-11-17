@@ -11,6 +11,7 @@ var docsCommands = map[string]groupFunc{
 	"index":        cmdDocsIndex,
 	"coverage":     cmdDocsCoverage,
 	"ac-coverage":  cmdDocsACCoverage,
+	"port-list":    cmdDocsPortList,
 	"reference":    cmdDocsReference,
 	"links":        cmdDocsLinks,
 	"doc-map":      cmdDocsDocMap,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/spf13/cobra"
@@ -46,13 +47,49 @@ func newCapellaProjectListCmd() *cobra.Command {
 			return nil
 		}
 		rows := make([][]string, 0, len(projects))
+		recorded, haveFile := projectsInFile(cmd)
 		for _, p := range projects {
-			rows = append(rows, []string{p.Name, p.ID, p.Description})
+			row := []string{p.Name, p.ID, p.Description}
+			if haveFile {
+				mark := "-"
+				if recorded(p) {
+					mark = "yes"
+				}
+				row = append(row, mark)
+			}
+			rows = append(rows, row)
 		}
-		rt.Out.Table([]string{"NAME", "ID", "DESCRIPTION"}, rows)
+		header := []string{"NAME", "ID", "DESCRIPTION"}
+		if haveFile {
+			header = append(header, "IN FILE")
+		}
+		rt.Out.Table(header, rows)
 		return nil
 	}
 	return cmd
+}
+
+// projectsInFile reports, when a capella.yaml is found, which Capella projects it records (by
+// pinned id, or by name for an entry without one). A file that cannot be read or is not a cbctl
+// file counts as no file: the list itself does not depend on it.
+func projectsInFile(cmd *cobra.Command) (recorded func(capellaapi.Project) bool, ok bool) {
+	disc, err := discoverConfig(cmd)
+	if err != nil || !disc.Exists {
+		return nil, false
+	}
+	_, old, isCbctl, err := readOldFile(disc.Path)
+	if err != nil || !isCbctl {
+		return nil, false
+	}
+	ids, names := map[string]bool{}, map[string]bool{}
+	for _, e := range (&capellafile.Config{Raw: old}).Projects() {
+		if id := objStr(e.Data, "id"); id != "" {
+			ids[id] = true
+		} else {
+			names[e.Name()] = true
+		}
+	}
+	return func(p capellaapi.Project) bool { return ids[p.ID] || names[p.Name] }, true
 }
 
 func newCapellaProjectGetCmd() *cobra.Command {
@@ -93,6 +130,17 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 			return err
 		}
 		name := args[0]
+		// Capella allows two projects with the same name, so a 409 cannot be relied on: look
+		// first, and never create a second project the name would then not identify.
+		projects, err := rt.Client.ListProjects(rt.Ctx)
+		if err != nil {
+			return fmt.Errorf("listing projects: %w", err)
+		}
+		for _, p := range projects {
+			if p.Name == name {
+				return projectExistsError(name)
+			}
+		}
 		id, err := rt.Client.CreateProject(rt.Ctx, name, description)
 		if err != nil {
 			if isAmbiguous(err) {
@@ -102,7 +150,7 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 				}
 			}
 			if errors.Is(err, capellaapi.ErrConflict) {
-				return Errorf(ExitError, "check the name with 'cbctl capella project list'", "project %s already exists", name)
+				return projectExistsError(name)
 			}
 			if err != nil {
 				return fmt.Errorf("creating project %s: %w", name, err)
@@ -110,9 +158,34 @@ func newCapellaProjectCreateCmd() *cobra.Command {
 		}
 		rt.report(capellaapi.Project{ID: id, Name: name, Description: description},
 			"created project %s (%s)", name, id)
-		return nil
+		return startFileWith(cmd, af, id)
 	}
 	return cmd
+}
+
+// projectExistsError refuses to create a second project with a name that is taken (exit 4, as
+// capellactl): Capella would accept it, and the name would then identify neither.
+func projectExistsError(name string) error {
+	return Errorf(ExitBlocked, fmt.Sprintf("run 'cbctl capella sync --project %s' to add it to capella.yaml, or choose another name", name),
+		"project %s already exists", name)
+}
+
+// startFileWith writes capella.yaml for a project just created on a terminal when the folder has
+// none yet, so a new organization's first project is recorded as in capellactl and the guide
+// (later commands then edit the file). Scripts (no terminal), --direct and -o json leave the
+// folder alone.
+func startFileWith(cmd *cobra.Command, af *apiFlags, projectID string) error {
+	if managedFlagsOf(cmd).direct || !canPrompt(cmd) {
+		return nil
+	}
+	if g, err := readGlobals(cmd); err != nil || g.Output == "json" {
+		return nil //nolint:nilerr // JSON output stays one document; globals already parsed by the command
+	}
+	disc, err := discoverConfig(cmd)
+	if err != nil || disc.Exists {
+		return nil //nolint:nilerr // no folder to write into, or a file already there
+	}
+	return runSync(cmd, af, &syncFlags{projectIDs: []string{projectID}})
 }
 
 // findProject returns the project with this exact name, or nil when it is not listed or the
@@ -202,7 +275,17 @@ func newCapellaProjectDeleteCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		p, err := rt.resolveProject(args[0])
+		projects, err := rt.Client.ListProjects(rt.Ctx)
+		if err != nil {
+			return fmt.Errorf("listing projects: %w", err)
+		}
+		if !hasProjectNamed(projects, args[0]) {
+			// Deleting what is already gone is not an error, so a rerun (or a script) can repeat it.
+			rt.report(projectDeleteDoc{Project: args[0], Status: "absent", DeletedClusters: []string{}},
+				"project %s not found; nothing to do", args[0])
+			return nil
+		}
+		p, err := pickProject(projects, args[0])
 		if err != nil {
 			return err
 		}
@@ -219,12 +302,18 @@ func newCapellaProjectDeleteCmd() *cobra.Command {
 				}
 			}
 		}
-		question := fmt.Sprintf("Delete project %s?", p.Name)
+		// Deleting a project cannot be undone, so the name is typed as for cluster delete.
 		if cascade {
-			question = fmt.Sprintf("Delete project %s and its %d cluster(s) with all their data?", p.Name, len(clusters))
+			rt.note("This deletes project %s and its %d cluster(s) with all their data.", p.Name, len(clusters))
 		}
-		if ok, err := rt.confirmDelete(question); err != nil || !ok {
+		ok, err := confirmTyped(rt, "Type the project name to confirm deletion", p.Name)
+		if err != nil {
 			return err
+		}
+		if !ok {
+			rt.markCancelled()
+			rt.report(statusDoc{Status: "cancelled"}, "cancelled; nothing was deleted")
+			return nil
 		}
 
 		doc := projectDeleteDoc{Project: p.Name, ID: p.ID, Status: "deleted", DeletedClusters: []string{}}
@@ -252,6 +341,17 @@ func newCapellaProjectDeleteCmd() *cobra.Command {
 		return nil
 	}
 	return cmd
+}
+
+// hasProjectNamed reports whether name is the name (or, when it looks like one, the ID) of a
+// listed project.
+func hasProjectNamed(projects []capellaapi.Project, name string) bool {
+	for _, p := range projects {
+		if p.Name == name || (uuidPattern.MatchString(name) && p.ID == name) {
+			return true
+		}
+	}
+	return false
 }
 
 // deleteClusterForProject deletes one cluster of a project being deleted and, unless --no-wait,

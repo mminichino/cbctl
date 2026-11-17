@@ -22,19 +22,47 @@ func hm(text string) Obj {
 	h, m, _ := strings.Cut(text, ":")
 	hour, _ := strconv.Atoi(h)
 	minute, _ := strconv.Atoi(m)
-	return Obj{"hour": int64(hour % 24), "minute": int64(minute)} // 24:00 (end of day) is sent as 0:00
+	return Obj{"hour": int64(hour), "minute": int64(minute)} // 24:00 never gets here (ExpandDay)
 }
 
 // DayValue is the friendly value of one day of a hibernation mapping: the per-day key, else
 // weekdays or weekend, else "on".
 func DayValue(hib Obj, day string) string { return capellafile.DayValue(hib, day) }
 
-// ExpandDay is one day in the API form: on, off or custom with from and to.
+// WholeDay reports whether an HH:MM-HH:MM window covers the whole day (00:00-24:00).
+func WholeDay(window string) bool {
+	start, end, ok := strings.Cut(strings.TrimSpace(window), "-")
+	if !ok {
+		return false
+	}
+	return minutesOf(start) == 0 && minutesOf(end) == 24*60
+}
+
+func minutesOf(text string) int {
+	h, m, ok := strings.Cut(strings.TrimSpace(text), ":")
+	hour, errH := strconv.Atoi(h)
+	minute, errM := strconv.Atoi(m)
+	if !ok || errH != nil || errM != nil {
+		return -1
+	}
+	return hour*60 + minute
+}
+
+// ExpandDay is one day in the API form: on, off or custom with from and to. Capella reads to
+// literally (0:00 is midnight at the start of the day, hour 24 is refused), so a window to the end
+// of the day (HH:MM-24:00) is sent with no to, which Capella keeps as "until midnight". A
+// whole-day window is sent as on. (Live probe, nightly run 44141806450.)
 func ExpandDay(day, value string) Obj {
 	if value == "on" || value == "off" {
 		return Obj{"day": day, "state": value}
 	}
+	if WholeDay(value) {
+		return Obj{"day": day, "state": "on"}
+	}
 	start, end, _ := strings.Cut(value, "-")
+	if minutesOf(end) == 24*60 {
+		return Obj{"day": day, "state": "custom", "from": hm(start)}
+	}
 	return Obj{"day": day, "state": "custom", "from": hm(start), "to": hm(end)}
 }
 
@@ -61,7 +89,11 @@ func DayText(entry Obj) string {
 	if s := entry["state"]; s == "on" || s == "off" {
 		return fmt.Sprint(s)
 	}
-	return fmtHM(objOf(entry["from"]), false) + "–" + fmtHM(objOf(entry["to"]), true)
+	text := fmtHM(objOf(entry["from"]), false) + "–" + fmtHM(objOf(entry["to"]), true)
+	if text == "00:00–24:00" {
+		return "on"
+	}
+	return text
 }
 
 // ByDay maps each day of an API body to its text.

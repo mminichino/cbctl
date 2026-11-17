@@ -18,6 +18,9 @@ type FaultOptions struct {
 	// ApplyThenDrop runs the real handler (mutating state) then drops the connection
 	// without delivering the response (ambiguous-write case).
 	ApplyThenDrop bool
+	// ApplyThenFail runs the real handler (mutating state), discards its response and answers
+	// with the injected Status instead (a concurrent writer got there first, e.g. 409 on create).
+	ApplyThenFail bool
 	Delay         time.Duration
 	Before        func()
 }
@@ -42,7 +45,35 @@ func (f *Fake) FailNextOpts(method, pathGlob string, o FaultOptions) {
 		left:          times,
 		dropAfterRead: o.DropAfterRead,
 		applyThenDrop: o.ApplyThenDrop,
+		applyThenFail: o.ApplyThenFail,
 		delay:         o.Delay,
 		before:        o.Before,
 	})
+}
+
+// hook runs fn before the fake serves a matching request normally.
+type hook struct {
+	method string
+	glob   string
+	n      int
+	fn     func(n int)
+}
+
+// OnRequest calls fn (with the 1-based count of matching requests so far) before each request
+// matching method and pathGlob is served normally. Tests use it to cancel a context mid-command
+// (Ctrl-C) or to change state between polls. fn runs with the fake locked: it must not call
+// the fake's methods.
+func (f *Fake) OnRequest(method, pathGlob string, fn func(n int)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.hooks = append(f.hooks, &hook{method: strings.ToUpper(method), glob: pathGlob, fn: fn})
+}
+
+func (f *Fake) runHooks(method, path string) {
+	for _, h := range f.hooks {
+		if (h.method == "" || h.method == "*" || h.method == method) && matchPathGlob(h.glob, path) {
+			h.n++
+			h.fn(h.n)
+		}
+	}
 }

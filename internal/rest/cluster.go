@@ -2,7 +2,8 @@ package rest
 
 import (
 	"fmt"
-	"strings"
+	"net"
+	"strconv"
 
 	"github.com/mminichino/cbctl/internal/config"
 	"github.com/mminichino/cbctl/internal/models"
@@ -49,11 +50,11 @@ func (c *Client) CreateCluster(cfg *config.Config, options map[string]string) (b
 	nodeHosts := []string{ClusterInitHostname(firstInternalHost)}
 	for _, node := range nodes[1:] {
 		internalHost, _ := ParseHostPort(node.IP, 8091)
-		nodeEP := ForServer(internalHost, useSSL)
+		nodeEP := ForServer(node.IP, useSSL)
 		if err := c.RaiseQuotasForNewServices(endpoint, nodeEP, cfg.Username, cfg.Password, node.Services, node.RAMGiB); err != nil {
 			return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
 		}
-		if err := c.AddNode(endpoint, cfg.Username, cfg.Password, internalHost, node.Services); err != nil {
+		if err := c.AddNode(endpoint, cfg.Username, cfg.Password, addNodeHostname(node.IP), node.Services); err != nil {
 			return false, fmt.Errorf("failed to create Couchbase Server cluster: %w", err)
 		}
 		nodeHosts = append(nodeHosts, ClusterInitHostname(internalHost))
@@ -114,15 +115,24 @@ func (c *Client) ApplyAlternateAddresses(nodes []models.ClusterNodeConfig, usern
 			continue
 		}
 		altHost, _ := ParseHostPort(node.AlternateAddress, 8091)
-		// Setup is performed against the node's own management endpoint (internal).
-		ep := ForServer(strings.TrimSpace(ParseHostOnly(node.IP)), useSSL)
+		// Same endpoint as the rest of create: with --ext-api the controller may only reach
+		// the node through its alternate address.
+		ep := NodeEndpoint(node, useSSL, useExtAPI)
 		if err := c.SetupAlternateAddress(ep, username, password, altHost, node.AlternatePorts); err != nil {
-			// Prefer management via ext API endpoint when configured.
-			_ = useExtAPI
 			return err
 		}
 	}
 	return nil
+}
+
+// addNodeHostname is the hostname sent to /controller/addNode: the bare host on the default
+// management port, host:port (bracketed for IPv6) when the node spec names another port.
+func addNodeHostname(raw string) string {
+	host, port := ParseHostPort(raw, 8091)
+	if port == 8091 {
+		return host
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
 // ParseHostOnly returns host without port.

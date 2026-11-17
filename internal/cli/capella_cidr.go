@@ -177,7 +177,7 @@ Examples:
 		id, err := rt.Client.CreateAllowedCIDR(rt.Ctx, pid, cid, cidr, comment, expiresAt)
 		switch {
 		case err == nil:
-		case errors.Is(err, capellaapi.ErrConflict):
+		case capellaapi.IsDuplicateCIDR(err):
 			rt.report(cidrDoc{CIDR: cidr, Status: "already allowed"}, "%s already allowed on %s", cidr, t.Cluster.Name)
 			return nil
 		case isAmbiguous(err):

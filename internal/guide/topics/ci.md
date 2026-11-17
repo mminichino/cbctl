@@ -10,7 +10,8 @@ cbctl never waits for input without a terminal, so a pipeline cannot hang on a p
   always visible in the pipeline file and its logs, and a variable left set in a shell can never delete data.
 - Without a terminal and without the flag, every command that changes Capella or capella.yaml stops with
   exit code 4 and changes nothing: `[error] - confirmation required but no terminal is attached`,
-  then `→ re-run with --yes`.
+  then `→ re-run with --yes`. When `CI` is set the action reads `→ add --yes to this pipeline step`.
+  No environment variable approves a change; only the flag does.
 - A question that has a default uses it. A question that needs an answer stops with exit code 3.
 
 ## Credentials

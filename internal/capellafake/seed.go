@@ -68,6 +68,17 @@ func (f *Fake) SeedBucket(clusterID, name string, fields ...Field) string {
 	extra := Obj{}
 	applyFields(extra, fields)
 	b := cl.addBucket(name, extra)
+	// addBucket ignores stats (a create body cannot set them); a seed may, to model stored data.
+	if stats, ok := extra["stats"].(map[string]any); ok {
+		merged := Obj{}
+		for k, v := range b.obj["stats"].(Obj) {
+			merged[k] = v
+		}
+		for k, v := range stats {
+			merged[k] = v
+		}
+		b.obj["stats"] = merged
+	}
 	return str(b.obj, "id")
 }
 
@@ -88,11 +99,7 @@ func (f *Fake) SeedScope(clusterID, bucket, scopeName string, collections map[st
 	}
 	s := &scope{name: scopeName}
 	for name, ttl := range collections {
-		obj := Obj{"name": name}
-		if ttl != 0 {
-			obj["maxTTL"] = ttl
-		}
-		s.colls = append(s.colls, &res{ver: 1, obj: obj})
+		s.colls = append(s.colls, &res{ver: 1, obj: Obj{"name": name, "maxTTL": ttl}}) // Capella always returns maxTTL
 	}
 	b.scopes = append(b.scopes, s)
 }
@@ -160,8 +167,10 @@ func (f *Fake) SeedSnapshot(clusterID string, createdAt string, retentionHours i
 	return str(s.obj, "id")
 }
 
-// SeedBucketBackup creates an on-demand bucket backup record and returns its ID.
-func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string) string {
+// SeedBucketBackup creates an on-demand bucket backup record and returns its ID. Fields override
+// the record, for example WithField("cycleID", "cy-1"), WithField("date", ...) or
+// WithField("status", "pending").
+func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string, fields ...Field) string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	_, cl := f.findClusterAnywhere(clusterID)
@@ -173,6 +182,7 @@ func (f *Fake) SeedBucketBackup(clusterID, bucket, method, source string) string
 		f.t.Fatalf("capellafake: SeedBucketBackup: unknown bucket %q", bucket)
 	}
 	obj := f.newBackupObj(cl, b, "", method, source, "ready")
+	applyFields(obj, fields)
 	cl.backups = append(cl.backups, &backup{obj: obj})
 	return str(obj, "id")
 }
@@ -289,9 +299,75 @@ func (f *Fake) FailDestroy(clusterID string) {
 	cl.failDestroy = true
 }
 
+// FailDeployNext makes the next cluster created through the API settle on deploymentFailed
+// instead of healthy (capellactl's fail_deploy_next).
+func (f *Fake) FailDeployNext() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.failDeploy = true
+}
+
 // Advance moves the Fake's clock forward by d (convenience for Clock().Advance(d)).
 func (f *Fake) Advance(d time.Duration) {
 	if f.clock != nil {
 		f.clock.Advance(d)
 	}
+}
+
+// RenameProject changes a project's name as the Capella UI would, keeping its ID. It reports
+// whether the project exists.
+func (f *Fake) RenameProject(projectID, name string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p := f.findProject(projectID)
+	if p == nil {
+		return false
+	}
+	p.obj["name"] = name
+	p.ver++
+	return true
+}
+
+// RemoveProject deletes a project and its clusters out of band (as another user would), with no
+// request recorded. It reports whether the project existed.
+func (f *Fake) RemoveProject(projectID string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i, p := range f.projects {
+		if str(p.obj, "id") == projectID {
+			f.projects = append(f.projects[:i], f.projects[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// FailNextBucketBackup makes the next on-demand bucket backup end in status "failed".
+func (f *Fake) FailNextBucketBackup() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.failNextBackup = true
+}
+
+// AllowDuplicateCIDRs makes POST allowedcidrs accept a CIDR the cluster already has. Live Capella
+// refuses it (422); tests use this to prove a replace deletes first even when it need not.
+func (f *Fake) AllowDuplicateCIDRs(on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.cidrDuplicates = on
+}
+
+// SeedCIDR adds an active allowed CIDR to a cluster and returns its ID. comment may be empty.
+func (f *Fake) SeedCIDR(clusterID, cidr, comment string, fields ...Field) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, cl := f.findClusterAnywhere(clusterID)
+	if cl == nil {
+		f.t.Fatalf("capellafake: SeedCIDR: unknown cluster %q", clusterID)
+	}
+	obj := Obj{"id": uuid.NewString(), "cidr": cidr, "comment": comment, "expiresAt": "", "status": "active",
+		"type": "permanent", "audit": f.audit(1)}
+	applyFields(obj, fields)
+	cl.cidrs = append(cl.cidrs, &res{ver: 1, obj: obj})
+	return str(obj, "id")
 }

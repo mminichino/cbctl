@@ -87,6 +87,15 @@ func TestCoverHelpers_clusterText(t *testing.T) {
 	if !versionMatches("", "7.6.2") || !versionMatches("7.6", "7.6.2") || versionMatches("7.6", "7.5.0") {
 		t.Fatal("versionMatches")
 	}
+	if !versionMatches("7.6.2", "7.6.3") || !versionMatches("8.0.3", "8.0") || versionMatches("7.6.2", "7.5.2") ||
+		versionMatches("7.6", "7.60.1") {
+		t.Fatal("versionMatches compares release lines")
+	}
+	for in, want := range map[string]string{"8.0.3": "8.0", "8.0": "8.0", "8": "8", "": "", "7.6.2-build": "7.6"} {
+		if got := ReleaseLine(in); got != want {
+			t.Fatalf("ReleaseLine(%q) = %q, want %q", in, got, want)
+		}
+	}
 	d := Obj{
 		"serviceGroups": []any{
 			Obj{"services": []any{"data"}, "numOfNodes": int64(3), "node": Obj{"compute": Obj{"cpu": int64(4), "ram": int64(16)}}},

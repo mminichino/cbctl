@@ -1,8 +1,8 @@
 # cbctl — Couchbase Server / Capella CLI
 
 .PHONY: build test test-unit test-race test-integration test-integration-fake test-capella-live
-.PHONY: janitor vet fmt-check tidy-check tidy cover-engine docs docs-check index index-check
-.PHONY: coverage coverage-check ac-coverage links-check lint check release-snapshot
+.PHONY: janitor vet fmt-check tidy-check tidy cover-engine cover-profile cover-server cover-gate test-server-it docs docs-check index index-check
+.PHONY: coverage coverage-check ac-coverage port-table port-footer port-gaps links-check lint check release-snapshot
 
 build:
 	go build -o bin/cbctl ./cmd/cbctl
@@ -59,8 +59,28 @@ tidy-check:
 	go mod tidy
 	git diff --exit-code go.mod go.sum
 
-cover-engine:
-	go run ./cmd/cbdev ci cover-gate --min 85 ./internal/plan ./internal/resources ./internal/config/capellafile
+cover-engine: cover-gate
+
+# P-TST-18 tiered coverage gate. One -coverpkg=./internal/... profile from the unit suite plus
+# one from the Server Docker flow (the only test that drives internal/server against a real
+# cluster); tiers are internal/ci/covergate/tiers.json. Needs Docker.
+COVER_DIR ?= .cover
+
+cover-profile:
+	@mkdir -p $(COVER_DIR)
+	go test -count=1 -coverpkg=./internal/... -coverprofile=$(COVER_DIR)/unit.out ./internal/...
+
+cover-server:
+	@mkdir -p $(COVER_DIR)
+	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run TestServerCLIFlow -timeout 20m \
+		-coverpkg=./internal/... -coverprofile=$(COVER_DIR)/server.out ./internal/integration/
+
+cover-gate: cover-profile cover-server
+	go run ./cmd/cbdev ci cover-gate --tiers default --profile $(COVER_DIR)/unit.out --profile $(COVER_DIR)/server.out
+
+# Server Docker integration on its own (no coverage).
+test-server-it:
+	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run TestServerCLIFlow -timeout 20m -v ./internal/integration/
 
 docs:
 	go run ./cmd/cbdev docs index
@@ -89,6 +109,21 @@ coverage-check:
 ac-coverage:
 	go run ./cmd/cbdev docs ac-coverage --docs docs/backlog/release-1.5.0
 
+# capellactl test parity: every capellactl test is covered or documented n/a (the merge-to-main bar).
+PORT_MIN ?= 100
+PORT_ARGS = --port-table internal/cli/testdata/port-map.tsv \
+	--source-list internal/cli/testdata/capellactl-tests.txt \
+	--footer internal/cli/testdata/scenario-port.md
+
+port-table:
+	go run ./cmd/cbdev docs ac-coverage $(PORT_ARGS) --min-covered $(PORT_MIN)
+
+port-footer:
+	go run ./cmd/cbdev docs ac-coverage $(PORT_ARGS) --write-footer
+
+port-gaps:
+	go run ./cmd/cbdev docs ac-coverage $(PORT_ARGS) --gaps
+
 links-check:
 	go run ./cmd/cbdev docs links --check
 
@@ -102,7 +137,7 @@ lint:
 	fi
 	golangci-lint run ./...
 
-check: vet fmt-check lint test-unit test-integration-fake cover-engine docs-check ac-coverage tidy-check
+check: vet fmt-check lint test-unit test-integration-fake cover-gate docs-check ac-coverage port-table tidy-check
 
 release-snapshot:
 	goreleaser release --snapshot --clean

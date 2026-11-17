@@ -5,10 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -31,9 +36,24 @@ type Mutation struct {
 	Options func(*plan.RunContext)
 	// AfterPlan are lines shown under the plan, before the question.
 	AfterPlan []string
+	// AfterApply runs once the plan has been applied without error (not with --no-apply), for
+	// follow-up edits of the saved file.
+	AfterApply func(p *plan.Plan)
 }
 
 const defaultNoop = "No changes: capella.yaml and Capella already match."
+
+// editedText encodes the edited file. A file that changes is written in the projects: form, so the
+// single-project form is converted on its first write (CAP-040 AC2); an unchanged file is left
+// as it is.
+func editedText(ed *capellafile.Editor) (string, error) {
+	text, err := ed.Text()
+	if err != nil || text == ed.Original {
+		return text, err
+	}
+	ed.EnsureProjects()
+	return ed.Text()
+}
 
 // ChangeAndApply edits the file, validates the candidate, plans the change, asks, saves the file
 // and applies the plan. It returns the plan, or nil when nothing ran.
@@ -41,7 +61,7 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 	if err := m.Edit(ed); err != nil {
 		return nil, err
 	}
-	text, err := ed.Text()
+	text, err := editedText(ed)
 	if err != nil {
 		return nil, fmt.Errorf("encoding %s: %w", filepath.Base(ed.Path), err)
 	}
@@ -94,6 +114,7 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 		return nil, err
 	}
 	if !ok {
+		e.markCancelled()
 		if e.Ephemeral {
 			e.Out.Line("Cancelled; nothing was changed.")
 		} else {
@@ -132,7 +153,13 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 		return fmt.Sprintf("Capella did not accept the change, so %s was restored: nothing was recorded or changed. "+
 			"Correct the values and run the command again.", name)
 	}
-	return p, applyPlan(e, p, applyOptions{Shown: true, OnFailure: restore})
+	if err := applyPlan(e, p, applyOptions{Shown: true, OnFailure: restore}); err != nil {
+		return p, err
+	}
+	if m.AfterApply != nil && !e.Ephemeral {
+		m.AfterApply(p)
+	}
+	return p, nil
 }
 
 // validateCandidateEnv loads text as the editor's file would be, without writing it. An invalid
@@ -177,7 +204,9 @@ func validateCandidateEnv(ed *capellafile.Editor, text string, env func(string) 
 		return fmt.Sprintf("%d problems", n)
 	}
 	var msg string
+	shown := kept
 	if len(fresh) > 0 {
+		shown = fresh
 		msg = capellafile.RenderIssues("This change is not valid, so nothing was changed:", fresh)
 		if len(kept) > 0 {
 			msg += "\n" + capellafile.RenderIssues("Already in "+name+" before this command:", kept)
@@ -185,7 +214,7 @@ func validateCandidateEnv(ed *capellafile.Editor, text string, env func(string) 
 	} else {
 		msg = capellafile.RenderIssues(fmt.Sprintf("%s already had %s before this command, so nothing was changed:", name, problems(len(kept))), kept)
 	}
-	return nil, &CLIError{Code: ExitConfigInvalid, Message: msg, Action: capellafile.FixProblems}
+	return nil, &CLIError{Code: ExitConfigInvalid, Message: msg, Action: capellafile.FixProblemsFor(shown)}
 }
 
 // ---- switching a Phase 2 command to file-managed mode ----------------------------------------
@@ -277,6 +306,18 @@ func notInFile(kind, name, file string) error {
 	return Errorf(ExitConfigInvalid, "run 'cbctl capella sync' to add it", "%s %s is not in %s", kind, name, file)
 }
 
+// projectNotInFile is notInFile for a project. When the name is a cluster of the file, the error
+// says so and suggests the command with its project (didYouMean gets the project name).
+func projectNotInFile(ed *capellafile.Editor, name string, didYouMean func(project string) string) error {
+	if proj, node, err := ed.FindCluster(name, ""); err == nil && node != nil && proj != nil {
+		if pn := ed.Child(proj, "name"); pn != nil && pn.Value != "" {
+			return usageError("Did you mean: "+didYouMean(pn.Value), "%s is a cluster in project %s, not a project", name, pn.Value)
+		}
+	}
+	return Errorf(ExitConfigInvalid, fmt.Sprintf("run 'cbctl capella sync --project %s' to add it", name),
+		"project %s is not in %s", name, filepath.Base(ed.Path))
+}
+
 // findClusterNode locates a cluster in the file.
 func findClusterNode(ed *capellafile.Editor, name, project string) (*yaml.Node, error) {
 	_, node, err := ed.FindCluster(name, project)
@@ -299,6 +340,11 @@ func managedProjectCreate(description *string) func(*cobra.Command, []string) er
 	return func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		mf := managedFlagsOf(cmd)
+		cleanup, err := startNamedConfig(cmd)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
 		e, ed, err := newManagedEnv(cmd)
 		if err != nil {
 			return err
@@ -326,6 +372,31 @@ func managedProjectCreate(description *string) func(*cobra.Command, []string) er
 	}
 }
 
+// emptyConfig is the file 'project create' starts from when --config names a missing file.
+const emptyConfig = "apiVersion: cbctl/v1\nprojects: []\n"
+
+// startNamedConfig lets 'project create' record a first project in a file that --config (or
+// CBCTL_CONFIG) names but that does not exist yet, as capellactl does. The returned cleanup
+// removes the file again when the command recorded nothing in it (refused, cancelled, failed).
+func startNamedConfig(cmd *cobra.Command) (func(), error) {
+	disc, err := discoverConfig(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if disc.Exists || !disc.Explicit() {
+		return func() {}, nil
+	}
+	if err := os.WriteFile(disc.Path, []byte(emptyConfig), 0o644); err != nil {
+		return nil, fmt.Errorf("creating %s: %w", displayPathWith(disc.Path, cmd), err)
+	}
+	return func() {
+		if b, rerr := os.ReadFile(disc.Path); rerr == nil && string(b) == emptyConfig {
+			// Best effort: a leftover empty file is harmless and validates.
+			_ = os.Remove(disc.Path)
+		}
+	}, nil
+}
+
 func managedProjectUpdate(description *string) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		name := args[0]
@@ -342,7 +413,9 @@ func managedProjectUpdate(description *string) func(*cobra.Command, []string) er
 			Edit: func(ed *capellafile.Editor) error {
 				node, ok := ed.FindProject(name)
 				if !ok {
-					return notInFile("project", name, filepath.Base(ed.Path))
+					return projectNotInFile(ed, name, func(p string) string {
+						return fmt.Sprintf("cbctl capella project update %s --description %q", p, *description)
+					})
 				}
 				ed.Set(node, []string{"description"}, *description)
 				return nil
@@ -373,7 +446,12 @@ func managedProjectDelete(direct func(*cobra.Command, []string) error) func(*cob
 		}
 		file := filepath.Base(ed.Path)
 		if _, ok := ed.FindProject(name); !ok {
-			return notInFile("project", name, file)
+			if mf.noApply {
+				return notInFile("project", name, file)
+			}
+			// capella.yaml has nothing to remove: act on Capella only (a project already gone is a
+			// no-op there, so a rerun after the delete succeeds).
+			return direct(cmd, args)
 		}
 		if mf.noApply {
 			rt := &runtime{cmd: cmd}
@@ -402,7 +480,7 @@ func managedProjectDelete(direct func(*cobra.Command, []string) error) func(*cob
 func removeProjectFromFile(cmd *cobra.Command, ed *capellafile.Editor, name string, announce bool) error {
 	file := filepath.Base(ed.Path)
 	ed.RemoveProject(name)
-	text, err := ed.Text()
+	text, err := editedText(ed)
 	if err != nil {
 		return err
 	}
@@ -438,6 +516,11 @@ func managedClusterProtect(onFlag *bool, project *string) func(*cobra.Command, [
 		}
 		word := "on"
 		question := fmt.Sprintf("Turn deletion protection on for %s in %s and Capella?", name, filepath.Base(ed.Path))
+		if on {
+			// Turning protection on only makes things safer: like the direct command (and
+			// capellactl) it needs no confirmation.
+			e.Yes = true
+		}
 		if !on {
 			word = "off"
 			question = fmt.Sprintf("Turn off deletion protection for %s? The cluster and its buckets can then be deleted.", name)
@@ -489,7 +572,9 @@ func managedClusterScale(o *scaleOptions) func(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		var noop []string
+		if o.step != 0 {
+			return managedClusterStep(e, ed, name, o)
+		}
 		_, err = ChangeAndApply(e.Ctx, e, ed, Mutation{
 			Target:   "cluster/" + name,
 			Question: fmt.Sprintf("Record the new node count in %s and apply it to %s?", filepath.Base(ed.Path), name),
@@ -502,12 +587,6 @@ func managedClusterScale(o *scaleOptions) func(*cobra.Command, []string) error {
 				if err != nil {
 					return fmt.Errorf("reading the service groups of %s: %w", name, err)
 				}
-				if o.step != 0 {
-					// The step starts from what Capella runs now, when the cluster exists there.
-					if _, listed, lerr := e.resolveCluster(name, o.project); lerr == nil && len(listed.ServiceGroups) == len(groups) {
-						groups = listed.ServiceGroups
-					}
-				}
 				chosen, err := selectGroups(groups, o.group, o.allGroups)
 				if err != nil {
 					return err
@@ -515,14 +594,7 @@ func managedClusterScale(o *scaleOptions) func(*cobra.Command, []string) error {
 				for _, i := range chosen {
 					g := groups[i]
 					lo, hi := groupLimits(i, single, o.min, o.max)
-					target := o.nodes
-					if o.step != 0 {
-						target = g.NumOfNodes + o.step
-						if target > hi || target < lo {
-							noop = append(noop, fmt.Sprintf("%s %s is at its limit of %d nodes", name, groupKey(g), g.NumOfNodes))
-							continue
-						}
-					} else if target < lo || target > hi {
+					if target := o.nodes; target < lo || target > hi {
 						return usageError(fmt.Sprintf("choose %d-%d nodes for group %s", lo, hi, groupKey(g)),
 							"--nodes %d is outside the limits of group %s (%d-%d)", target, groupKey(g), lo, hi)
 					}
@@ -530,20 +602,123 @@ func managedClusterScale(o *scaleOptions) func(*cobra.Command, []string) error {
 					if err != nil {
 						return err
 					}
-					ed.Set(gn, []string{"numOfNodes"}, int64(target))
+					ed.Set(gn, []string{"numOfNodes"}, int64(o.nodes))
 				}
 				return nil
 			},
 			NoopMessage: fmt.Sprintf("%s is already at the requested node count; nothing to do", name),
 			Options:     func(rc *plan.RunContext) { rc.SkipCapacityCheck = o.skipCapacity },
 		}, managedFlagsOf(cmd).noApply)
-		if err == nil && len(noop) > 0 {
-			for _, n := range noop {
-				e.note("%s", n)
-			}
-		}
 		return err
 	}
+}
+
+// managedClusterStep is 'cluster scale --step' with capella.yaml: one node more or less per group,
+// counted from what Capella runs once any running change is done. Groups at their limit are a
+// successful no-op that touches nothing; the others are recorded in the file and applied. The
+// outcome is reported per group, as one scale result (or a list with --all-groups) under -o json.
+func managedClusterStep(e *envRuntime, ed *capellafile.Editor, name string, o *scaleOptions) error {
+	p, listed, err := e.resolveCluster(name, o.project)
+	if err != nil {
+		return err
+	}
+	if isFreeCluster(listed) {
+		return blockedError("create a provisioned cluster for that ('cbctl capella cluster create')", "%s", freeTierBlocked)
+	}
+	if engine.Transitional[listed.CurrentState] {
+		if e.NoWait {
+			return blockedError("wait until it is healthy (see 'cbctl capella cluster get "+listed.Name+"'), then run the command again",
+				"cluster %s is %s", listed.Name, listed.CurrentState)
+		}
+		logging.Info("cluster %s is %s; waiting for it before scaling", listed.Name, listed.CurrentState)
+		if _, err := e.waitCluster(p.ID, listed.ID, listed.Name, engine.OpReady, false); err != nil {
+			return err
+		}
+		if listed, err = e.readCluster(p.ID, listed.ID, false); err != nil {
+			return err
+		}
+	}
+	chosen, err := selectGroups(listed.ServiceGroups, o.group, o.allGroups)
+	if err != nil {
+		return err
+	}
+	single := listed.ConfigurationType == "singleNode"
+	results := make([]scaleResult, 0, len(chosen))
+	moving := false
+	for _, i := range chosen {
+		g := listed.ServiceGroups[i]
+		lo, hi := groupLimits(i, single, o.min, o.max)
+		r := scaleResult{Cluster: listed.Name, ClusterID: listed.ID, Group: groupKey(g), From: g.NumOfNodes, To: g.NumOfNodes, step: o.step, Status: "scaled"}
+		if to := g.NumOfNodes + o.step; to > hi || to < lo {
+			r.Status, r.limit = "at_limit", hi
+			if o.step < 0 {
+				r.limit = lo
+			}
+		} else {
+			r.To, moving = to, true
+		}
+		results = append(results, r)
+	}
+	if !moving {
+		e.printScale(results)
+		return nil
+	}
+
+	var moves []string
+	for _, r := range results {
+		if r.Status == "scaled" {
+			moves = append(moves, fmt.Sprintf("%s %d → %d", r.Group, r.From, r.To))
+		}
+	}
+	out := e.Out
+	if e.JSON {
+		// The scale result is the document; the plan and apply documents are not printed.
+		e.Out = newRenderer(io.Discard, stderrFrom(e.cmd), true, e.Quiet)
+	}
+	noApply := managedFlagsOf(e.cmd).noApply
+	applied, err := ChangeAndApply(e.Ctx, e, ed, Mutation{
+		Target:   "cluster/" + name,
+		Question: fmt.Sprintf("Apply %s to %s and record it in %s?", strings.Join(moves, ", "), name, filepath.Base(ed.Path)),
+		Edit: func(ed *capellafile.Editor) error {
+			node, err := findClusterNode(ed, name, o.project)
+			if err != nil {
+				return err
+			}
+			for _, r := range results {
+				if r.Status != "scaled" {
+					continue
+				}
+				gn, err := ed.Group(node, r.Group)
+				if err != nil {
+					return usageError("run 'cbctl capella sync' first, then run the command again", "%v", err)
+				}
+				ed.Set(gn, []string{"numOfNodes"}, int64(r.To))
+			}
+			return nil
+		},
+		NoopMessage: fmt.Sprintf("%s is already at the requested node count; nothing to do", name),
+		Options:     func(rc *plan.RunContext) { rc.SkipCapacityCheck = o.skipCapacity },
+	}, noApply)
+	e.Out = out
+	var ce *CLIError
+	switch {
+	case err != nil && errors.As(err, &ce) && ce.Code == ExitBlocked:
+		e.printScale(markScale(results, "blocked"))
+		return err
+	case err != nil:
+		return err
+	case applied == nil && e.cmd.Annotations[cancelledAnnotation] != "":
+		e.printScale(markScale(results, "cancelled"))
+		return nil
+	case e.NoWait && !noApply:
+		for i := range results {
+			if results[i].Status == "scaled" {
+				results[i].Status = "accepted"
+			}
+		}
+	}
+	e.printScale(results)
+	return nil
 }
 
 // scaleFlagsCheck validates the combination of --nodes and --step.

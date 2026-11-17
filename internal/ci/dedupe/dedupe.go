@@ -26,7 +26,13 @@ type RunRef struct {
 	Status     string // queued | in_progress | completed | ...
 	Conclusion string // success | failure | cancelled | ...
 	CreatedAt  time.Time
+	// Probe is a dispatch that ran a live API probe instead of the suite (its title starts with
+	// ProbeTitlePrefix). Its success proves nothing about the commit.
+	Probe bool
 }
+
+// ProbeTitlePrefix starts the run name nightly.yml gives a probe dispatch.
+const ProbeTitlePrefix = "probe: "
 
 // Lister lists the runs of one workflow, newest first or in any order.
 type Lister interface {
@@ -44,7 +50,9 @@ var ErrNoSelf = errors.New("the current run is not in the workflow's run list")
 //     UTC day (GitHub occasionally fires a cron twice).
 //
 // A re-run attempt of self (same ID) is never a duplicate, and a scheduled run is never skipped
-// for a success on an earlier day: the release gate needs one scheduled run per night.
+// for a success on an earlier day: the nightly health report counts one scheduled run per night. A probe
+// is skipped only while another run is active (one sandbox user at a time), and a probe's
+// success never makes another run a duplicate.
 func Decide(self RunRef, others []RunRef, window time.Duration) (skip bool, reason string) {
 	for _, o := range others {
 		if o.ID == self.ID || o.HeadSHA != self.HeadSHA {
@@ -55,7 +63,7 @@ func Decide(self RunRef, others []RunRef, window time.Duration) (skip bool, reas
 		if active && (o.CreatedAt.Before(self.CreatedAt) || o.CreatedAt.Equal(self.CreatedAt) && o.ID < self.ID) {
 			return true, fmt.Sprintf("run %d on %s is already %s", o.ID, short(o.HeadSHA), o.Status)
 		}
-		if o.Status != "completed" || o.Conclusion != "success" || !o.CreatedAt.Before(self.CreatedAt) {
+		if self.Probe || o.Probe || o.Status != "completed" || o.Conclusion != "success" || !o.CreatedAt.Before(self.CreatedAt) {
 			continue
 		}
 		switch self.Event {
@@ -130,6 +138,7 @@ func ParseRuns(raw []byte) ([]RunRef, error) {
 			Status     string    `json:"status"`
 			Conclusion string    `json:"conclusion"`
 			CreatedAt  time.Time `json:"created_at"`
+			Title      string    `json:"display_title"`
 		} `json:"workflow_runs"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
@@ -137,7 +146,8 @@ func ParseRuns(raw []byte) ([]RunRef, error) {
 	}
 	out := make([]RunRef, 0, len(payload.WorkflowRuns))
 	for _, r := range payload.WorkflowRuns {
-		out = append(out, RunRef(r))
+		out = append(out, RunRef{ID: r.ID, Attempt: r.Attempt, HeadSHA: r.HeadSHA, Event: r.Event, Status: r.Status,
+			Conclusion: r.Conclusion, CreatedAt: r.CreatedAt, Probe: strings.HasPrefix(r.Title, ProbeTitlePrefix)})
 	}
 	return out, nil
 }

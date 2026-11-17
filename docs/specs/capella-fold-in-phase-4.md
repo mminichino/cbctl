@@ -342,6 +342,8 @@ func Scan(texts map[string]string, secrets map[string]string) []Hit   // Hit{Fil
 `cbdev ci scan-secrets FILE… [--env NAME]… [--secrets-dir DIR]… [--value-file FILE]…`: exit 0 clean, 1 found (prints `file:line: contains <source>`), 2 nothing to check (missing env var, no secrets, missing file) — **a missing variable must not turn the check into a silent pass**. Values shorter than `MinLength` are skipped with a stderr note. Exact behaviours per `scripts/scan-log-secrets.py`.
 
 ### 5.6 Release gate (`internal/ci/releasegate`)
+> **Superseded (2026-11-17):** the nightly is a health signal, not a gate. `release.yml` runs this command with `--report-only` in an informational `nightly-health` job and goreleaser does not need it; nothing blocks a merge, push or tag on the nightly.
+
 ```go
 type Run struct{ Status, Conclusion, Event, HeadSHA, HTMLURL string; CreatedAt, RunStartedAt time.Time }
 func Evaluate(runs []Run, commit string, nights int) (ok bool, lines []string)
@@ -414,11 +416,13 @@ Triggers: `schedule` cron `"0 7 * * *"` (integration, 07:00 UTC) and `"0 9 * * 0
 - `janitor`: `if: github.event.schedule == '0 9 * * 0' || inputs.job == 'janitor'`, `timeout-minutes: 120`: `go run ./cmd/cbctl capella janitor --older-than-hours 24 --fail-on-leftovers --yes`.
 
 ### 7.4 `.github/workflows/release.yml`
+> **Superseded (2026-11-17):** the job is `nightly-health`, report-only and `continue-on-error`; goreleaser has no `needs` on it. The nightly is a health signal, not a release gate.
+
 Add a first job `gate` (only on `refs/tags/v*`; the workflow already triggers only on `v*`): `go run ./cmd/cbdev ci release-gate --commit "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"` with `GH_TOKEN: ${{ github.token }}` and `permissions: {contents: read, actions: read}`; the existing `goreleaser` job gets `needs: gate`. Add `workflow_dispatch` (dry run) running the gate with `--report-only`. The floating `latest` handling elsewhere in the file is **not** gated. Document in `docs/capella/release.md`: tag the commit the last green nightly ran on.
 
 ### 7.5 Acceptance
 1. `make check` green locally with no network and no credentials.
-2. A workflow-lint unit test (`internal/docs/workflows_test.go`) parses the three workflow YAML files and asserts: `release.yml` goreleaser job `needs: gate`; `nightly.yml` has both crons and `concurrency.cancel-in-progress == false`; `ci.yml` runs `make test-integration-fake` and `make docs-check`; no workflow references `secrets.CAPELLA_SANDBOX_*` except `nightly.yml`.
+2. A workflow-lint unit test (`internal/docs/workflows_test.go`) parses the three workflow YAML files and asserts: `release.yml` goreleaser job does not need the nightly report (originally `needs: gate`; superseded); `nightly.yml` has both crons and `concurrency.cancel-in-progress == false`; `ci.yml` runs `make test-integration-fake` and `make docs-check`; no workflow references `secrets.CAPELLA_SANDBOX_*` except `nightly.yml`.
 3. `goreleaser release --snapshot --clean --skip=publish` locally yields only the `cbctl` archives.
 
 ---------------------------------------------------------------------------------------------------

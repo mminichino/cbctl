@@ -84,8 +84,9 @@ func TestProjectCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateProject(ctx, "alpha", ""); !errors.Is(err, capellaapi.ErrConflict) {
-		t.Fatalf("duplicate: err = %v, want ErrConflict", err)
+	// Capella allows two projects with the same name (parity with capellactl's fake).
+	if dup, err := c.CreateProject(ctx, "alpha", ""); err != nil || dup == id {
+		t.Fatalf("duplicate project name: id %q (first %q), err %v; want a second project", dup, id, err)
 	}
 	p, etag, err := c.GetProject(ctx, id)
 	if err != nil || p.Name != "alpha" || p.Description != "first" || etag != "1" {
@@ -159,8 +160,15 @@ func TestClusterLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateCluster(ctx, p, clusterReq("c1")); !errors.Is(err, capellaapi.ErrConflict) {
-		t.Fatalf("duplicate cluster: err = %v, want ErrConflict", err)
+	// Capella allows two clusters with the same name in a project (in a separate project here so
+	// the lifecycle below sees one cluster).
+	p2, _ := c.CreateProject(ctx, "dups", "")
+	reqA, reqB := clusterReq("same"), clusterReq("same")
+	reqA.CloudProvider.CIDR, reqB.CloudProvider.CIDR = "10.2.0.0/24", "10.3.0.0/24" // unique in the org
+	a, errA := c.CreateCluster(ctx, p2, reqA)
+	b, errB := c.CreateCluster(ctx, p2, reqB)
+	if errA != nil || errB != nil || a == b {
+		t.Fatalf("duplicate cluster name: ids %q %q, errs %v %v; want two clusters", a, b, errA, errB)
 	}
 
 	var states []string
@@ -354,8 +362,9 @@ func TestCIDRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.CreateAllowedCIDR(ctx, p, cl, "203.0.113.0/24", "", ""); !errors.Is(err, capellaapi.ErrConflict) {
-		t.Fatalf("duplicate: err = %v, want ErrConflict", err)
+	if _, err := c.CreateAllowedCIDR(ctx, p, cl, "203.0.113.0/24", "", ""); !capellaapi.IsDuplicateCIDR(err) ||
+		!errors.Is(err, capellaapi.ErrValidation) || !strings.Contains(err.Error(), "The CIDR provided already exists for the cluster") {
+		t.Fatalf("duplicate: err = %v, want Capella's 422", err)
 	}
 	if _, err := c.CreateAllowedCIDR(ctx, p, cl, "198.51.100.1/32", "", "2030-01-01T00:00:00Z"); err != nil {
 		t.Fatal(err)
@@ -537,7 +546,7 @@ func TestOnOffSchedule(t *testing.T) {
 	if _, _, err := c.GetSchedule(ctx, p, cl); !errors.Is(err, capellaapi.ErrNotFound) {
 		t.Fatalf("no schedule: err = %v, want ErrNotFound", err)
 	}
-	sched := capellaapi.Object{"timezone": "UTC", "days": []any{capellaapi.Object{"day": "monday", "state": "on"}}}
+	sched := capellaapi.Object{"timezone": "UTC", "days": []any{capellaapi.Object{"day": "monday", "state": "off"}}}
 	if err := c.CreateSchedule(ctx, p, cl, sched); err != nil {
 		t.Fatal(err)
 	}
@@ -629,7 +638,7 @@ func TestSnapshots(t *testing.T) {
 	if err != nil || rid == "" {
 		t.Fatalf("RestoreSnapshot = %q, %v", rid, err)
 	}
-	if restores, err := c.ListSnapshotRestores(ctx, p, cl); err != nil || len(restores) != 1 || restores[0]["snapshot"] != id {
+	if restores, err := c.ListSnapshotRestores(ctx, p, cl); err != nil || len(restores) != 1 || restores[0]["snapshot"] == "" || restores[0]["snapshot"] == id {
 		t.Fatalf("restores = %v, %v", restores, err)
 	}
 	if err := c.DeleteSnapshot(ctx, p, cl, id); err != nil {
@@ -793,5 +802,69 @@ func TestRequestLogRecordsIfMatch(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("PUT not logged with If-Match/status/body: %+v", f.RequestLog())
+	}
+}
+
+// TestScheduleBoundariesLikeCapella mirrors the live probe (nightly run 44141806450): to is
+// literal, hour 24 and minutes other than 0/30 are refused, "from 08:00, no to" runs until
+// midnight, "from 0:00, no to" and a week on every day get 500. A patch version is refused on
+// create.
+func TestScheduleBoundariesLikeCapella(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	_, c, p, cl := fixture(t)
+	hm := func(h, m int) capellaapi.Object { return capellaapi.Object{"hour": h, "minute": m} }
+	week := func(from, to capellaapi.Object) capellaapi.Object {
+		monday := capellaapi.Object{"day": "monday", "state": "custom", "from": from}
+		if to != nil {
+			monday["to"] = to
+		}
+		days := []any{monday}
+		for _, d := range []string{"tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"} {
+			days = append(days, capellaapi.Object{"day": d, "state": "on"})
+		}
+		return capellaapi.Object{"timezone": "UTC", "days": days}
+	}
+	allOn := capellaapi.Object{"timezone": "UTC", "days": []any{capellaapi.Object{"day": "monday", "state": "on"}}}
+	for _, tc := range []struct {
+		name string
+		body capellaapi.Object
+		want string // "" = accepted, else a part of the error
+	}{
+		{"whole day 0:00 to 0:00", week(hm(0, 0), hm(0, 0)), "Monday has a 'from' time boundary"},
+		{"08:00 to 0:00 (to is literal)", week(hm(8, 0), hm(0, 0)), "Monday has a 'from' time boundary"},
+		{"from after to", week(hm(18, 0), hm(8, 0)), "Monday has a 'from' time boundary"},
+		{"from equals to", week(hm(8, 0), hm(8, 0)), "Monday has a 'from' time boundary"},
+		{"hour 24", week(hm(8, 0), hm(24, 0)), "invalid hour value of '24'"},
+		{"minute 59", week(hm(8, 0), hm(23, 59)), "invalid minute value of '59'"},
+		{"from 0:00, no to", week(hm(0, 0), nil), "500"},
+		{"on every day", allOn, "500"},
+		{"from 08:00, no to (until midnight)", week(hm(8, 0), nil), ""},
+		{"08:00 to 23:30", week(hm(8, 0), hm(23, 30)), ""},
+		{"working hours", week(hm(8, 0), hm(18, 30)), ""},
+	} {
+		err := c.CreateSchedule(ctx, p, cl, tc.body)
+		if tc.want == "" {
+			if err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if err := c.DeleteSchedule(ctx, p, cl); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("%s: err = %v, want %q like Capella's", tc.name, err, tc.want)
+		}
+	}
+
+	req := clusterReq("patch")
+	req.CouchbaseServer = &capellaapi.CouchbaseServer{Version: "8.0.3"}
+	if _, err := c.CreateCluster(ctx, p, req); !errors.Is(err, capellaapi.ErrValidation) || !strings.Contains(err.Error(), "'8.0.3' is not supported") {
+		t.Fatalf("patch version: err = %v, want a 422", err)
+	}
+	req.CouchbaseServer.Version = "8.0"
+	if _, err := c.CreateCluster(ctx, p, req); err != nil {
+		t.Fatalf("release line: %v", err)
 	}
 }

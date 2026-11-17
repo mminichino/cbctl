@@ -127,9 +127,10 @@ func WriteRotatedCredential(dir, cluster, name, credID, password string) (path, 
 }
 
 // RestoreRotatedCredential undoes WriteRotatedCredential after the rotation PUT failed, so the
-// file again holds the password Capella still has. With a backup it copies backup over path;
-// without one (the file did not exist before) it removes the never-used new file. The error
-// names what could not be done; the caller reports it next to the PUT error.
+// file again holds the password Capella still has. With a backup it copies backup over path
+// and removes the backup; without one (the file did not exist before) it removes the
+// never-used new file. The error names what could not be done; the caller reports it next to
+// the PUT error.
 func RestoreRotatedCredential(path, backup string) error {
 	if path == "" {
 		return nil
@@ -146,6 +147,11 @@ func RestoreRotatedCredential(path, backup string) error {
 	}
 	if err := os.WriteFile(path, raw, 0o600); err != nil {
 		return fmt.Errorf("restoring %s: %w", path, err)
+	}
+	// The file holds the old password again, so the backup of it is not needed (capellactl
+	// leaves no .bak after a failed rotation).
+	if err := os.Remove(backup); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing %s: %w", backup, err)
 	}
 	return nil
 }

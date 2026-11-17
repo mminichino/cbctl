@@ -13,6 +13,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
 
@@ -57,10 +58,16 @@ type baseRenderer struct {
 }
 
 func (b baseRenderer) Progress(dot string) {
-	if b.quiet || DefaultDeps().Env("CI") != "" || !terminalCheck(b.err) {
+	if b.quiet || !progressAllowed(DefaultDeps().Env) || !terminalCheck(b.err) {
 		return
 	}
 	fmt.Fprint(b.err, dot)
+}
+
+// progressAllowed reports whether the environment lets progress be drawn in place: not under CI,
+// and not on a terminal that declares itself dumb (TERM=dumb, e.g. an editor's output pane).
+func progressAllowed(env func(string) string) bool {
+	return env("CI") == "" && env("TERM") != "dumb"
 }
 
 type textRenderer struct{ baseRenderer }
@@ -331,6 +338,26 @@ func walk(dec *json.Decoder, path, name string, out *[]pair) error {
 // ttyCheck reports whether r is an interactive terminal. Tests replace it.
 var ttyCheck = terminalCheck
 
+// prompterFor returns the Prompter injected through Deps, or nil to read the terminal directly.
+// It is consulted only after the terminal check, so "no terminal, no --yes" stays ExitBlocked.
+func prompterFor(rt *runtime) Prompter {
+	if rt == nil || rt.cmd == nil {
+		return nil
+	}
+	return depsFromCmd(rt.cmd).Prompter
+}
+
+// noApprovalError is the one refusal for a confirmation with no terminal and no --yes, so
+// scripts and CI logs see the same text from every command. Under CI the action names the
+// pipeline step.
+func noApprovalError(cmd *cobra.Command) *CLIError {
+	action := "re-run with --yes"
+	if cmd != nil && depsFromCmd(cmd).Env("CI") != "" {
+		action = "add --yes to this pipeline step"
+	}
+	return Errorf(ExitBlocked, action, "confirmation required but no terminal is attached")
+}
+
 // confirm asks question on stderr and reads the answer from stdin. --yes answers true without
 // asking. With no terminal attached and no --yes it fails with ExitBlocked rather than guessing.
 func confirm(rt *runtime, question string) (bool, error) {
@@ -339,7 +366,10 @@ func confirm(rt *runtime, question string) (bool, error) {
 	}
 	in, errOut := stdinFrom(rt.cmd), stderrFrom(rt.cmd)
 	if !ttyCheck(in) {
-		return false, Errorf(ExitBlocked, "re-run with --yes", "confirmation required but no terminal is attached")
+		return false, noApprovalError(rt.cmd)
+	}
+	if p := prompterFor(rt); p != nil {
+		return p.Confirm(question, false)
 	}
 	fmt.Fprintf(errOut, "%s [y/N]: ", question)
 	line, err := bufio.NewReader(in).ReadString('\n')

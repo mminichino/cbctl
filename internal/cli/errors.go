@@ -74,8 +74,11 @@ func failure(prefix string, err error) error {
 	if prefix != "" {
 		msg = prefix + ": " + msg
 	}
-	return &CLIError{Code: wrappedExitCode(err), Message: msg, Err: err}
+	return &CLIError{Code: wrappedExitCode(err), Message: msg, Action: wrappedErrorAction, Err: err}
 }
+
+// wrappedErrorAction is the next step for a wrapped Server or legacy command error.
+const wrappedErrorAction = "Fix the problem named above, then run the command again."
 
 // wrappedExitCode is the code HandleError would return for an untyped-at-the-top error, so wrapping
 // it in failure keeps timeouts at 5 and config errors at 3.
@@ -130,6 +133,14 @@ func HandleError(err error) ExitCode {
 		return ExitBlocked
 	}
 	if errors.Is(err, context.Canceled) {
+		// A command that reported its own interruption (what completed, how to resume) keeps its
+		// message; anything else that noticed the cancellation just ends the line.
+		var cliErr *CLIError
+		if errors.As(err, &cliErr) && cliErr.Code == ExitInterrupted && cliErr.Message != "" {
+			printError(cliErr.Message)
+			printAction(cliErr.Action)
+			return ExitInterrupted
+		}
 		fmt.Fprintln(errorOut())
 		return ExitInterrupted
 	}
@@ -149,7 +160,7 @@ func HandleError(err error) ExitCode {
 	var cfgErr *capellafile.ConfigError
 	if errors.As(err, &cfgErr) {
 		printError(capellafile.RenderIssues(cfgErr.Heading(), cfgErr.Issues))
-		printAction(capellafile.FixProblems)
+		printAction(capellafile.FixProblemsFor(cfgErr.Issues))
 		return ExitConfigInvalid
 	}
 
@@ -207,8 +218,15 @@ func HandleError(err error) ExitCode {
 	}
 
 	printError(err.Error())
+	printAction(unexpectedErrorAction)
 	return ExitError
 }
+
+// unexpectedErrorAction is the next step for an error no typed case explains, and for a panic.
+const unexpectedErrorAction = "Run the command again with --log-level debug to see more, and report the problem if it keeps happening."
+
+// settingsAction is the next step when a setting (flag, environment variable or profile) is invalid.
+const settingsAction = "Fix the setting named above (its flag, environment variable or 'cbctl configure' profile), then run the command again."
 
 // errStoppedWaiting is printed for a context deadline that no typed wait error explains.
 const errStoppedWaiting = "stopped waiting: %v; the operation continues in Capella"

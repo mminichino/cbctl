@@ -4,12 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net/netip"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
-	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/spf13/cobra"
 )
 
@@ -17,11 +16,17 @@ import (
 // defaults; the builder (managedClusterCreate) validates the whole set.
 type ClusterSpec struct {
 	Name     string
+	Free     bool
 	Provider string
 	Region   string
 	Size     string
 	Groups   []string
 	CIDR     string
+	Support  string
+	// Nodes, CPU and RAM are the one-group custom layout.
+	Nodes, CPU, RAM string
+	// Disk is the disk chosen for the one-group custom layout.
+	Disk *diskAnswer
 }
 
 // wizardTries is how often one question is asked before the wizard gives up.
@@ -30,12 +35,16 @@ const wizardTries = 3
 var clusterNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9 _.-]{0,255}$`)
 
 // errWizardCancelled is input ending before the wizard finished (EOF or Ctrl-D).
-var errWizardCancelled = Errorf(ExitError, "", "Cancelled; nothing was changed.")
+var errWizardCancelled = Errorf(ExitError, "Run the command again when you are ready.", "Cancelled; nothing was changed.")
 
 // clusterWizard asks for the cluster create fields the flags did not give, capellactl style.
 type clusterWizard struct {
 	in  *bufio.Reader
 	out io.Writer
+	// noFree skips the cluster type question: the organization's free-tier cluster is in use.
+	noFree bool
+	// cidrCheck validates the typed network (default: any CIDR); a bad answer is asked again.
+	cidrCheck func(string) error
 }
 
 func newClusterWizard(in io.Reader, out io.Writer) *clusterWizard {
@@ -94,6 +103,30 @@ func (w *clusterWizard) ask(prompt, def string, check func(string) error) (strin
 	return "", usageError("pass the values as flags instead", "%s: no valid answer after %d tries", prompt, wizardTries)
 }
 
+// matchChoice returns the choice answer names: an exact match, or the only choice that starts
+// with it (case-insensitive), so "m" or "multiple" picks "multiple groups" (capellactl's
+// PrefixChoice). An empty, unknown or ambiguous answer is an error.
+func matchChoice(choices []string, answer string) (string, error) {
+	text := strings.ToLower(strings.TrimSpace(answer))
+	var starts []string
+	for _, c := range choices {
+		if strings.ToLower(c) == text {
+			return c, nil
+		}
+		if text != "" && strings.HasPrefix(strings.ToLower(c), text) {
+			starts = append(starts, c)
+		}
+	}
+	if len(starts) == 1 {
+		return starts[0], nil
+	}
+	if len(starts) > 1 {
+		return "", fmt.Errorf("'%s' could be %s; type more of the answer", answer, strings.Join(starts, " or "))
+	}
+	return "", fmt.Errorf("choose one of %s", strings.Join(choices, ", "))
+}
+
+// oneOf accepts exactly one of choices.
 func oneOf(choices []string) func(string) error {
 	return func(v string) error {
 		if !slices.Contains(choices, v) {
@@ -103,102 +136,66 @@ func oneOf(choices []string) func(string) error {
 	}
 }
 
-// run asks for every field cmd's flags did not set. cidr is the suggested network.
-func (w *clusterWizard) run(cmd *cobra.Command, cidr string) (ClusterSpec, error) {
-	ch := cmd.Flags().Changed
-	spec := ClusterSpec{}
-	var err error
-	fmt.Fprintln(w.out, "New Capella cluster (press Enter to accept a default; Ctrl-D cancels)")
-	spec.Name, err = w.ask("Cluster name", "", func(v string) error {
-		if !clusterNamePattern.MatchString(v) {
-			return fmt.Errorf("give a name of letters, digits, spaces, '.', '_' or '-'")
+// choose asks for one of choices (a unique start of one is enough) and returns the full choice.
+func (w *clusterWizard) choose(prompt, def string, choices []string) (string, error) {
+	v, err := w.ask(prompt+" ("+strings.Join(choices, ", ")+")", def, func(v string) error {
+		_, err := matchChoice(choices, v)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return matchChoice(choices, v)
+}
+
+// askInt asks for a whole number; check (optional) adds its own rule.
+func (w *clusterWizard) askInt(prompt string, def int, check func(int) error) (int, error) {
+	v, err := w.ask(prompt, strconv.Itoa(def), func(v string) error {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("give a whole number")
+		}
+		if check != nil {
+			return check(n)
 		}
 		return nil
 	})
 	if err != nil {
-		return spec, err
+		return 0, err
 	}
-	free := flagBool(cmd, "free-tier")
-	spec.Provider = flagString(cmd, "provider")
-	if !ch("provider") {
-		if spec.Provider, err = w.ask("Cloud provider ("+strings.Join(cloudProviders, "/")+")", "aws", oneOf(cloudProviders)); err != nil {
-			return spec, err
-		}
-	}
-	if !ch("region") {
-		def := regionDefaults[spec.Provider]
-		if free {
-			def = freeTierRegions[spec.Provider][0]
-		}
-		if spec.Region, err = w.ask("Region", def, func(v string) error {
-			if v == "" {
-				return fmt.Errorf("a region is required")
-			}
-			return nil
-		}); err != nil {
-			return spec, err
-		}
-	}
-	grouped := len(flagStrings(cmd, "group")) > 0
-	if !free && !grouped && !ch("size") && !flagBool(cmd, "single-node") {
-		sizes := append(presets.PresetNames(), "custom")
-		if spec.Size, err = w.ask("Size ("+strings.Join(sizes, "/")+")", "small", oneOf(sizes)); err != nil {
-			return spec, err
-		}
-		if spec.Size == "custom" {
-			spec.Size = ""
-			for {
-				g, err := w.ask("Service group SERVICES:NODESxCPU/RAM (empty line to finish)", "", func(v string) error {
-					if v == "" {
-						return nil
-					}
-					_, err := parseGroupSpec(v, spec.Provider, diskChange{})
-					return err
-				})
-				if err != nil {
-					return spec, err
-				}
-				if g == "" {
-					if len(spec.Groups) == 0 {
-						fmt.Fprintln(w.out, "  add at least one service group")
-						continue
-					}
-					break
-				}
-				spec.Groups = append(spec.Groups, g)
-			}
-		}
-	}
-	if !free && !ch("cidr") {
-		if spec.CIDR, err = w.ask("Network CIDR", cidr, func(v string) error {
-			if _, err := netip.ParsePrefix(v); err != nil {
-				return fmt.Errorf("give a CIDR such as 10.0.0.0/24")
-			}
-			return nil
-		}); err != nil {
-			return spec, err
-		}
-	}
-	return spec, nil
+	return strconv.Atoi(v)
 }
 
-// apply writes the answers into cmd's flags, so the builder reads them like typed flags.
-func (s ClusterSpec) apply(cmd *cobra.Command) error {
-	set := func(name, v string) error {
+// yesNo asks a yes/no question; an empty answer is def.
+func (w *clusterWizard) yesNo(prompt string, def bool) (bool, error) {
+	hint := "y/N"
+	if def {
+		hint = "Y/n"
+	}
+	v, err := w.ask(prompt+" ["+hint+"]", "", func(v string) error {
 		if v == "" {
 			return nil
 		}
-		return cmd.Flags().Set(name, v)
+		_, err := matchChoice([]string{"yes", "no"}, v)
+		return err
+	})
+	if err != nil || v == "" {
+		return def, err
 	}
-	for _, kv := range [][2]string{{"name", s.Name}, {"provider", s.Provider}, {"region", s.Region}, {"size", s.Size}, {"cidr", s.CIDR}} {
-		if err := set(kv[0], kv[1]); err != nil {
-			return err
+	c, _ := matchChoice([]string{"yes", "no"}, v) // checked above
+	return c == "yes", nil
+}
+
+// sizedByFlags reports whether cmd's flags already fix the cluster type and size, so the wizard
+// asks neither (capellactl asks them only when nothing about the size was given).
+func sizedByFlags(cmd *cobra.Command) bool {
+	ch := cmd.Flags().Changed
+	for _, f := range []string{"group", "size", "nodes", "cpu", "ram", "services", "single-node", "disk-type", "disk-size",
+		"disk-iops", "availability", "support-plan", "support-timezone", "server-version", "zone", "cmek-id",
+		"private-dns", "disk-auto-expansion"} {
+		if cmd.Flags().Lookup(f) != nil && ch(f) {
+			return true
 		}
 	}
-	for _, g := range s.Groups {
-		if err := cmd.Flags().Set("group", g); err != nil {
-			return err
-		}
-	}
-	return nil
+	return false
 }

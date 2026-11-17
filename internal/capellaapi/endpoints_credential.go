@@ -8,6 +8,10 @@ import (
 	"github.com/mminichino/cbctl/internal/redact"
 )
 
+// CredentialTypeBasic is the credentialType of a credential with bucket/scope access (not
+// custom database roles).
+const CredentialTypeBasic = "basic"
+
 // ListCredentials lists the cluster's database credentials.
 func (c *Client) ListCredentials(ctx context.Context, p, cl string) ([]Credential, error) {
 	path, err := c.clusterSub(p, cl, "/users")
@@ -37,6 +41,9 @@ func (c *Client) CreateCredential(ctx context.Context, p, cl string, req CreateC
 	}
 	// A supplied password is a secret before Capella answers.
 	redact.Register(req.Password)
+	if req.CredentialType == "" {
+		req.CredentialType = CredentialTypeBasic
+	}
 	resp, err := c.Post(ctx, path, req, nil)
 	if err != nil {
 		return "", "", err

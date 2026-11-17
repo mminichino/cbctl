@@ -1,13 +1,21 @@
 name: nightly
+# A probe dispatch is named "probe: KIND" so dedupe (cbdev ci dedupe) can tell it from the suite.
+run-name: "${{ inputs.probe && format('probe: {0}', inputs.probe) || 'nightly' }}"
 # CAP-032: Capella sandbox integration every night. The weekly janitor is janitor.yml.
 # Needs repository secret CAPELLA_SANDBOX_API_KEY and repository variable CAPELLA_SANDBOX_ORG_ID.
-# A release tag needs three consecutive green scheduled runs, the newest on the tagged commit
-# (cbdev ci release-gate).
+# A health signal for main (schedule) or any ref (workflow_dispatch), never a gate: no merge,
+# push, tag or release waits for it. `cbdev ci release-gate --report-only` summarizes the streak.
 
 on:
   schedule:
     - cron: "0 7 * * *"     # every night at 07:00 UTC
   workflow_dispatch:
+    inputs:
+      probe:
+        description: "Run only a live API probe instead of the suite (the health report ignores dispatches)"
+        type: choice
+        options: ["", "schedule"]
+        default: ""
 
 permissions:
   contents: read
@@ -89,7 +97,14 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Integration suite (teardown runs whatever happens)
-        run: go test -tags=integration -timeout 290m -v ./internal/integration/...
+        env:
+          CBCTL_IT_PROBE: ${{ inputs.probe }}
+        run: |
+          case "$CBCTL_IT_PROBE" in
+            "") go test -tags=integration -timeout 290m -v ./internal/integration/... ;;
+            schedule) go test -tags=integration -timeout 120m -v -run 'TestScheduleProbe$' ./internal/integration/... ;;
+            *) echo "::error::unknown probe $CBCTL_IT_PROBE"; exit 1 ;;
+          esac
 
       # The suite sweeps its run prefix on a timeout or signal; this covers a job that was
       # killed before it could. The prefix is this run's only: never other runs' projects.

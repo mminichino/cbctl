@@ -13,12 +13,12 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 
 | Group | Operations | ✅ Done | Tracked in |
 |---|---|---|---|
-| Operational database, release 1.0.0 | 80 | 3 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
+| Operational database, release 1.0.0 | 80 | 80 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
 | Operational database, not needed (another operation gives the same data) | 1 | — | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
 | Operational database, release 1.5.0 | 139 | 0 | [1.5.0 report](../release-1.5.0/API-COVERAGE.md) |
 | App Services / App Endpoints, release 2.0.0 | 73 | 0 | [2.0.0 report](../release-2.0.0/API-COVERAGE-APP-SERVICES.md) |
 | AI (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools) | 50 | — | Not planned |
-| **Total in the spec** | **343** | **3** | |
+| **Total in the spec** | **343** | **80** | |
 
 **Status legend**
 
@@ -36,16 +36,16 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 
 | | Operations | ✅ Done | 🟡 Partial | ⬜ Not built | ➖ Not needed | ⏭️ Not in 1.0 | Coverage (done / total) |
 |---|---|---|---|---|---|---|---|
-| **Planned for 1.0.0** | **81** | 3 | 0 | 77 | 1 | — | **4%** (done / needed) |
-| All operational-database operations | 220 | 3 | 0 | 77 | 1 | 139 | 1% |
+| **Planned for 1.0.0** | **81** | 80 | 0 | 0 | 1 | — | **100%** (done / needed) |
+| All operational-database operations | 220 | 80 | 0 | 0 | 1 | 139 | 36% |
 
 ### Commands
 
 | | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 | Coverage (done / total) |
 |---|---|---|---|---|---|---|
-| **Resource commands planned for 1.0.0** | **67** | 0 | 0 | 67 | — | **0%** |
-| Workflow commands (`plan`, `apply`, …) | 12 | 0 | 0 | 12 | — | 0% |
-| All resource commands, including later releases | 194 | 0 | 0 | 67 | 127 | 0% |
+| **Resource commands planned for 1.0.0** | **67** | 67 | 0 | 0 | — | **100%** |
+| Workflow commands (`plan`, `apply`, …) | 12 | 12 | 0 | 0 | — | 100% |
+| All resource commands, including later releases | 194 | 67 | 0 | 0 | 127 | 35% |
 
 *Each verb counts as one command (for example `cluster schedule pause`). Each command maps to one or more API operations. For example, `bucket create` calls both the provisioned and the free-tier create.*
 
@@ -54,23 +54,23 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 | Area | 1.0.0 scope | Ops | ✅ | 🟡 | ⬜ | ➖ | ⏭️ |
 |---|---|---|---|---|---|---|---|
 | [Organizations](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Organizations) | Yes | 3 | 2 |  |  |  | 1 |
-| [Projects](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Projects) | Yes | 5 |  |  | 5 |  |  |
-| [Clusters](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Clusters) | Yes | 10 | 1 |  | 8 |  | 1 |
-| [Free tier (clusters & buckets)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Free-Tier) | Yes | 11 |  |  | 11 |  |  |
-| [On/Off schedule (hibernation)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/On-Off-Schedule) | Yes | 6 |  |  | 6 |  |  |
-| [Allowed CIDRs (cluster)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Allowed-CIDRs-(Cluster)) | Yes | 4 |  |  | 3 | 1 |  |
-| [Buckets, scopes & collections](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Buckets-Scopes-and-Collections) | Yes | 15 |  |  | 14 |  | 1 |
-| [Database credentials](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Database-Credentials) | Yes | 5 |  |  | 5 |  |  |
+| [Projects](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Projects) | Yes | 5 | 5 |  |  |  |  |
+| [Clusters](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Clusters) | Yes | 10 | 9 |  |  |  | 1 |
+| [Free tier (clusters & buckets)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Free-Tier) | Yes | 11 | 11 |  |  |  |  |
+| [On/Off schedule (hibernation)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/On-Off-Schedule) | Yes | 6 | 6 |  |  |  |  |
+| [Allowed CIDRs (cluster)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Allowed-CIDRs-(Cluster)) | Yes | 4 | 3 |  |  | 1 |  |
+| [Buckets, scopes & collections](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Buckets-Scopes-and-Collections) | Yes | 15 | 14 |  |  |  | 1 |
+| [Database credentials](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Database-Credentials) | Yes | 5 | 5 |  |  |  |  |
 | [Database roles (custom)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Database-Roles) | No | 6 |  |  |  |  | 6 |
 | [Sample buckets](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Sample-Bucket) | No | 4 |  |  |  |  | 4 |
 | [Query indexes](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Query-Indexes) | No | 4 |  |  |  |  | 4 |
 | [Eventing functions](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Eventing-Functions) | No | 9 |  |  |  |  | 9 |
 | [Data API](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Data-API) | No | 6 |  |  |  |  | 6 |
 | [Replications (XDCR)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Replications) | No | 9 |  |  |  |  | 9 |
-| [Backups & restore (bucket)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Backups-and-Restore-(Bucket)) | Yes | 7 |  |  | 7 |  |  |
-| [Backup schedule (bucket)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Backup-Schedule-(Bucket)) | Yes | 6 |  |  | 6 |  |  |
-| [Cloud snapshot backups & restore (cluster)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Cloud-Snapshot-Backups-and-Restore) | Yes | 9 |  |  | 8 |  | 1 |
-| [Cloud snapshot backup schedule (cluster)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Cloud-Snapshot-Backups-Schedule) | Yes | 4 |  |  | 4 |  |  |
+| [Backups & restore (bucket)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Backups-and-Restore-(Bucket)) | Yes | 7 | 7 |  |  |  |  |
+| [Backup schedule (bucket)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Backup-Schedule-(Bucket)) | Yes | 6 | 6 |  |  |  |  |
+| [Cloud snapshot backups & restore (cluster)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Cloud-Snapshot-Backups-and-Restore) | Yes | 9 | 8 |  |  |  | 1 |
+| [Cloud snapshot backup schedule (cluster)](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Cloud-Snapshot-Backups-Schedule) | Yes | 4 | 4 |  |  |  |  |
 | [Network peers](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Network-Peers) | No | 5 |  |  |  |  | 5 |
 | [Private endpoint service](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Private-Endpoint-Service) | No | 8 |  |  |  |  | 8 |
 | [Certificates](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Certificates) | No | 1 |  |  |  |  | 1 |
@@ -87,60 +87,14 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 | [Operational Insights snapshot backups & restore](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Operational-Insights-Cloud-Snapshot-Backups-and-Restore) | No | 6 |  |  |  |  | 6 |
 | [Operational Insights snapshot backup schedule](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Operational-Insights-Cloud-Snapshot-Backups-Schedule) | No | 3 |  |  |  |  | 3 |
 | [Operational Insights private endpoints](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Operational-Insights-Private-Endpoint-Service) | No | 7 |  |  |  |  | 7 |
-| **Total** | | **220** | **3** | **0** | **77** | **1** | **139** |
+| **Total** | | **220** | **80** | **0** | **0** | **1** | **139** |
 
 ## What is left for 1.0.0
 
-77 operations are partial or not built, across 46 stories:
+0 operations are partial or not built, across 0 stories:
 
 | Story | Status | Operations | Commands |
 |---|---|---|---|
-| [CAP-002](../CAP-ID-MAP.md#cap-002) Configuration file: schema, validation & secret references | Not started | — (uses the operations above) | `validate` |
-| [CAP-005](../CAP-ID-MAP.md#cap-005) Reconciler framework & plan engine | Not started | — (uses the operations above) | `plan` |
-| [CAP-006](../CAP-ID-MAP.md#cap-006) Apply executor, confirmation, output & exit codes | Not started | — (uses the operations above) | `apply` |
-| [CAP-009](../CAP-ID-MAP.md#cap-009) Ensure project (create & update) | Not started | `POST {org}/projects`, `GET {org}/projects`, `GET {org}/projects/{p}`, `PUT {org}/projects/{p}` | `project create`, `project list`, `project get`, `project update` |
-| [CAP-010](../CAP-ID-MAP.md#cap-010) Delete project | Not started | `DELETE {org}/projects/{p}` | `project delete` |
-| [CAP-011](../CAP-ID-MAP.md#cap-011) Create cluster | Not started | `POST {org}/projects/{p}/clusters` | `cluster create` |
-| [CAP-012](../CAP-ID-MAP.md#cap-012) Edit cluster settings & immutable-field protection | Not started | `PUT {org}/projects/{p}/clusters/{c}` | `cluster update` |
-| [CAP-013](../CAP-ID-MAP.md#cap-013) Deletion protection | Not started | `PUT {org}/projects/{p}/clusters/{c}/deletionProtection` | `cluster protect` |
-| [CAP-014](../CAP-ID-MAP.md#cap-014) Delete cluster | Not started | `DELETE {org}/projects/{p}/clusters/{c}` | `cluster delete` |
-| [CAP-015](../CAP-ID-MAP.md#cap-015) Scale out: add nodes & service groups | Not started | `PUT {org}/projects/{p}/clusters/{c}` | `cluster scale` |
-| [CAP-016](../CAP-ID-MAP.md#cap-016) Scale in: remove nodes & service groups safely | Not started | `PUT {org}/projects/{p}/clusters/{c}` | `cluster scale`, `apply` |
-| [CAP-017](../CAP-ID-MAP.md#cap-017) Vertical scaling: node compute & disk | Not started | `PUT {org}/projects/{p}/clusters/{c}` | `cluster update` |
-| [CAP-018](../CAP-ID-MAP.md#cap-018) Step scaling command with min/max guardrails | Not started | `PUT {org}/projects/{p}/clusters/{c}` | `cluster scale` |
-| [CAP-019](../CAP-ID-MAP.md#cap-019) Power a cluster off and on (on-demand hibernation) | Not started | `POST {org}/projects/{p}/clusters/freeTier/{c}/activationState`, `DELETE {org}/projects/{p}/clusters/freeTier/{c}/activationState`, `POST {org}/projects/{p}/clusters/{c}/activationState`, `DELETE {org}/projects/{p}/clusters/{c}/activationState` | `cluster power on`, `cluster power off`, `apply` |
-| [CAP-020](../CAP-ID-MAP.md#cap-020) Hibernation schedule (on/off schedule) as code | Not started | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule`, `GET {org}/projects/{p}/clusters/{c}/onOffSchedule`, `PUT {org}/projects/{p}/clusters/{c}/onOffSchedule`, `DELETE {org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule set`, `cluster schedule apply`, `cluster schedule show`, `cluster schedule delete` |
-| [CAP-021](../CAP-ID-MAP.md#cap-021) Pause & resume the hibernation schedule | Not started | `DELETE {org}/projects/{p}/clusters/{c}/onOffSchedule/activationState`, `POST {org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | `cluster schedule pause`, `cluster schedule resume` |
-| [CAP-022](../CAP-ID-MAP.md#cap-022) Ensure allowed CIDRs (IP allowlist) | Not started | `POST {org}/projects/{p}/clusters/{c}/allowedcidrs`, `GET {org}/projects/{p}/clusters/{c}/allowedcidrs`, `DELETE {org}/projects/{p}/clusters/{c}/allowedcidrs/{allowedCidrId}` | `cidr create`, `cidr list`, `cidr delete` |
-| [CAP-023](../CAP-ID-MAP.md#cap-023) Ensure bucket (create & update) | Not started | `POST {org}/projects/{p}/clusters/{c}/buckets`, `GET {org}/projects/{p}/clusters/{c}/buckets`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}`, `PUT {org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket create`, `bucket list`, `bucket get`, `bucket update` |
-| [CAP-024](../CAP-ID-MAP.md#cap-024) Delete bucket | Not started | `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket delete` |
-| [CAP-025](../CAP-ID-MAP.md#cap-025) Ensure scopes & collections | Not started | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes`, `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}`, `PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `scope create`, `scope list`, `collection create`, `collection list`, `collection update` |
-| [CAP-026](../CAP-ID-MAP.md#cap-026) Delete scopes & collections | Not started | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}`, `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}`, `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `scope delete`, `collection delete` |
-| [CAP-027](../CAP-ID-MAP.md#cap-027) Ensure database credential (basic access) | Not started | `PUT {org}/projects/{p}/clusters/{c}/users/{userId}`, `POST {org}/projects/{p}/clusters/{c}/users` | `credential update`, `credential create` |
-| [CAP-028](../CAP-ID-MAP.md#cap-028) Password rotation | Not started | `PUT {org}/projects/{p}/clusters/{c}/users/{userId}` | `credential update` |
-| [CAP-029](../CAP-ID-MAP.md#cap-029) Delete database credential | Not started | `DELETE {org}/projects/{p}/clusters/{c}/users/{userId}` | `credential delete` |
-| [CAP-030](../CAP-ID-MAP.md#cap-030) Full-environment apply & destroy | Not started | — (uses the operations above) | `destroy` |
-| [CAP-031](../CAP-ID-MAP.md#cap-031) Drift report & prune | Not started | — (uses the operations above) | `apply`, `drift` |
-| [CAP-034](../CAP-ID-MAP.md#cap-034) Help command, help topics & shell completion | Not started | — (uses the operations above) | `help / completion` |
-| [CAP-035](../CAP-ID-MAP.md#cap-035) `init` wizard: create capella.yaml interactively | Not started | — (uses the operations above) | `init` |
-| [CAP-036](../CAP-ID-MAP.md#cap-036) Import an existing project & clusters into capella.yaml | Not started | — (uses the operations above) | `import` |
-| [CAP-037](../CAP-ID-MAP.md#cap-037) `configure`: profiles, API key storage & config discovery | Not started | — (uses the operations above) | `configure`, `configure list / show / remove` |
-| [CAP-038](../CAP-ID-MAP.md#cap-038) Manage clusters from the CLI: deploy, change and sync without editing capella.yaml | Not started | `POST {org}/projects/{p}/clusters`, `GET {org}/projects/{p}/clusters`, `GET {org}/projects/{p}/clusters/{c}` | `cluster create`, `cluster list`, `cluster get`, `sync` |
-| [CAP-039](../CAP-ID-MAP.md#cap-039) Create a project from the CLI | Not started | `POST {org}/projects`, `GET {org}/projects`, `GET {org}/projects/{p}`, `PUT {org}/projects/{p}` | `project create`, `project list`, `project get`, `project update` |
-| [CAP-041](../CAP-ID-MAP.md#cap-041) Free-tier clusters and available cluster options | Not started | `POST {org}/projects/{p}/clusters`, `DELETE {org}/projects/{p}/clusters/{c}`, `POST {org}/projects/{p}/clusters/{c}/buckets`, `GET {org}/projects/{p}/clusters/{c}/buckets`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}`, `PUT {org}/projects/{p}/clusters/{c}/buckets/{b}`, `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}`, `GET {org}/projects/{p}/clusters/{c}`, `POST {org}/projects/{p}/clusters/freeTier`, `GET {org}/projects/{p}/clusters/freeTier/{c}`, `PUT {org}/projects/{p}/clusters/freeTier/{c}`, `DELETE {org}/projects/{p}/clusters/freeTier/{c}`, `POST {org}/projects/{p}/clusters/{c}/buckets/freeTier`, `GET {org}/projects/{p}/clusters/{c}/buckets/freeTier`, `GET {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`, `PUT {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`, `DELETE {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `cluster create`, `cluster delete`, `bucket create`, `bucket list`, `bucket get`, `bucket update`, `bucket delete`, `cluster get` |
-| [CAP-046](../CAP-ID-MAP.md#cap-046) Database credential commands: list, get, create, update | Not started | `PUT {org}/projects/{p}/clusters/{c}/users/{userId}`, `POST {org}/projects/{p}/clusters/{c}/users`, `GET {org}/projects/{p}/clusters/{c}/users`, `GET {org}/projects/{p}/clusters/{c}/users/{userId}` | `credential update`, `credential create`, `credential list`, `credential get` |
-| [CAP-047](../CAP-ID-MAP.md#cap-047) configure and import check an existing capella.yaml against the key's organization | Not started | — (uses the operations above) | `configure`, `import` |
-| [CAP-048](../CAP-ID-MAP.md#cap-048) Track projects and clusters by id so renames in the Capella UI are not mistaken for new resources | Not started | — (uses the operations above) | `import`, `plan`, `sync` |
-| [CAP-049](../CAP-ID-MAP.md#cap-049) Clone a cluster into another region | Not started | `POST {org}/projects/{p}/clusters` | `cluster clone` |
-| [CAP-051](../CAP-ID-MAP.md#cap-051) Create multi-dimensional (MDS) clusters from the CLI | Not started | `POST {org}/projects/{p}/clusters` | `cluster create` |
-| [CAP-052](../CAP-ID-MAP.md#cap-052) Service group commands: list, add and remove groups on an existing cluster | Not started | `PUT {org}/projects/{p}/clusters/{c}`, `GET {org}/projects/{p}/clusters/{c}` | `cluster group add`, `cluster group remove`, `cluster group list` |
-| [CAP-053](../CAP-ID-MAP.md#cap-053) Advanced cluster create options: server version, single node, zone, CMEK, private DNS, disk auto-expansion | Not started | `POST {org}/projects/{p}/clusters`, `PUT {org}/projects/{p}/clusters/{c}` | `cluster create`, `cluster update` |
-| [CAP-054](../CAP-ID-MAP.md#cap-054) One command to bring capella.yaml in line with Capella: `sync` covers the whole organization | Not started | — (uses the operations above) | `import`, `sync` |
-| [CAP-056](../CAP-ID-MAP.md#cap-056) Cluster backup schedule (cloud snapshots) as code | Not started | `PUT {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule`, `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule`, `DELETE {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule`, `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options`, `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions` | `cluster backup schedule set`, `cluster backup schedule show`, `cluster backup schedule delete`, `cluster backup schedule options` |
-| [CAP-057](../CAP-ID-MAP.md#cap-057) Cluster backups: list, back up now, keep longer, delete and restore | Not started | `POST {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups`, `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups`, `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/restores`, `PUT {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}`, `DELETE {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}`, `POST {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}/restore`, `GET {org}/projects/{p}/cloudsnapshotbackups`, `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions` | `cluster backup create`, `cluster backup list`, `cluster backup restores`, `cluster backup retain`, `cluster backup delete`, `cluster backup restore`, `cluster backup regions` |
-| [CAP-058](../CAP-ID-MAP.md#cap-058) Bucket backup schedule as code, and backup cycles | Not started | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules`, `PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules`, `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles/{cycleId}` | `bucket backup schedule set`, `bucket backup schedule show`, `bucket backup schedule delete`, `bucket backup cycle list`, `bucket backup cycle get` |
-| [CAP-059](../CAP-ID-MAP.md#cap-059) Bucket backups: list, back up now, delete, restore and export | Not started | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backups`, `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/export`, `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/exports/{exportId}`, `GET {org}/projects/{p}/clusters/{c}/backups`, `GET {org}/projects/{p}/clusters/{c}/backups/{backupId}`, `DELETE {org}/projects/{p}/clusters/{c}/backups/{backupId}`, `POST {org}/projects/{p}/clusters/{c}/backups/{backupId}/restore` | `bucket backup create`, `bucket backup export`, `bucket backup list`, `bucket backup get`, `bucket backup delete`, `bucket backup restore` |
-| [CAP-060](../CAP-ID-MAP.md#cap-060) Choose the disk type, and see what each type means | Not started | `POST {org}/projects/{p}/clusters`, `PUT {org}/projects/{p}/clusters/{c}` | `cluster create`, `cluster update`, `cluster group add`, `cluster disk-types` |
 
 ### Gaps found
 
@@ -154,90 +108,90 @@ Every resource command: built, stubbed, or planned for a later release, with the
 
 | Command | Status | Stories | API operations | What's left |
 |---|---|---|---|---|
-| `cbctl capella bucket backup create` | ⬜ Not built | CAP-059 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backups` | Bucket backups; `delete` removes the whole cycle. |
-| `cbctl capella bucket backup cycle get` | ⬜ Not built | CAP-058 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles/{cycleId}` |  |
-| `cbctl capella bucket backup cycle list` | ⬜ Not built | CAP-058 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles` |  |
-| `cbctl capella bucket backup delete` | ⬜ Not built | CAP-059 | `DELETE {org}/projects/{p}/clusters/{c}/backups/{backupId}` | Bucket backups; `delete` removes the whole cycle. |
-| `cbctl capella bucket backup export` | ⬜ Not built | CAP-059 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/export`<br>`GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/exports/{exportId}` | Bucket backups; `delete` removes the whole cycle. |
-| `cbctl capella bucket backup get` | ⬜ Not built | CAP-059 | `GET {org}/projects/{p}/clusters/{c}/backups/{backupId}` | Bucket backups; `delete` removes the whole cycle. |
-| `cbctl capella bucket backup list` | ⬜ Not built | CAP-059 | `GET {org}/projects/{p}/clusters/{c}/backups` | Bucket backups; `delete` removes the whole cycle. |
-| `cbctl capella bucket backup restore` | ⬜ Not built | CAP-059 | `POST {org}/projects/{p}/clusters/{c}/backups/{backupId}/restore` | Bucket backups; `delete` removes the whole cycle. |
-| `cbctl capella bucket backup schedule delete` | ⬜ Not built | CAP-058 | `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | Weekly full + incremental; `backupSchedule` under the bucket. |
-| `cbctl capella bucket backup schedule set` | ⬜ Not built | CAP-058 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules`<br>`PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | Weekly full + incremental; `backupSchedule` under the bucket. |
-| `cbctl capella bucket backup schedule show` | ⬜ Not built | CAP-058 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | Weekly full + incremental; `backupSchedule` under the bucket. |
-| `cbctl capella bucket create` | ⬜ Not built | CAP-023, CAP-041 | `POST {org}/projects/{p}/clusters/{c}/buckets/freeTier`<br>`POST {org}/projects/{p}/clusters/{c}/buckets` |  |
-| `cbctl capella bucket delete` | ⬜ Not built | CAP-024, CAP-041 | `DELETE {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`<br>`DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}` |  |
-| `cbctl capella bucket get` | ⬜ Not built | CAP-023, CAP-041 | `GET {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`<br>`GET {org}/projects/{p}/clusters/{c}/buckets/{b}` |  |
-| `cbctl capella bucket list` | ⬜ Not built | CAP-023, CAP-041 | `GET {org}/projects/{p}/clusters/{c}/buckets/freeTier`<br>`GET {org}/projects/{p}/clusters/{c}/buckets` |  |
-| `cbctl capella bucket update` | ⬜ Not built | CAP-023, CAP-041 | `PUT {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`<br>`PUT {org}/projects/{p}/clusters/{c}/buckets/{b}` |  |
-| `cbctl capella cidr create` | ⬜ Not built | CAP-022 | `POST {org}/projects/{p}/clusters/{c}/allowedcidrs` |  |
-| `cbctl capella cidr delete` | ⬜ Not built | CAP-022 | `DELETE {org}/projects/{p}/clusters/{c}/allowedcidrs/{allowedCidrId}` |  |
-| `cbctl capella cidr list` | ⬜ Not built | CAP-022 | `GET {org}/projects/{p}/clusters/{c}/allowedcidrs` |  |
-| `cbctl capella cluster backup create` | ⬜ Not built | CAP-057 | `POST {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup delete` | ⬜ Not built | CAP-057 | `DELETE {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup list` | ⬜ Not built | CAP-057 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups`<br>`GET {org}/projects/{p}/cloudsnapshotbackups` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup regions` | ⬜ Not built | CAP-057 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup restore` | ⬜ Not built | CAP-057 | `POST {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}/restore` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup restores` | ⬜ Not built | CAP-057 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/restores` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup retain` | ⬜ Not built | CAP-057 | `PUT {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | Cloud snapshot backups of the whole cluster. |
-| `cbctl capella cluster backup schedule delete` | ⬜ Not built | CAP-056 | `DELETE {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | Cloud snapshot schedule; `backupSchedule` in capella.yaml. |
-| `cbctl capella cluster backup schedule options` | ⬜ Not built | CAP-056 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions`<br>`GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options` | Cloud snapshot schedule; `backupSchedule` in capella.yaml. |
-| `cbctl capella cluster backup schedule set` | ⬜ Not built | CAP-056 | `PUT {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule`<br>`GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options` | Cloud snapshot schedule; `backupSchedule` in capella.yaml. |
-| `cbctl capella cluster backup schedule show` | ⬜ Not built | CAP-056 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | Cloud snapshot schedule; `backupSchedule` in capella.yaml. |
-| `cbctl capella cluster clone` | ⬜ Not built | CAP-049 | `POST {org}/projects/{p}/clusters` | Copies size, services, buckets, scopes and collections to another region; `--with-cidrs`, `--with-credentials` (new passwords). |
-| `cbctl capella cluster create` | ⬜ Not built | CAP-011, CAP-038, CAP-041, CAP-051, CAP-053, CAP-060 | `POST {org}/projects/{p}/clusters/freeTier`<br>`POST {org}/projects/{p}/clusters` | Multi-dimensional service groups (`--group SPEC`, CAP-051); `--server-version`, `--single-node`, `--zone`, `--cmek-id`, `--private-dns`, `--disk-auto-expansion` (CAP-053); disk type picker and size-based IOPS (CAP-060). |
-| `cbctl capella cluster delete` | ⬜ Not built | CAP-014, CAP-041 | `DELETE {org}/projects/{p}/clusters/freeTier/{c}`<br>`DELETE {org}/projects/{p}/clusters/{c}` |  |
-| `cbctl capella cluster get` | ⬜ Not built | CAP-038, CAP-041 | `GET {org}/projects/{p}/clusters/freeTier/{c}`<br>`GET {org}/projects/{p}/clusters/{c}` |  |
-| `cbctl capella cluster group add` | ⬜ Not built | CAP-052, CAP-060 | `PUT {org}/projects/{p}/clusters/{c}` | Adds a service group; size defaults to the data group; disk type picker (CAP-060). |
-| `cbctl capella cluster group list` | ⬜ Not built | CAP-052 | `GET {org}/projects/{p}/clusters/{c}` | Service groups with nodes, compute and disk. |
-| `cbctl capella cluster group remove` | ⬜ Not built | CAP-052 | `PUT {org}/projects/{p}/clusters/{c}` | Removes a service group with the CAP-016 scale-in guards. |
-| `cbctl capella cluster list` | ⬜ Not built | CAP-038 | `GET {org}/projects/{p}/clusters` |  |
-| `cbctl capella cluster options` | ⬜ Not built | CAP-041 |  |  |
-| `cbctl capella cluster power off` | ⬜ Not built | CAP-019 | `DELETE {org}/projects/{p}/clusters/freeTier/{c}/activationState`<br>`DELETE {org}/projects/{p}/clusters/{c}/activationState` | Waits until turned off; shows when the schedule turns it on again. |
-| `cbctl capella cluster power on` | ⬜ Not built | CAP-019 | `POST {org}/projects/{p}/clusters/freeTier/{c}/activationState`<br>`POST {org}/projects/{p}/clusters/{c}/activationState` | Waits until healthy; `--with-app-service`; `apply --power-on`. |
-| `cbctl capella cluster protect` | ⬜ Not built | CAP-013 | `PUT {org}/projects/{p}/clusters/{c}/deletionProtection` |  |
-| `cbctl capella cluster scale` | ⬜ Not built | CAP-015, CAP-016, CAP-018 | `PUT {org}/projects/{p}/clusters/{c}` | Scale out and in (capacity checks); `--step ±1` within `--min/--max`, `--all-groups`. |
-| `cbctl capella cluster schedule apply` | ⬜ Not built | CAP-020 | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule`<br>`PUT {org}/projects/{p}/clusters/{c}/onOffSchedule` |  |
-| `cbctl capella cluster schedule delete` | ⬜ Not built | CAP-020 | `DELETE {org}/projects/{p}/clusters/{c}/onOffSchedule` | Also removes `hibernation` from capella.yaml. |
-| `cbctl capella cluster schedule pause` | ⬜ Not built | CAP-021 | `DELETE {org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | Records `paused` in capella.yaml. |
-| `cbctl capella cluster schedule resume` | ⬜ Not built | CAP-021 | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | Records `paused` in capella.yaml. |
-| `cbctl capella cluster schedule set` | ⬜ Not built | CAP-020 | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule`<br>`PUT {org}/projects/{p}/clusters/{c}/onOffSchedule` | Records the schedule in capella.yaml and applies it. |
-| `cbctl capella cluster schedule show` | ⬜ Not built | CAP-020 | `GET {org}/projects/{p}/clusters/{c}/onOffSchedule` | Weekly grid and next transition. |
-| `cbctl capella cluster update` | ⬜ Not built | CAP-012, CAP-017, CAP-053, CAP-060 | `PUT {org}/projects/{p}/clusters/freeTier/{c}`<br>`PUT {org}/projects/{p}/clusters/{c}` | Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6); `--disk-auto-expansion` on Azure (CAP-053); `--disk-type` (CAP-060). |
-| `cbctl capella collection create` | ⬜ Not built | CAP-025 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` |  |
-| `cbctl capella collection delete` | ⬜ Not built | CAP-026 | `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` |  |
-| `cbctl capella collection list` | ⬜ Not built | CAP-025 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` |  |
-| `cbctl capella collection update` | ⬜ Not built | CAP-025 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}`<br>`PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` |  |
-| `cbctl capella credential create` | ⬜ Not built | CAP-027, CAP-046 | `POST {org}/projects/{p}/clusters/{c}/users` |  |
-| `cbctl capella credential delete` | ⬜ Not built | CAP-029 | `DELETE {org}/projects/{p}/clusters/{c}/users/{userId}` |  |
-| `cbctl capella credential get` | ⬜ Not built | CAP-046 | `GET {org}/projects/{p}/clusters/{c}/users/{userId}` |  |
-| `cbctl capella credential list` | ⬜ Not built | CAP-046 | `GET {org}/projects/{p}/clusters/{c}/users` |  |
-| `cbctl capella credential update` | ⬜ Not built | CAP-027, CAP-028, CAP-046 | `PUT {org}/projects/{p}/clusters/{c}/users/{userId}` |  |
-| `cbctl capella project create` | ⬜ Not built | CAP-009, CAP-039 | `POST {org}/projects` |  |
-| `cbctl capella project delete` | ⬜ Not built | CAP-010 | `DELETE {org}/projects/{p}` |  |
-| `cbctl capella project get` | ⬜ Not built | CAP-009, CAP-039 | `GET {org}/projects/{p}` |  |
-| `cbctl capella project list` | ⬜ Not built | CAP-009, CAP-039 | `GET {org}/projects` |  |
-| `cbctl capella project update` | ⬜ Not built | CAP-009, CAP-039 | `PUT {org}/projects/{p}` |  |
-| `cbctl capella scope create` | ⬜ Not built | CAP-025 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` |  |
-| `cbctl capella scope delete` | ⬜ Not built | CAP-026 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}`<br>`DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` |  |
-| `cbctl capella scope list` | ⬜ Not built | CAP-025 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` |  |
+| `cbctl capella bucket backup create` | ✅ Done | CAP-059 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backups` |  |
+| `cbctl capella bucket backup cycle get` | ✅ Done | CAP-058 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles/{cycleId}` |  |
+| `cbctl capella bucket backup cycle list` | ✅ Done | CAP-058 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles` |  |
+| `cbctl capella bucket backup delete` | ✅ Done | CAP-059 | `DELETE {org}/projects/{p}/clusters/{c}/backups/{backupId}` |  |
+| `cbctl capella bucket backup export` | ✅ Done | CAP-059 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/export`<br>`GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/exports/{exportId}` |  |
+| `cbctl capella bucket backup get` | ✅ Done | CAP-059 | `GET {org}/projects/{p}/clusters/{c}/backups/{backupId}` |  |
+| `cbctl capella bucket backup list` | ✅ Done | CAP-059 | `GET {org}/projects/{p}/clusters/{c}/backups` |  |
+| `cbctl capella bucket backup restore` | ✅ Done | CAP-059 | `POST {org}/projects/{p}/clusters/{c}/backups/{backupId}/restore` |  |
+| `cbctl capella bucket backup schedule delete` | ✅ Done | CAP-058 | `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` |  |
+| `cbctl capella bucket backup schedule set` | ✅ Done | CAP-058 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules`<br>`PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` |  |
+| `cbctl capella bucket backup schedule show` | ✅ Done | CAP-058 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` |  |
+| `cbctl capella bucket create` | ✅ Done | CAP-023, CAP-041 | `POST {org}/projects/{p}/clusters/{c}/buckets/freeTier`<br>`POST {org}/projects/{p}/clusters/{c}/buckets` |  |
+| `cbctl capella bucket delete` | ✅ Done | CAP-024, CAP-041 | `DELETE {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`<br>`DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}` |  |
+| `cbctl capella bucket get` | ✅ Done | CAP-023, CAP-041 | `GET {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`<br>`GET {org}/projects/{p}/clusters/{c}/buckets/{b}` |  |
+| `cbctl capella bucket list` | ✅ Done | CAP-023, CAP-041 | `GET {org}/projects/{p}/clusters/{c}/buckets/freeTier`<br>`GET {org}/projects/{p}/clusters/{c}/buckets` |  |
+| `cbctl capella bucket update` | ✅ Done | CAP-023, CAP-041 | `PUT {org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}`<br>`PUT {org}/projects/{p}/clusters/{c}/buckets/{b}` |  |
+| `cbctl capella cidr create` | ✅ Done | CAP-022 | `POST {org}/projects/{p}/clusters/{c}/allowedcidrs` |  |
+| `cbctl capella cidr delete` | ✅ Done | CAP-022 | `DELETE {org}/projects/{p}/clusters/{c}/allowedcidrs/{allowedCidrId}` |  |
+| `cbctl capella cidr list` | ✅ Done | CAP-022 | `GET {org}/projects/{p}/clusters/{c}/allowedcidrs` |  |
+| `cbctl capella cluster backup create` | ✅ Done | CAP-057 | `POST {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups` |  |
+| `cbctl capella cluster backup delete` | ✅ Done | CAP-057 | `DELETE {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` |  |
+| `cbctl capella cluster backup list` | ✅ Done | CAP-057 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups`<br>`GET {org}/projects/{p}/cloudsnapshotbackups` |  |
+| `cbctl capella cluster backup regions` | ✅ Done | CAP-057 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions` |  |
+| `cbctl capella cluster backup restore` | ✅ Done | CAP-057 | `POST {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}/restore` |  |
+| `cbctl capella cluster backup restores` | ✅ Done | CAP-057 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/restores` |  |
+| `cbctl capella cluster backup retain` | ✅ Done | CAP-057 | `PUT {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` |  |
+| `cbctl capella cluster backup schedule delete` | ✅ Done | CAP-056 | `DELETE {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` |  |
+| `cbctl capella cluster backup schedule options` | ✅ Done | CAP-056 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions`<br>`GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options` |  |
+| `cbctl capella cluster backup schedule set` | ✅ Done | CAP-056 | `PUT {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule`<br>`GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options` |  |
+| `cbctl capella cluster backup schedule show` | ✅ Done | CAP-056 | `GET {org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` |  |
+| `cbctl capella cluster clone` | ✅ Done | CAP-049 | `POST {org}/projects/{p}/clusters` |  |
+| `cbctl capella cluster create` | ✅ Done | CAP-011, CAP-038, CAP-041, CAP-051, CAP-053, CAP-060 | `POST {org}/projects/{p}/clusters/freeTier`<br>`POST {org}/projects/{p}/clusters` |  |
+| `cbctl capella cluster delete` | ✅ Done | CAP-014, CAP-041 | `DELETE {org}/projects/{p}/clusters/freeTier/{c}`<br>`DELETE {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella cluster get` | ✅ Done | CAP-038, CAP-041 | `GET {org}/projects/{p}/clusters/freeTier/{c}`<br>`GET {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella cluster group add` | ✅ Done | CAP-052, CAP-060 | `PUT {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella cluster group list` | ✅ Done | CAP-052 | `GET {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella cluster group remove` | ✅ Done | CAP-052 | `PUT {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella cluster list` | ✅ Done | CAP-038 | `GET {org}/projects/{p}/clusters` |  |
+| `cbctl capella cluster options` | ✅ Done | CAP-041 |  |  |
+| `cbctl capella cluster power off` | ✅ Done | CAP-019 | `DELETE {org}/projects/{p}/clusters/freeTier/{c}/activationState`<br>`DELETE {org}/projects/{p}/clusters/{c}/activationState` |  |
+| `cbctl capella cluster power on` | ✅ Done | CAP-019 | `POST {org}/projects/{p}/clusters/freeTier/{c}/activationState`<br>`POST {org}/projects/{p}/clusters/{c}/activationState` |  |
+| `cbctl capella cluster protect` | ✅ Done | CAP-013 | `PUT {org}/projects/{p}/clusters/{c}/deletionProtection` |  |
+| `cbctl capella cluster scale` | ✅ Done | CAP-015, CAP-016, CAP-018 | `PUT {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella cluster schedule apply` | ✅ Done | CAP-020 | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule`<br>`PUT {org}/projects/{p}/clusters/{c}/onOffSchedule` |  |
+| `cbctl capella cluster schedule delete` | ✅ Done | CAP-020 | `DELETE {org}/projects/{p}/clusters/{c}/onOffSchedule` |  |
+| `cbctl capella cluster schedule pause` | ✅ Done | CAP-021 | `DELETE {org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` |  |
+| `cbctl capella cluster schedule resume` | ✅ Done | CAP-021 | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` |  |
+| `cbctl capella cluster schedule set` | ✅ Done | CAP-020 | `POST {org}/projects/{p}/clusters/{c}/onOffSchedule`<br>`PUT {org}/projects/{p}/clusters/{c}/onOffSchedule` |  |
+| `cbctl capella cluster schedule show` | ✅ Done | CAP-020 | `GET {org}/projects/{p}/clusters/{c}/onOffSchedule` |  |
+| `cbctl capella cluster update` | ✅ Done | CAP-012, CAP-017, CAP-053, CAP-060 | `PUT {org}/projects/{p}/clusters/freeTier/{c}`<br>`PUT {org}/projects/{p}/clusters/{c}` |  |
+| `cbctl capella collection create` | ✅ Done | CAP-025 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` |  |
+| `cbctl capella collection delete` | ✅ Done | CAP-026 | `DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` |  |
+| `cbctl capella collection list` | ✅ Done | CAP-025 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` |  |
+| `cbctl capella collection update` | ✅ Done | CAP-025 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}`<br>`PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` |  |
+| `cbctl capella credential create` | ✅ Done | CAP-027, CAP-046 | `POST {org}/projects/{p}/clusters/{c}/users` |  |
+| `cbctl capella credential delete` | ✅ Done | CAP-029 | `DELETE {org}/projects/{p}/clusters/{c}/users/{userId}` |  |
+| `cbctl capella credential get` | ✅ Done | CAP-046 | `GET {org}/projects/{p}/clusters/{c}/users/{userId}` |  |
+| `cbctl capella credential list` | ✅ Done | CAP-046 | `GET {org}/projects/{p}/clusters/{c}/users` |  |
+| `cbctl capella credential update` | ✅ Done | CAP-027, CAP-028, CAP-046 | `PUT {org}/projects/{p}/clusters/{c}/users/{userId}` |  |
+| `cbctl capella project create` | ✅ Done | CAP-009, CAP-039 | `POST {org}/projects` |  |
+| `cbctl capella project delete` | ✅ Done | CAP-010 | `DELETE {org}/projects/{p}` |  |
+| `cbctl capella project get` | ✅ Done | CAP-009, CAP-039 | `GET {org}/projects/{p}` |  |
+| `cbctl capella project list` | ✅ Done | CAP-009, CAP-039 | `GET {org}/projects` |  |
+| `cbctl capella project update` | ✅ Done | CAP-009, CAP-039 | `PUT {org}/projects/{p}` |  |
+| `cbctl capella scope create` | ✅ Done | CAP-025 | `POST {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` |  |
+| `cbctl capella scope delete` | ✅ Done | CAP-026 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}`<br>`DELETE {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` |  |
+| `cbctl capella scope list` | ✅ Done | CAP-025 | `GET {org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` |  |
 
 ### Workflow commands (not one-to-one with an API operation)
 
 | Command | Status | Stories | Notes |
 |---|---|---|---|
-| `cbctl capella configure` | ⬜ Not built | CAP-037, CAP-047 | Saves a profile and stores the API key in the OS keychain. Calls `GET /v4/organizations`; with an existing capella.yaml, also `GET …/projects` to check it (CAP-047). |
-| `cbctl capella configure list / show / remove` | ⬜ Not built | CAP-037 | No API calls. |
-| `cbctl capella init` | ⬜ Not built | CAP-035 | Wizard that writes capella.yaml. |
-| `cbctl capella import` | ⬜ Not built | CAP-036, CAP-047, CAP-048, CAP-054 | Hidden alias of `sync` since CAP-054. Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml. |
-| `cbctl capella validate` | ⬜ Not built | CAP-002 | Offline check of schema, references and password rules. |
-| `cbctl capella plan` | ⬜ Not built | CAP-005, CAP-048 | Diffs projects, clusters, deletion protection, schedules, CIDRs, buckets, scopes, collections and credentials. |
-| `cbctl capella apply` | ⬜ Not built | CAP-006, CAP-016, CAP-019, CAP-031 | Same coverage as `plan`; `--prune`, `--rotate-passwords`, `--power-on` and the scale-in flags. |
-| `cbctl capella sync` | ⬜ Not built | CAP-038, CAP-048, CAP-054 | Refreshes capella.yaml from Capella; with CAP-054 it covers every project in the organization and `import` becomes its alias. |
-| `cbctl capella destroy` | ⬜ Not built | CAP-030 | Deletes every declared resource in reverse order; capella.yaml is kept. |
-| `cbctl capella drift` | ⬜ Not built | CAP-031 | Read-only: changed, missing and unmanaged resources; `--detailed-exitcode`. |
-| `cbctl capella help / completion` | ⬜ Not built | CAP-034 | No API calls. |
-| `cbctl capella cluster disk-types` | ⬜ Not built | CAP-060 | No API calls: disk types, sizes and IOPS from `config/disks.yaml` (Capella's documentation; the spec has only the type names). |
+| `cbctl capella configure` | ✅ Done | CAP-037, CAP-047 | Saves a profile and stores the API key in the OS keychain. Calls `GET /v4/organizations`; with an existing capella.yaml, also `GET …/projects` to check it (CAP-047). |
+| `cbctl capella configure list / show / remove` | ✅ Done | CAP-037 | No API calls. |
+| `cbctl capella init` | ✅ Done | CAP-035 | Wizard that writes capella.yaml. |
+| `cbctl capella import` | ✅ Done | CAP-036, CAP-047, CAP-048, CAP-054 | Hidden alias of `sync` since CAP-054. Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml. |
+| `cbctl capella validate` | ✅ Done | CAP-002 | Offline check of schema, references and password rules. |
+| `cbctl capella plan` | ✅ Done | CAP-005, CAP-048 | Diffs projects, clusters, deletion protection, schedules, CIDRs, buckets, scopes, collections and credentials. |
+| `cbctl capella apply` | ✅ Done | CAP-006, CAP-016, CAP-019, CAP-031 | Same coverage as `plan`; `--prune`, `--rotate-passwords`, `--power-on` and the scale-in flags. |
+| `cbctl capella sync` | ✅ Done | CAP-038, CAP-048, CAP-054 | Refreshes capella.yaml from Capella; with CAP-054 it covers every project in the organization and `import` becomes its alias. |
+| `cbctl capella destroy` | ✅ Done | CAP-030 | Deletes every declared resource in reverse order; capella.yaml is kept. |
+| `cbctl capella drift` | ✅ Done | CAP-031 | Read-only: changed, missing and unmanaged resources; `--detailed-exitcode`. |
+| `cbctl capella help / completion` | ✅ Done | CAP-034 | No API calls. |
+| `cbctl capella cluster disk-types` | ✅ Done | CAP-060 | No API calls: disk types, sizes and IOPS from `config/disks.yaml` (Capella's documentation; the spec has only the type names). |
 
 ### Commands outside 1.0.0
 
@@ -389,110 +343,110 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 | Update Organization Configuration | `PUT` | `{org}/configuration` | `org update` | ⏭️ Not in 1.0 |  |
 | List Organizations | `GET` | `/v4/organizations` | internal: `configure`, `init` (organization picker) | ✅ Done | No `org list` command; the organization is chosen once per profile. |
 
-### Projects — 5 ops (5 ⬜)
+### Projects — 5 ops (5 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Projects)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Project | `POST` | `{org}/projects` | `project create` | ⬜ Not built |  |
-| List Project | `GET` | `{org}/projects` | `project list` | ⬜ Not built |  |
-| Get Project | `GET` | `{org}/projects/{p}` | `project get` | ⬜ Not built |  |
-| Update Project | `PUT` | `{org}/projects/{p}` | `project update` | ⬜ Not built | CLI changes the description; a rename goes through capella.yaml and `apply`. |
-| Delete Project | `DELETE` | `{org}/projects/{p}` | `project delete` | ⬜ Not built | `--cascade` deletes the project's clusters first. |
+| Create Project | `POST` | `{org}/projects` | `project create` | ✅ Done |  |
+| List Project | `GET` | `{org}/projects` | `project list` | ✅ Done |  |
+| Get Project | `GET` | `{org}/projects/{p}` | `project get` | ✅ Done |  |
+| Update Project | `PUT` | `{org}/projects/{p}` | `project update` | ✅ Done | CLI changes the description; a rename goes through capella.yaml and `apply`. |
+| Delete Project | `DELETE` | `{org}/projects/{p}` | `project delete` | ✅ Done | `--cascade` deletes the project's clusters first. |
 
-### Clusters — 10 ops (1 ✅, 8 ⬜, 1 ⏭️)
+### Clusters — 10 ops (9 ✅, 1 ⏭️)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Clusters)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Cluster | `POST` | `{org}/projects/{p}/clusters` | `cluster create` / `cluster clone` | ⬜ Not built |  |
-| List Clusters | `GET` | `{org}/projects/{p}/clusters` | `cluster list` | ⬜ Not built |  |
-| Get Cluster | `GET` | `{org}/projects/{p}/clusters/{c}` | `cluster get` / `cluster group list` | ⬜ Not built |  |
-| Update Cluster | `PUT` | `{org}/projects/{p}/clusters/{c}` | `cluster update` / `cluster scale` / `cluster group add` / `cluster group remove` | ⬜ Not built | Description, support, scale out/in/up/down (capacity-checked), step scaling, adding and removing service groups. |
-| Delete Cluster | `DELETE` | `{org}/projects/{p}/clusters/{c}` | `cluster delete` | ⬜ Not built | `--discard-snapshots` maps to `retainsnapshotbackups=false`. |
+| Create Cluster | `POST` | `{org}/projects/{p}/clusters` | `cluster create` / `cluster clone` | ✅ Done |  |
+| List Clusters | `GET` | `{org}/projects/{p}/clusters` | `cluster list` | ✅ Done |  |
+| Get Cluster | `GET` | `{org}/projects/{p}/clusters/{c}` | `cluster get` / `cluster group list` | ✅ Done |  |
+| Update Cluster | `PUT` | `{org}/projects/{p}/clusters/{c}` | `cluster update` / `cluster scale` / `cluster group add` / `cluster group remove` | ✅ Done | Description, support, scale out/in/up/down (capacity-checked), step scaling, adding and removing service groups. |
+| Delete Cluster | `DELETE` | `{org}/projects/{p}/clusters/{c}` | `cluster delete` | ✅ Done | `--discard-snapshots` maps to `retainsnapshotbackups=false`. |
 | Get Cluster Capacity Statistics | `GET` | `{org}/projects/{p}/clusters/{c}/stats` | internal: bucket memory and scale-in checks | ✅ Done | No `cluster stats` command. |
-| Turn On Cluster | `POST` | `{org}/projects/{p}/clusters/{c}/activationState` | `cluster power on` | ⬜ Not built |  |
-| Turn Off Cluster | `DELETE` | `{org}/projects/{p}/clusters/{c}/activationState` | `cluster power off` | ⬜ Not built |  |
+| Turn On Cluster | `POST` | `{org}/projects/{p}/clusters/{c}/activationState` | `cluster power on` | ✅ Done |  |
+| Turn Off Cluster | `DELETE` | `{org}/projects/{p}/clusters/{c}/activationState` | `cluster power off` | ✅ Done |  |
 | Migrate Buckets | `PUT` | `{org}/projects/{p}/clusters/{c}/bucketStorageMigration` | `cluster migrate-buckets` | ⏭️ Not in 1.0 |  |
-| Update Deletion Protection | `PUT` | `{org}/projects/{p}/clusters/{c}/deletionProtection` | `cluster protect` | ⬜ Not built |  |
+| Update Deletion Protection | `PUT` | `{org}/projects/{p}/clusters/{c}/deletionProtection` | `cluster protect` | ✅ Done |  |
 
-### Free tier (clusters & buckets) — 11 ops (11 ⬜)
+### Free tier (clusters & buckets) — 11 ops (11 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Free-Tier)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Free Tier Cluster | `POST` | `{org}/projects/{p}/clusters/freeTier` | `cluster create` | ⬜ Not built | Uses `--free-tier`. |
-| Get Free Tier Cluster | `GET` | `{org}/projects/{p}/clusters/freeTier/{c}` | `cluster get` | ⬜ Not built |  |
-| Update Free Tier Cluster | `PUT` | `{org}/projects/{p}/clusters/freeTier/{c}` | `cluster update` | ⬜ Not built | The API accepts only name and description. |
-| Delete Free Tier Cluster | `DELETE` | `{org}/projects/{p}/clusters/freeTier/{c}` | `cluster delete` | ⬜ Not built |  |
-| Turn On Free Tier Cluster | `POST` | `{org}/projects/{p}/clusters/freeTier/{c}/activationState` | `cluster power on` | ⬜ Not built | Free tier: no body; also turns on linked App Services. |
-| Turn Off Free Tier Cluster | `DELETE` | `{org}/projects/{p}/clusters/freeTier/{c}/activationState` | `cluster power off` | ⬜ Not built |  |
-| Create Free Tier Bucket | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier` | `bucket create` | ⬜ Not built |  |
-| List Free Tier Buckets | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier` | `bucket list` | ⬜ Not built |  |
-| Get Free Tier Bucket | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `bucket get` | ⬜ Not built |  |
-| Update Free Tier Bucket | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `bucket update` | ⬜ Not built |  |
-| Delete Free Tier Bucket | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `bucket delete` | ⬜ Not built |  |
+| Create Free Tier Cluster | `POST` | `{org}/projects/{p}/clusters/freeTier` | `cluster create` | ✅ Done | Uses `--free-tier`. |
+| Get Free Tier Cluster | `GET` | `{org}/projects/{p}/clusters/freeTier/{c}` | `cluster get` | ✅ Done |  |
+| Update Free Tier Cluster | `PUT` | `{org}/projects/{p}/clusters/freeTier/{c}` | `cluster update` | ✅ Done | The API accepts only name and description. |
+| Delete Free Tier Cluster | `DELETE` | `{org}/projects/{p}/clusters/freeTier/{c}` | `cluster delete` | ✅ Done |  |
+| Turn On Free Tier Cluster | `POST` | `{org}/projects/{p}/clusters/freeTier/{c}/activationState` | `cluster power on` | ✅ Done | Free tier: no body; also turns on linked App Services. |
+| Turn Off Free Tier Cluster | `DELETE` | `{org}/projects/{p}/clusters/freeTier/{c}/activationState` | `cluster power off` | ✅ Done |  |
+| Create Free Tier Bucket | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier` | `bucket create` | ✅ Done |  |
+| List Free Tier Buckets | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier` | `bucket list` | ✅ Done |  |
+| Get Free Tier Bucket | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `bucket get` | ✅ Done |  |
+| Update Free Tier Bucket | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `bucket update` | ✅ Done |  |
+| Delete Free Tier Bucket | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/freeTier/{bucketId}` | `bucket delete` | ✅ Done |  |
 
-### On/Off schedule (hibernation) — 6 ops (6 ⬜)
+### On/Off schedule (hibernation) — 6 ops (6 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/On-Off-Schedule)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Cluster On/Off schedule | `POST` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule set` / `cluster schedule apply` | ⬜ Not built |  |
-| Get Cluster On/Off schedule | `GET` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule show` | ⬜ Not built | Also read by plan, import and the power note. |
-| Update Cluster On/Off schedule | `PUT` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule set` / `cluster schedule apply` | ⬜ Not built |  |
-| Delete Cluster On/Off schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule delete` | ⬜ Not built |  |
-| Pause Cluster On/Off Schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | `cluster schedule pause` | ⬜ Not built |  |
-| Unpause Cluster On/Off Schedule | `POST` | `{org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | `cluster schedule resume` | ⬜ Not built |  |
+| Create Cluster On/Off schedule | `POST` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule set` / `cluster schedule apply` | ✅ Done |  |
+| Get Cluster On/Off schedule | `GET` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule show` | ✅ Done | Also read by plan, import and the power note. |
+| Update Cluster On/Off schedule | `PUT` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule set` / `cluster schedule apply` | ✅ Done |  |
+| Delete Cluster On/Off schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/onOffSchedule` | `cluster schedule delete` | ✅ Done |  |
+| Pause Cluster On/Off Schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | `cluster schedule pause` | ✅ Done |  |
+| Unpause Cluster On/Off Schedule | `POST` | `{org}/projects/{p}/clusters/{c}/onOffSchedule/activationState` | `cluster schedule resume` | ✅ Done |  |
 
-### Allowed CIDRs (cluster) — 4 ops (3 ⬜, 1 ➖)
+### Allowed CIDRs (cluster) — 4 ops (3 ✅, 1 ➖)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Allowed-CIDRs-(Cluster))
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Allowed CIDR | `POST` | `{org}/projects/{p}/clusters/{c}/allowedcidrs` | `cidr create` | ⬜ Not built | No PUT exists, so a changed entry is replaced (delete + create). |
-| List Allowed CIDRs | `GET` | `{org}/projects/{p}/clusters/{c}/allowedcidrs` | `cidr list` | ⬜ Not built |  |
+| Create Allowed CIDR | `POST` | `{org}/projects/{p}/clusters/{c}/allowedcidrs` | `cidr create` | ✅ Done | No PUT exists, so a changed entry is replaced (delete + create). |
+| List Allowed CIDRs | `GET` | `{org}/projects/{p}/clusters/{c}/allowedcidrs` | `cidr list` | ✅ Done |  |
 | get allowed CIDR | `GET` | `{org}/projects/{p}/clusters/{c}/allowedcidrs/{allowedCidrId}` | — | ➖ Not needed | Wired in the API client but unused: `cidr list` returns the same fields. |
-| Delete Allowed CIDR | `DELETE` | `{org}/projects/{p}/clusters/{c}/allowedcidrs/{allowedCidrId}` | `cidr delete` | ⬜ Not built |  |
+| Delete Allowed CIDR | `DELETE` | `{org}/projects/{p}/clusters/{c}/allowedcidrs/{allowedCidrId}` | `cidr delete` | ✅ Done |  |
 
-### Buckets, scopes & collections — 15 ops (14 ⬜, 1 ⏭️)
+### Buckets, scopes & collections — 15 ops (14 ✅, 1 ⏭️)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Buckets-Scopes-and-Collections)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Bucket | `POST` | `{org}/projects/{p}/clusters/{c}/buckets` | `bucket create` | ⬜ Not built |  |
-| List Buckets | `GET` | `{org}/projects/{p}/clusters/{c}/buckets` | `bucket list` | ⬜ Not built |  |
-| Get Bucket | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket get` | ⬜ Not built |  |
-| Update Bucket | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket update` | ⬜ Not built | Immutable fields (type, storage backend, vbuckets, conflict resolution, eviction) are blocked. |
-| Delete Bucket | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket delete` | ⬜ Not built |  |
+| Create Bucket | `POST` | `{org}/projects/{p}/clusters/{c}/buckets` | `bucket create` | ✅ Done |  |
+| List Buckets | `GET` | `{org}/projects/{p}/clusters/{c}/buckets` | `bucket list` | ✅ Done |  |
+| Get Bucket | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket get` | ✅ Done |  |
+| Update Bucket | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket update` | ✅ Done | Immutable fields (type, storage backend, vbuckets, conflict resolution, eviction) are blocked. |
+| Delete Bucket | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket delete` | ✅ Done |  |
 | Flush Bucket Data | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/flush` | `bucket flush` | ⏭️ Not in 1.0 | Not exposed in 1.0.0 (CAP-024); 1.5.0 adds it behind a typed confirmation. |
-| Create Scope | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` | `scope create` | ⬜ Not built | Also `collection create` for a new scope, and `apply`. |
-| List Scopes | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` | `scope list` | ⬜ Not built | Also read by `plan`, `import` and `collection delete`. |
-| Get Scope | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` | `scope delete` | ⬜ Not built | Lists the collections the confirmation shows. |
-| Delete Scope | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` | `scope delete` | ⬜ Not built | Also `apply --prune`. Refused for `_default`/`_system` and on a protected cluster. |
-| Create Collection | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` | `collection create` | ⬜ Not built | Also `apply`; `maxTTL` sent only when set. |
-| List Collections | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` | `collection list` | ⬜ Not built | Also read by `plan`. |
-| Get Collection | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `collection update` | ⬜ Not built | Reads the ETag sent as `If-Match` on the update. |
-| Update Collection | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `collection update` | ⬜ Not built | `maxTTL` only; BLOCKED below Couchbase Server 7.6.0. |
-| Delete Collection | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `collection delete` | ⬜ Not built | Also `apply --prune`. |
+| Create Scope | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` | `scope create` | ✅ Done | Also `collection create` for a new scope, and `apply`. |
+| List Scopes | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` | `scope list` | ✅ Done | Also read by `plan`, `import` and `collection delete`. |
+| Get Scope | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` | `scope delete` | ✅ Done | Lists the collections the confirmation shows. |
+| Delete Scope | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` | `scope delete` | ✅ Done | Also `apply --prune`. Refused for `_default`/`_system` and on a protected cluster. |
+| Create Collection | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` | `collection create` | ✅ Done | Also `apply`; `maxTTL` sent only when set. |
+| List Collections | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections` | `collection list` | ✅ Done | Also read by `plan`. |
+| Get Collection | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `collection update` | ✅ Done | Reads the ETag sent as `If-Match` on the update. |
+| Update Collection | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `collection update` | ✅ Done | `maxTTL` only; BLOCKED below Couchbase Server 7.6.0. |
+| Delete Collection | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}/collections/{collectionName}` | `collection delete` | ✅ Done | Also `apply --prune`. |
 
-### Database credentials — 5 ops (5 ⬜)
+### Database credentials — 5 ops (5 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Database-Credentials)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| List Database Credentials | `GET` | `{org}/projects/{p}/clusters/{c}/users` | `credential list` | ⬜ Not built | Also read by `import`, the `bucket delete` guard and `plan`. |
-| Create Database Credentials | `POST` | `{org}/projects/{p}/clusters/{c}/users` | `credential create` | ⬜ Not built | Basic access only in 1.0.0; a generated password is saved locally. |
-| Get Database Credentials | `GET` | `{org}/projects/{p}/clusters/{c}/users/{userId}` | `credential get` | ⬜ Not built | Never returns the password. |
-| Update Database Credentials | `PUT` | `{org}/projects/{p}/clusters/{c}/users/{userId}` | `credential update` | ⬜ Not built | Access changes and password rotation (`--rotate-password`). |
-| Delete Database Credentials | `DELETE` | `{org}/projects/{p}/clusters/{c}/users/{userId}` | `credential delete` | ⬜ Not built | Also `apply --prune`; the local password file is kept. |
+| List Database Credentials | `GET` | `{org}/projects/{p}/clusters/{c}/users` | `credential list` | ✅ Done | Also read by `import`, the `bucket delete` guard and `plan`. |
+| Create Database Credentials | `POST` | `{org}/projects/{p}/clusters/{c}/users` | `credential create` | ✅ Done | Basic access only in 1.0.0; a generated password is saved locally. |
+| Get Database Credentials | `GET` | `{org}/projects/{p}/clusters/{c}/users/{userId}` | `credential get` | ✅ Done | Never returns the password. |
+| Update Database Credentials | `PUT` | `{org}/projects/{p}/clusters/{c}/users/{userId}` | `credential update` | ✅ Done | Access changes and password rotation (`--rotate-password`). |
+| Delete Database Credentials | `DELETE` | `{org}/projects/{p}/clusters/{c}/users/{userId}` | `credential delete` | ✅ Done | Also `apply --prune`; the local password file is kept. |
 
 ### Database roles (custom) — 6 ops (6 ⏭️)
 
@@ -574,59 +528,59 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 | Pause a replication | `DELETE` | `{org}/projects/{p}/clusters/{c}/replications/{replicationId}/activationStatus` | `replication pause` | ⏭️ Not in 1.0 |  |
 | Resume a replication | `POST` | `{org}/projects/{p}/clusters/{c}/replications/{replicationId}/activationStatus` | `replication resume` | ⏭️ Not in 1.0 |  |
 
-### Backups & restore (bucket) — 7 ops (7 ⬜)
+### Backups & restore (bucket) — 7 ops (7 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Backups-and-Restore-(Bucket))
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Backup | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backups` | `bucket backup create` | ⬜ Not built |  |
-| Create Backup Export | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/export` | `bucket backup export` | ⬜ Not built | Packages a backup cycle as a zip. |
-| Get Backup Export | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/exports/{exportId}` | `bucket backup export` | ⬜ Not built | Polled for the download URL. |
-| List Cluster Backups | `GET` | `{org}/projects/{p}/clusters/{c}/backups` | `bucket backup list` | ⬜ Not built |  |
-| Get Backup | `GET` | `{org}/projects/{p}/clusters/{c}/backups/{backupId}` | `bucket backup get` | ⬜ Not built |  |
-| Delete Backup Cycle | `DELETE` | `{org}/projects/{p}/clusters/{c}/backups/{backupId}` | `bucket backup delete` | ⬜ Not built | Deletes the whole backup cycle. |
-| Restore Backup | `POST` | `{org}/projects/{p}/clusters/{c}/backups/{backupId}/restore` | `bucket backup restore` | ⬜ Not built | Same or another cluster; partial restores. |
+| Create Backup | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backups` | `bucket backup create` | ✅ Done |  |
+| Create Backup Export | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/export` | `bucket backup export` | ✅ Done | Packages a backup cycle as a zip. |
+| Get Backup Export | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backups/{backupId}/exports/{exportId}` | `bucket backup export` | ✅ Done | Polled for the download URL. |
+| List Cluster Backups | `GET` | `{org}/projects/{p}/clusters/{c}/backups` | `bucket backup list` | ✅ Done |  |
+| Get Backup | `GET` | `{org}/projects/{p}/clusters/{c}/backups/{backupId}` | `bucket backup get` | ✅ Done |  |
+| Delete Backup Cycle | `DELETE` | `{org}/projects/{p}/clusters/{c}/backups/{backupId}` | `bucket backup delete` | ✅ Done | Deletes the whole backup cycle. |
+| Restore Backup | `POST` | `{org}/projects/{p}/clusters/{c}/backups/{backupId}/restore` | `bucket backup restore` | ✅ Done | Same or another cluster; partial restores. |
 
-### Backup schedule (bucket) — 6 ops (6 ⬜)
+### Backup schedule (bucket) — 6 ops (6 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Backup-Schedule-(Bucket))
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Backup Schedule | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule set` | ⬜ Not built |  |
-| Get Backup Schedule | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule show` | ⬜ Not built | Also read by plan, sync and drift. |
-| Update Backup Schedule | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule set` | ⬜ Not built |  |
-| Delete Backup Schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule delete` | ⬜ Not built |  |
-| List Cycles | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles` | `bucket backup cycle list` | ⬜ Not built |  |
-| List Backups | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles/{cycleId}` | `bucket backup cycle get` | ⬜ Not built |  |
+| Create Backup Schedule | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule set` | ✅ Done |  |
+| Get Backup Schedule | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule show` | ✅ Done | Also read by plan, sync and drift. |
+| Update Backup Schedule | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule set` | ✅ Done |  |
+| Delete Backup Schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/schedules` | `bucket backup schedule delete` | ✅ Done |  |
+| List Cycles | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles` | `bucket backup cycle list` | ✅ Done |  |
+| List Backups | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/backup/cycles/{cycleId}` | `bucket backup cycle get` | ✅ Done |  |
 
-### Cloud snapshot backups & restore (cluster) — 9 ops (8 ⬜, 1 ⏭️)
+### Cloud snapshot backups & restore (cluster) — 9 ops (8 ✅, 1 ⏭️)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Cloud-Snapshot-Backups-and-Restore)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Cloud Snapshot Backup | `POST` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups` | `cluster backup create` | ⬜ Not built |  |
-| List Cloud Snapshot Backups | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups` | `cluster backup list` | ⬜ Not built |  |
-| List Cloud Snapshot Restores | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/restores` | `cluster backup restores` | ⬜ Not built |  |
-| List Available Geographic Regions for Cross-region Operations | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions` | `cluster backup regions` / `cluster backup schedule options` | ⬜ Not built | Regions a copy can go to. |
-| Edit Backup Retention | `PUT` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | `cluster backup retain` | ⬜ Not built | Changes retention. |
-| Delete Backup | `DELETE` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | `cluster backup delete` | ⬜ Not built |  |
-| Restore Backup | `POST` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}/restore` | `cluster backup restore` | ⬜ Not built |  |
-| List Cloud Snapshot Backups at the Project Level | `GET` | `{org}/projects/{p}/cloudsnapshotbackups` | `cluster backup list` | ⬜ Not built | Project-wide listing (no cluster name). |
+| Create Cloud Snapshot Backup | `POST` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups` | `cluster backup create` | ✅ Done |  |
+| List Cloud Snapshot Backups | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups` | `cluster backup list` | ✅ Done |  |
+| List Cloud Snapshot Restores | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/restores` | `cluster backup restores` | ✅ Done |  |
+| List Available Geographic Regions for Cross-region Operations | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/regions` | `cluster backup regions` / `cluster backup schedule options` | ✅ Done | Regions a copy can go to. |
+| Edit Backup Retention | `PUT` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | `cluster backup retain` | ✅ Done | Changes retention. |
+| Delete Backup | `DELETE` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | `cluster backup delete` | ✅ Done |  |
+| Restore Backup | `POST` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}/restore` | `cluster backup restore` | ✅ Done |  |
+| List Cloud Snapshot Backups at the Project Level | `GET` | `{org}/projects/{p}/cloudsnapshotbackups` | `cluster backup list` | ✅ Done | Project-wide listing (no cluster name). |
 | Clone Cluster Backup | `POST` | `{org}/projects/{p}/cloudsnapshotbackups/{backupId}/clone` | `cluster backup clone` | ⏭️ Not in 1.0 | Creates a new cluster from the backup. |
 
-### Cloud snapshot backup schedule (cluster) — 4 ops (4 ⬜)
+### Cloud snapshot backup schedule (cluster) — 4 ops (4 ✅)
 
 [API reference](https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/Cloud-Snapshot-Backups-Schedule)
 
 | Operation | Method | Path | cbctl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Upsert Backup Schedule | `PUT` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | `cluster backup schedule set` | ⬜ Not built |  |
-| Get Backup Schedule | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | `cluster backup schedule show` | ⬜ Not built | Also read by plan, sync and drift. |
-| Delete Backup Schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | `cluster backup schedule delete` | ⬜ Not built |  |
-| Get Backup Schedule Options | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options` | `cluster backup schedule options` / `cluster backup schedule set` | ⬜ Not built | Permitted intervals and retention for the support plan; read before every set. |
+| Upsert Backup Schedule | `PUT` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | `cluster backup schedule set` | ✅ Done |  |
+| Get Backup Schedule | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | `cluster backup schedule show` | ✅ Done | Also read by plan, sync and drift. |
+| Delete Backup Schedule | `DELETE` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule` | `cluster backup schedule delete` | ✅ Done |  |
+| Get Backup Schedule Options | `GET` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackupschedule/options` | `cluster backup schedule options` / `cluster backup schedule set` | ✅ Done | Permitted intervals and retention for the support plan; read before every set. |
 
 ### Network peers — 5 ops (5 ⏭️)
 

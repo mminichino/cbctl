@@ -401,14 +401,14 @@ func TestBucketDelete(t *testing.T) {
 	t.Run("confirmed", func(t *testing.T) {
 		fx.addBucket(t, "scratch")
 		fakeTTY(t)
-		res := runResourceIn(t, "y\n", "bucket", "delete", "clu", "scratch")
+		res := runResourceIn(t, "scratch\n", "bucket", "delete", "clu", "scratch")
 		if res.Err != nil {
 			t.Fatalf("%v\n%s", res.Err, res.Stderr)
 		}
 		wantContains(t, res.Stdout, "deleted bucket scratch from clu")
 	})
 	t.Run("unknown", func(t *testing.T) {
-		wantExit(t, runResource(t, "bucket", "delete", "clu", "ghost", "-y"), ExitConfigInvalid, "bucket ghost not found")
+		wantContains(t, mustRun(t, "bucket", "delete", "clu", "ghost", "-y").Stdout, "bucket clu/ghost not found, nothing to do")
 	})
 	t.Run("deletion protection blocks", func(t *testing.T) {
 		ctx := context.Background()

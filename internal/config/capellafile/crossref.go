@@ -441,16 +441,33 @@ func (c *crossChecker) checkHibernation(cl Obj, cp Path) {
 	if tz, _ := hib["timezone"].(string); tz == "" {
 		c.add(join(cp, "hibernation"), "timezone is required (for example US/Pacific)", "hibernation")
 	}
-	allOff := true
+	allOff, allOn := true, true
 	for _, d := range weekDays {
-		if DayValue(hib, d) != "off" {
+		v := DayValue(hib, d)
+		if v != "off" {
 			allOff = false
-			break
+		}
+		if v != "on" && !wholeDayWindow(v) {
+			allOn = false
 		}
 	}
 	if allOff {
 		c.add(join(cp, "hibernation"), "the cluster cannot be off every day of the week (Capella rule)", "hibernation")
 	}
+	if allOn {
+		c.add(join(cp, "hibernation"), "the schedule never turns the cluster off; Capella refuses a week that is on every day",
+			"hibernation", "remove the hibernation block to keep the cluster always on, or set at least one day to off or a window")
+	}
+}
+
+// wholeDayWindow reports whether a day value is the window 00:00-24:00 (the whole day on).
+func wholeDayWindow(v string) bool {
+	start, end, ok := strings.Cut(strings.TrimSpace(v), "-")
+	if !ok {
+		return false
+	}
+	h, m, _ := strings.Cut(strings.TrimSpace(start), ":")
+	return atoi(h) == 0 && atoi(m) == 0 && strings.TrimSpace(end) == "24:00"
 }
 
 func atoi(s string) int {

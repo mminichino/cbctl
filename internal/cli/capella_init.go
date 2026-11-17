@@ -398,10 +398,30 @@ func newCapellaInitCmd() *cobra.Command {
 	return cmd
 }
 
-// initIO prompts on stderr and reads answers from one buffered reader.
+// initIO prompts on stderr and reads answers from one buffered reader, or from the Prompter
+// injected through Deps (tests script the interview with it).
 type initIO struct {
 	in  *bufio.Reader
 	out io.Writer
+	p   Prompter
+}
+
+// readAnswer prints label and returns the raw answer ("" for an empty line).
+func (w *initIO) readAnswer(label, def string) (string, error) {
+	fmt.Fprintf(w.out, "%s: ", label)
+	if w.p != nil {
+		v, err := w.p.Ask(label, def)
+		fmt.Fprintln(w.out, v)
+		if err != nil {
+			return "", fmt.Errorf("answering %q: %w", label, err)
+		}
+		return v, nil
+	}
+	line, err := w.in.ReadString('\n')
+	if err != nil && line == "" {
+		return "", errInitEOF
+	}
+	return line, nil
 }
 
 var errInitEOF = Errorf(ExitError, "Run 'cbctl capella init --non-interactive' with flags instead.", "input ended before every question was answered")
@@ -415,10 +435,9 @@ func (w *initIO) ask(prompt, def string, choices []string) (string, error) {
 		if def != "" {
 			label += " [" + def + "]"
 		}
-		fmt.Fprintf(w.out, "%s: ", label)
-		line, err := w.in.ReadString('\n')
-		if err != nil && line == "" {
-			return "", errInitEOF
+		line, err := w.readAnswer(label, def)
+		if err != nil {
+			return "", err
 		}
 		v := strings.TrimSpace(line)
 		if v == "" {
@@ -461,7 +480,7 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 	in := cmd.InOrStdin()
 	interactive := ttyCheck(in) && !f.nonInteractive
 	errOut := cmd.ErrOrStderr()
-	w := &initIO{in: bufio.NewReader(in), out: errOut}
+	w := &initIO{in: bufio.NewReader(in), out: errOut, p: depsFromCmd(cmd).Prompter}
 
 	disc, err := discoverConfig(cmd)
 	if err != nil {
@@ -665,7 +684,7 @@ func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *ini
 		APIHost: flagIfChanged(cmd, "api-host"), ConfigFile: flagIfChanged(cmd, "config"),
 	})
 	if err != nil {
-		return nil, "", "", nil, Errorf(ExitConfigInvalid, "", "%v", err)
+		return nil, "", "", nil, Errorf(ExitConfigInvalid, settingsAction, "%v", err)
 	}
 	defaultOrg := af.orgID
 	if defaultOrg == "" && resolved.OrgID.IsSet() {
@@ -690,7 +709,7 @@ func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *ini
 	}
 	c, err := capellaapi.New(resolved.APIKey.Value, opts...)
 	if err != nil {
-		return nil, "", "", nil, Errorf(ExitConfigInvalid, "", "%v", err)
+		return nil, "", "", nil, Errorf(ExitConfigInvalid, settingsAction, "%v", err)
 	}
 	ctx := cmd.Context()
 	orgs, err := c.ListOrganizations(ctx)

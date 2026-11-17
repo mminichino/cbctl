@@ -20,6 +20,9 @@ import (
 // versionString is the --version text shared by every root command built in this process.
 var versionString string
 
+// LicenceLine is the second line of --version: cbctl's licence and copyright (see LICENSE and NOTICE).
+const LicenceLine = "Licensed under Apache-2.0 · Copyright Couchbase, Inc. and contributors"
+
 // rootCmd is the process-wide root command used by Execute and by tests that predate NewRootCmd.
 var rootCmd = buildRootCmd()
 
@@ -27,6 +30,7 @@ var rootCmd = buildRootCmd()
 func SetVersion(version, commit, date string) {
 	versionString = fmt.Sprintf("%s (commit=%s date=%s)", version, commit, date)
 	rootCmd.Version = versionString
+	shareVersionWithCapella(rootCmd)
 }
 
 // NewRootCmd builds a fresh cbctl command tree. It shares no command or flag state with any
@@ -38,8 +42,28 @@ func NewRootCmd(d Deps) *cobra.Command {
 	} else {
 		root.Version = versionString
 	}
+	root.SetVersionTemplate(versionTemplate)
+	shareVersionWithCapella(root)
 	return root
 }
+
+// shareVersionWithCapella makes `cbctl capella --version` print what `cbctl --version` does, so
+// a script that replaced `capellactl` with `cbctl capella` keeps working.
+func shareVersionWithCapella(root *cobra.Command) {
+	for _, c := range root.Commands() {
+		if c.Name() == "capella" {
+			c.Version = root.Version
+			c.SetVersionTemplate(strings.Replace(versionTemplate, "{{.Name}}", root.Name(), 1))
+		}
+	}
+}
+
+// capellaAPIVersion is the Capella Management API version the Capella commands use.
+const capellaAPIVersion = "v4.0"
+
+// versionTemplate is --version: the version, then the Capella API the commands speak and the
+// licence, both of which capellactl's --version carried. The first line is unchanged.
+const versionTemplate = "{{.Name}} version {{.Version}}\nCapella Management API " + capellaAPIVersion + "\n" + LicenceLine + "\n"
 
 var enablePrefixMatchingOnce sync.Once
 
@@ -54,6 +78,7 @@ func buildRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	root.SetVersionTemplate(versionTemplate)
 	root.AddCommand(newClusterCmd())
 	root.AddCommand(newBucketCmd())
 	root.AddCommand(newScopeCmd())
@@ -63,7 +88,10 @@ func buildRootCmd() *cobra.Command {
 	root.AddCommand(newCapellaCmd())
 	root.AddCommand(newConfigureCmd())
 	root.SetFlagErrorFunc(flagError)
+	root.InitDefaultCompletionCmd() // normally added at Execute; built here so it gets examples too
+	writeCompletionToCmdOut(root)
 	hardenTree(root)
+	installGroupExamples(root)
 	return root
 }
 
@@ -205,7 +233,8 @@ func classifyCobraError(err error) error {
 	msg := err.Error()
 	for _, p := range cobraUsagePrefixes {
 		if strings.HasPrefix(msg, p) || strings.Contains(msg, p) {
-			return &CLIError{Code: ExitConfigInvalid, Message: msg, Err: err}
+			return &CLIError{Code: ExitConfigInvalid, Message: msg, Err: err,
+				Action: "run the command again with --help to see its flags"}
 		}
 	}
 	return err

@@ -67,7 +67,7 @@ func discoverConfig(cmd *cobra.Command) (capellafile.Discovery, error) {
 	env := d.Env
 	profile, err := settings.LoadProfileWithLegacy(g.Profile, env, d.Home, d.LegacyHome)
 	if err != nil {
-		return capellafile.Discovery{}, Errorf(ExitConfigInvalid, "", "%v", err)
+		return capellafile.Discovery{}, Errorf(ExitConfigInvalid, "Fix the profile with 'cbctl configure', or pass --profile with another one.", "%v", err)
 	}
 	disc, err := capellafile.Discover(flagIfChanged(cmd, "config"), env, profile, cwd)
 	if err != nil {
@@ -200,7 +200,7 @@ func newRunContext(rt *runtime, cfg *capellafile.Config) *plan.RunContext {
 	rc.Timeout = rt.Timeout
 	rc.NoWait = rt.NoWait
 	rc.Env = envFrom(rt.cmd)
-	pw := &progressWriter{w: rt.errOut(), quiet: rt.Quiet, tty: ttyCheck(rt.errOut())}
+	pw := &progressWriter{w: rt.errOut(), quiet: rt.Quiet, tty: ttyCheck(rt.errOut()) && progressAllowed(rc.Env)}
 	rc.Progress = pw.line
 	rc.ProgressInline = pw.inline
 	rc.Warn = func(what, action string) { printNotice(rt.errOut(), what, action) }
@@ -281,7 +281,7 @@ func needTerminal(rt *runtime) error {
 		return nil
 	}
 	if _, ok := rt.terminalIn(); !ok {
-		return blockedError("re-run with --yes", "confirmation required but no terminal is attached")
+		return noApprovalError(rt.cmd)
 	}
 	return nil
 }
@@ -294,11 +294,18 @@ func confirmTypedFunc(rt *runtime, prompt, notes string, check func(typed string
 	}
 	in, ok := rt.terminalIn()
 	if !ok {
-		return false, blockedError("re-run with --yes", "confirmation required but no terminal is attached")
+		return false, noApprovalError(rt.cmd)
 	}
 	out := rt.errOut()
 	if notes != "" {
 		fmt.Fprintln(out, notes)
+	}
+	if p := prompterFor(rt); p != nil {
+		typed, err := p.Ask(prompt, "")
+		if err != nil {
+			return false, err
+		}
+		return check(strings.TrimSpace(typed)), nil
 	}
 	fmt.Fprintf(out, "%s: ", prompt)
 	line, err := bufio.NewReader(in).ReadString('\n')

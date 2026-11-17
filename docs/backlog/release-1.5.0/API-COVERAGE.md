@@ -13,12 +13,12 @@ The spec has **343 operations**, of which **220 are operational-database operati
 
 | Group | Operations | ✅ Done | Tracked in |
 |---|---|---|---|
-| Operational database, release 1.0.0 | 80 | 3 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
+| Operational database, release 1.0.0 | 80 | 80 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
 | Operational database, not needed (another operation gives the same data) | 1 | — | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
 | Operational database, release 1.5.0 | 139 | 0 | [1.5.0 report](../release-1.5.0/API-COVERAGE.md) |
 | App Services / App Endpoints, release 2.0.0 | 73 | 0 | [2.0.0 report](../release-2.0.0/API-COVERAGE-APP-SERVICES.md) |
 | AI (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools) | 50 | — | Not planned |
-| **Total in the spec** | **343** | **3** | |
+| **Total in the spec** | **343** | **80** | |
 
 **Status legend**
 
@@ -34,7 +34,7 @@ The spec has **343 operations**, of which **220 are operational-database operati
 |---|---|---|---|---|---|
 | **API operations planned for 1.5.0** | **139** | 0 | 0 | 139 | **0%** |
 | **Resource commands planned for 1.5.0** | **127** | 0 | 0 | 127 | **0%** |
-| Operational database after 1.5.0 (1.0.0 + 1.5.0) | 219 | 3 | 0 | 216 | 1% |
+| Operational database after 1.5.0 (1.0.0 + 1.5.0) | 219 | 80 | 0 | 139 | 37% |
 
 *The last row leaves out the 1 operation marked ➖ Not needed in the 1.0.0 report. Each verb counts as one command; a command can call more than one operation.*
 
