@@ -9,6 +9,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/manifest"
 	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/secrets"
 )
@@ -161,6 +162,13 @@ func HandleError(err error) ExitCode {
 	if errors.As(err, &cfgErr) {
 		printError(capellafile.RenderIssues(cfgErr.Heading(), cfgErr.Issues))
 		printAction(capellafile.FixProblemsFor(cfgErr.Issues))
+		return ExitConfigInvalid
+	}
+
+	var manErr *manifest.ValidationError
+	if errors.As(err, &manErr) {
+		printError(manErr.Error())
+		printAction("Fix the problems above, then run the command again.")
 		return ExitConfigInvalid
 	}
 
