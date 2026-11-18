@@ -21,6 +21,16 @@
           "summary": {"type": "string"},
           "warnings": {"type": "array", "items": {"type": "string"}},
           "error": {"type": "string"},
+          "connectionString": {"type": "string"},
+          "credentialPasswords": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["credential", "password"],
+              "additionalProperties": false,
+              "properties": {"credential": {"type": "string"}, "password": {"type": "string"}}
+            }
+          },
           "steps": {
             "type": "array",
             "items": {

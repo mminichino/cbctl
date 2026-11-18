@@ -72,6 +72,19 @@ type Report struct {
 	Warnings []string `json:"warnings,omitempty"`
 	// Error is the failure message of a failed document.
 	Error string `json:"error,omitempty"`
+	// ConnectionString is the SDK connection string of a Capella cluster (CouchbaseCapella only).
+	ConnectionString string `json:"connectionString,omitempty"`
+	// Passwords are the passwords Capella generated for credentials created by this apply. They are
+	// shown once, here and in the text output; a password named by the manifest is never listed.
+	Passwords []GeneratedPassword `json:"credentialPasswords,omitempty"`
+}
+
+// GeneratedPassword is a database credential password generated during an apply.
+type GeneratedPassword struct {
+	// Credential is the credential's name.
+	Credential string `json:"credential"`
+	// Password is the generated password.
+	Password string `json:"password"`
 }
 
 // Add appends a step, filling DurationMs from Duration.

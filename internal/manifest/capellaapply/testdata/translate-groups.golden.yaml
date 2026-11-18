@@ -1,0 +1,84 @@
+apiVersion: cbctl/v1
+projects:
+  - clusters:
+      - allowedCidrs:
+          - cidr: 203.0.113.0/24
+            comment: office
+            expiresAt: "2027-01-31T00:00:00Z"
+          - cidr: 198.51.100.7/32
+        availability:
+          type: multi
+        buckets:
+          - memoryAllocationInMb: 1024
+            name: flights
+            replicas: 1
+            scopes:
+              - collections:
+                  - name: schedules
+                  - maxTTL: 86400
+                    name: gates
+                name: ops
+            storageBackend: magma
+            type: couchbase
+        cloudProvider:
+          cidr: 10.0.10.0/24
+          region: us-east-1
+          type: aws
+        databaseCredentials:
+          - access:
+              - privileges:
+                  - data_reader
+                  - data_writer
+                resources:
+                  buckets:
+                    - name: flights
+                      scopes:
+                        - name: ops
+            name: app
+            password: ${CBCTL_MANIFEST_PW_0}
+          - access:
+              - privileges:
+                  - data_reader
+            name: reader
+        deletionProtection: false
+        description: Airline ops demo
+        name: airline-ops-prod
+        serviceGroups:
+          - node:
+              compute:
+                cpu: 8
+                ram: 32
+              disk:
+                iops: 3000
+                storage: 100
+                type: gp3
+            numOfNodes: 3
+            services:
+              - data
+          - node:
+              compute:
+                cpu: 8
+                ram: 32
+              disk:
+                iops: 3000
+                storage: 50
+                type: gp3
+            numOfNodes: 2
+            services:
+              - index
+              - query
+          - node:
+              compute:
+                cpu: 4
+                ram: 16
+              disk:
+                iops: 3000
+                storage: 50
+                type: gp3
+            numOfNodes: 2
+            services:
+              - search
+        support:
+          plan: developer pro
+          timezone: PT
+    name: airline-demo
