@@ -706,3 +706,18 @@ func TestSchemaEmbeddedAndNodeLookup(t *testing.T) {
 		t.Errorf("credentialsOutput default = %v", cred["default"])
 	}
 }
+
+func TestLoadTextRejectsKind(t *testing.T) {
+	t.Parallel()
+	ce := loadErr(t, "apiVersion: cbctl/v1\nkind: CouchbaseCapella\nmetadata:\n  name: x\n")
+	if len(ce.Issues) != 1 {
+		t.Fatalf("want 1 issue, got %d: %v", len(ce.Issues), ce.Issues)
+	}
+	is := ce.Issues[0]
+	if is.Path != "kind" || is.Line != 2 {
+		t.Errorf("issue at %q line %d, want kind line 2", is.Path, is.Line)
+	}
+	if !strings.Contains(is.Fix, "cbctl apply -f") {
+		t.Errorf("fix %q lacks the apply hint", is.Fix)
+	}
+}
