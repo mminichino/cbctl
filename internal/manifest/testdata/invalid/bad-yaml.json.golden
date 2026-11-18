@@ -1,0 +1,10 @@
+{
+  "source": "bad-yaml.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "line": 6,
+      "message": "did not find expected node content"
+    }
+  ]
+}

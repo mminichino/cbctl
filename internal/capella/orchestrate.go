@@ -132,7 +132,7 @@ func (b *Backend) CreateCluster(ctx context.Context, cfg *config.Config) (create
 	if allowCIDR == "" || !hasUser {
 		// Without an allowed CIDR and a database user the cluster cannot be reached from here,
 		// so the data-plane readiness checks are skipped.
-		logging.Info("Capella cluster %s created; skipping reachability checks (no --allow-cidr or database user)", b.Database)
+		logging.Success("Capella cluster %s created; skipping reachability checks (no --allow-cidr or database user)", b.Database)
 		return wasNew, nil
 	}
 
@@ -165,7 +165,7 @@ func (b *Backend) CreateCluster(ctx context.Context, cfg *config.Config) (create
 	if err := rc.WaitForRebalanceComplete(endpoint, cfg.Username, cfg.Password, 120); err != nil {
 		return false, err
 	}
-	logging.Info("Capella cluster %s created", b.Database)
+	logging.Success("Capella cluster %s created", b.Database)
 	return wasNew, nil
 }
 

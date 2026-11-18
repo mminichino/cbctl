@@ -1,0 +1,3 @@
+capella-azure-disk.yaml has 2 problems:
+  capella-azure-disk.yaml:12:26 (document 1, CouchbaseCapella/azure-disk): spec.serviceGroups[0].disk.sizeGb: sizeGb is not allowed for P30 disks (the type fixes the size at 1024 GB)
+  capella-azure-disk.yaml:12:39 (document 1, CouchbaseCapella/azure-disk): spec.serviceGroups[0].disk.iops: iops is not allowed for P30 disks (the type fixes it at 5000)

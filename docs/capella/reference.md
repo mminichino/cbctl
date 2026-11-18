@@ -22,6 +22,7 @@ The single-project form (`project:` and `clusters:` at the top level) uses the s
 | `apiVersion` | string: `cbctl/v1`, `capellactl/v1` |  | cbctl only |  | File format version: cbctl/v1 (files written by cbctl). capellactl/v1 files are accepted unchanged. |
 | `clusters` | list of objects |  |  |  | Clusters of the project (single-project form; prefer projects[].clusters). |
 | `credentialsOutput` | string | `./.cbctl/credentials` | cbctl only |  | Directory where Capella-generated passwords are saved (mode 0600). |
+| `kind` | value |  | cbctl only | none (manifests only) | Forbidden: a file with a kind is a cbctl/v1 manifest for 'cbctl apply -f', not a capella.yaml. |
 | `organizationId` | string |  | key |  | Capella organization ID. Usually ${CAPELLA_ORG_ID}; may come from a profile instead. |
 | `projects` | list of objects |  |  |  | Projects in the organization, each with its clusters. |
 | `skipProjects` | list of string |  | cbctl only | none (capellactl only) | Projects that 'capellactl sync' leaves out (set with 'capellactl sync --skip-project NAME'; 'capellactl sync --project NAME' brings one back). |

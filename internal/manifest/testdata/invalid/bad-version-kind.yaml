@@ -1,0 +1,16 @@
+apiVersion: cbctl/v2
+kind: CouchbaseServer
+metadata:
+  name: x
+spec: {}
+---
+apiVersion: cbctl/v1
+kind: couchbaseserver
+metadata:
+  name: y
+spec: {}
+---
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: Not_Kebab

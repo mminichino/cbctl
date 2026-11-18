@@ -8,7 +8,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/clitest"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // richPassword is a credential password that must never reach the file or the output.

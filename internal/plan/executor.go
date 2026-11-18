@@ -216,7 +216,8 @@ func Execute(ctx context.Context, rc *RunContext, p *Plan) *ApplyResult {
 			}
 		}
 
-		rc.Say(fmt.Sprintf("→ %s %s %s …", verbs[a.Type], a.Kind, a.Key))
+		g := rc.glyphs()
+		rc.Say(fmt.Sprintf("%s %s %s %s %s", g.Arrow, verbs[a.Type], a.Kind, a.Key, g.Ellipsis))
 		started = rc.Clock.Monotonic()
 		err := applyOne(ctx, rc, a)
 		if err == nil && !rc.NoWait {

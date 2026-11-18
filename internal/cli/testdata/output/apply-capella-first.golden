@@ -1,0 +1,41 @@
+# stdout
+Project demo - organization org-1
+
+  + project demo
+  + cluster demo-cap  aws us-east-1 - multi-AZ - 3 × 4 vCPU/16 GB - data,index,query - basic  (after project is created)
+  + bucket demo-cap/orders  couchbase - 1024 MB - 1 replica - durability none  (after cluster is healthy)
+  + scope demo-cap/orders/billing  (after bucket is created)
+  + collection demo-cap/orders/billing/invoices  (after scope is created)
+  + credential demo-cap/app  read+write - orders  (after cluster is healthy)
+  + credential demo-cap/gen  read - (all buckets)  (after cluster is healthy)
+
+Plan: 7 to add, 0 to change, 0 to delete, 0 blocked.
+[ok] - project demo created
+[ok] - cluster demo-cap created
+[ok] - bucket demo-cap/orders created
+[ok] - scope demo-cap/orders/billing created
+[ok] - collection demo-cap/orders/billing/invoices created
+[ok] - credential demo-cap/app created
+[ok] - credential demo-cap/gen created
+[info] - Connection string: <host>
+[ok] - Imported 2 documents into orders.billing.invoices
+credential gen password: <password>
+[ok] - CouchbaseCapella/demo-cap applied (cluster demo-cap, 1 bucket, 2 credentials)
+# stderr
+-> creating project demo ...
+  done project demo <t>
+-> creating cluster demo-cap ...
+  cluster demo-cap: deploying <t> 
+  cluster demo-cap: healthy <t>
+  done cluster demo-cap <t>
+-> creating bucket demo-cap/orders ...
+  done bucket demo-cap/orders <t>
+-> creating scope demo-cap/orders/billing ...
+  done scope demo-cap/orders/billing <t>
+-> creating collection demo-cap/orders/billing/invoices ...
+  done collection demo-cap/orders/billing/invoices <t>
+-> creating credential demo-cap/app ...
+  done credential demo-cap/app <t>
+-> creating credential demo-cap/gen ...
+password saved to <path>
+  done credential demo-cap/gen <t>

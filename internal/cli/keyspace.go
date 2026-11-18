@@ -39,7 +39,7 @@ func newBucketCreateCmd() *cobra.Command {
 			if err := s.CreateBucket(name, quota, replicas); err != nil {
 				return failure("Failed to create bucket", err)
 			}
-			logging.Info("Bucket %q created", name)
+			logging.Success("Bucket %q created", name)
 			return nil
 		},
 	}
@@ -110,7 +110,7 @@ func newScopeCreateCmd() *cobra.Command {
 			if err := s.CreateScope(bucket, name); err != nil {
 				return failure("Failed to create scope", err)
 			}
-			logging.Info("Scope %q created in bucket %q", name, bucket)
+			logging.Success("Scope %q created in bucket %q", name, bucket)
 			return nil
 		},
 	}
@@ -188,7 +188,7 @@ func newCollectionCreateCmd() *cobra.Command {
 			if err := s.CreateCollection(bucket, scope, name); err != nil {
 				return failure("Failed to create collection", err)
 			}
-			logging.Info("Collection %q created in bucket %q scope %q", name, bucket, scope)
+			logging.Success("Collection %q created in bucket %q scope %q", name, bucket, scope)
 			return nil
 		},
 	}
@@ -272,7 +272,7 @@ func newImportCmd() *cobra.Command {
 			if err != nil {
 				return failure("Failed to import JSON Lines file", err)
 			}
-			logging.Info("Imported %d documents", imported)
+			logging.Success("Imported %d documents", imported)
 			return nil
 		},
 	}

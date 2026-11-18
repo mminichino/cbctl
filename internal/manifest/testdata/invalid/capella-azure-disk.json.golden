@@ -1,0 +1,21 @@
+{
+  "source": "capella-azure-disk.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/azure-disk",
+      "pointer": "/spec/serviceGroups/0/disk/sizeGb",
+      "line": 12,
+      "column": 26,
+      "message": "sizeGb is not allowed for P30 disks (the type fixes the size at 1024 GB)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/azure-disk",
+      "pointer": "/spec/serviceGroups/0/disk/iops",
+      "line": 12,
+      "column": 39,
+      "message": "iops is not allowed for P30 disks (the type fixes it at 5000)"
+    }
+  ]
+}

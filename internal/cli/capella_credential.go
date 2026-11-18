@@ -590,7 +590,7 @@ func newCapellaCredentialDeleteCmd() *cobra.Command {
 			return nil
 		}
 		if !rt.JSON {
-			fmt.Fprintf(rt.errOut(), "  - credential %s/%s  %s\n", t.Cluster.Name, name, resources.AccessSummary(objOfJSON(found)["access"]))
+			writeProse(rt.errOut(), "  - credential %s/%s  %s", t.Cluster.Name, name, resources.AccessSummary(objOfJSON(found)["access"]))
 		}
 		question := fmt.Sprintf("Applications using %s will lose access to %s. Delete it?", name, t.Cluster.Name)
 		if ok, err := rt.confirmDelete(question); err != nil || !ok {

@@ -76,7 +76,7 @@ func TestLicence_CAP044_AC3_ThirdPartyNoticesCurrent(t *testing.T) {
 	for _, d := range deps {
 		names[d.Module] = true
 	}
-	for _, m := range []string{"github.com/spf13/cobra", "gopkg.in/yaml.v3", "github.com/zalando/go-keyring",
+	for _, m := range []string{"github.com/spf13/cobra", "go.yaml.in/yaml/v3", "github.com/zalando/go-keyring",
 		"github.com/santhosh-tekuri/jsonschema/v6", "github.com/couchbase/gocb/v2"} {
 		if !names[m] {
 			t.Errorf("%s is not among the collected modules", m)

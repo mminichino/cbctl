@@ -1,13 +1,16 @@
 package capellafile
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
-	"regexp"
-	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
+
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // lineIndex maps FormatPath(path) to a 1-based line.
@@ -26,61 +29,50 @@ func (l lineIndex) of(p Path) int {
 	}
 }
 
-var (
-	yamlLineRe    = regexp.MustCompile(`(?:^|\s)line (\d+)`)
-	yamlProblemRe = regexp.MustCompile(`^yaml: (?:line \d+: )?`)
-)
-
 // parseYAML parses text into a document node. A syntax error becomes a single issue with the
-// parser's line. Duplicate keys and other decode errors are reported the same way.
+// parser's line. Duplicate keys, keys that are not strings and other conversion errors are
+// reported the same way.
 func parseYAML(text, source string) (*yaml.Node, []Issue) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal([]byte(strings.TrimPrefix(text, "\ufeff")), &doc); err != nil {
+	emptyFix := "add 'apiVersion: cbctl/v1' and your projects, or run 'cbctl capella sync' to write the file from Capella"
+	doc, err := yamlio.ParseNode([]byte(text), yamlio.WithSource(source))
+	if err != nil {
 		return nil, []Issue{yamlIssue(err, source)}
 	}
-	if doc.Kind == 0 || (doc.Kind == yaml.DocumentNode && len(doc.Content) == 0) {
-		return nil, []Issue{{Path: "(root)", Where: source, Message: source + " is empty", Line: 1,
-			Fix: "add 'apiVersion: cbctl/v1' and your projects, or run 'cbctl capella sync' to write the file from Capella"}}
+	if doc == nil {
+		return nil, []Issue{{Path: "(root)", Where: source, Message: source + " is empty", Line: 1, Fix: emptyFix}}
 	}
-	root := &doc
+	root := doc
 	if root.Kind == yaml.DocumentNode {
 		root = root.Content[0]
 	}
 	root = resolveAlias(root)
 	if root.Kind == yaml.ScalarNode && root.ShortTag() == "!!null" {
-		return nil, []Issue{{Path: "(root)", Where: source, Message: source + " is empty", Line: 1,
-			Fix: "add 'apiVersion: cbctl/v1' and your projects, or run 'cbctl capella sync' to write the file from Capella"}}
+		return nil, []Issue{{Path: "(root)", Where: source, Message: source + " is empty", Line: 1, Fix: emptyFix}}
 	}
 	if root.Kind != yaml.MappingNode {
 		return nil, []Issue{{Path: "(root)", Where: source, Message: source + " must be a mapping of settings (key: value)",
 			Line: root.Line, Fix: "start the file with 'apiVersion: cbctl/v1'"}}
 	}
-	// Decoding into a throw-away value surfaces duplicate mapping keys, which the node parser
-	// accepts silently.
-	var discard any
-	if err := doc.Decode(&discard); err != nil {
+	// Converting to JSON surfaces what the node parser accepts silently: duplicate mapping keys,
+	// non-string keys and runaway alias expansion.
+	if _, err := yamlio.NodeToJSON(doc, yamlio.WithSource(source)); err != nil {
 		return nil, []Issue{yamlIssue(err, source)}
 	}
 	return root, nil
 }
 
+// yamlIssue turns an error of yamlio (or of the YAML parser) into the issue that is shown for it.
 func yamlIssue(err error, source string) Issue {
-	var typeErr *yaml.TypeError
-	msg := err.Error()
-	if errors.As(err, &typeErr) && len(typeErr.Errors) > 0 {
-		msg = typeErr.Errors[0]
+	var se *yamlio.SyntaxError
+	line, problem := 0, err.Error()
+	if errors.As(err, &se) {
+		line, problem = se.Line, se.Msg
 	}
-	line := 0
-	if m := yamlLineRe.FindStringSubmatch(msg); m != nil {
-		line, _ = strconv.Atoi(m[1])
-	}
-	problem := yamlProblemRe.ReplaceAllString(msg, "")
-	problem = strings.TrimPrefix(problem, "line "+strconv.Itoa(line)+": ")
 	issue := Issue{Path: "(root)", Where: source, Line: line, Message: "invalid YAML: " + problem}
-	if strings.Contains(msg, "tab character") || strings.Contains(msg, "cannot start any token") {
+	if strings.Contains(problem, "tab character") || strings.Contains(problem, "cannot start any token") {
 		issue.Fix = "indent with spaces, not tabs"
 	}
-	if strings.Contains(msg, "already defined") {
+	if strings.Contains(problem, "already defined") {
 		issue.Fix = "remove or rename the duplicate key"
 	}
 	return issue
@@ -94,82 +86,63 @@ func resolveAlias(n *yaml.Node) *yaml.Node {
 }
 
 // toObj converts a parsed node into a JSON-compatible value: mappings become Obj, sequences
-// []any, integral numbers int64 and other numbers float64. Aliases are expanded and merge keys
-// applied. Timestamps stay strings (RFC 3339 values such as expiresAt are written unquoted).
+// []any, integral numbers int64 and other numbers float64. The node goes through JSON (see
+// package yamlio), so aliases are expanded and merge keys applied. Timestamps stay strings
+// (RFC 3339 values such as expiresAt are written unquoted). A node that cannot be converted
+// gives nil; parseYAML has already reported such a document.
 func toObj(n *yaml.Node) any {
-	n = resolveAlias(n)
-	if n == nil {
+	js, err := yamlio.NodeToJSON(n)
+	if err != nil {
 		return nil
 	}
-	switch n.Kind {
-	case yaml.MappingNode:
-		out := make(Obj, len(n.Content)/2)
-		var merges []*yaml.Node
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			k, v := n.Content[i], n.Content[i+1]
-			if k.ShortTag() == "!!merge" {
-				merges = append(merges, v)
-				continue
-			}
-			out[k.Value] = toObj(v)
-		}
-		for _, m := range merges {
-			for _, src := range mergeSources(m) {
-				for key, val := range src {
-					if _, exists := out[key]; !exists {
-						out[key] = val
-					}
-				}
-			}
-		}
-		return out
-	case yaml.SequenceNode:
-		out := make([]any, 0, len(n.Content))
-		for _, c := range n.Content {
-			out = append(out, toObj(c))
-		}
-		return out
-	case yaml.ScalarNode:
-		return scalarValue(n)
-	}
-	return nil
+	return jsonToObj(js)
 }
 
-func mergeSources(n *yaml.Node) []Obj {
-	n = resolveAlias(n)
-	var out []Obj
-	switch n.Kind {
-	case yaml.MappingNode:
-		if m, ok := toObj(n).(Obj); ok {
-			out = append(out, m)
-		}
-	case yaml.SequenceNode:
-		for _, c := range n.Content {
-			out = append(out, mergeSources(c)...)
-		}
+// ParseObj reads YAML text into a generic Obj through the yamlio JSON codec, with the number
+// rules of NormalizeNumbers. Empty text and a document that is not a mapping yield a nil Obj.
+// A syntax error is returned as the *yamlio.SyntaxError of the codec.
+func ParseObj(raw []byte) (Obj, error) {
+	js, err := yamlio.YAMLToJSON(raw)
+	if err != nil {
+		return nil, fmt.Errorf("parsing YAML: %w", err)
 	}
-	return out
+	m, _ := jsonToObj(js).(map[string]any)
+	return m, nil
 }
 
-func scalarValue(n *yaml.Node) any {
-	switch n.ShortTag() {
-	case "!!null":
+// jsonToObj decodes JSON into Obj and []any values with the number rules of NormalizeNumbers.
+// Integers beyond int64 become float64 (as they always did in capella.yaml; the codec itself
+// keeps their digits).
+func jsonToObj(js []byte) any {
+	dec := json.NewDecoder(bytes.NewReader(js))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
 		return nil
-	case "!!bool":
-		var b bool
-		if err := n.Decode(&b); err == nil {
-			return b
-		}
-	case "!!int", "!!float":
-		var v any
-		if err := n.Decode(&v); err == nil {
-			if num, ok := NormalizeNumbers(v).(float64); ok && (math.IsNaN(num) || math.IsInf(num, 0)) {
-				return n.Value
-			}
-			return NormalizeNumbers(v)
-		}
 	}
-	return n.Value
+	return fromJSON(v)
+}
+
+func fromJSON(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, x := range t {
+			t[k] = fromJSON(x)
+		}
+		return Obj(t)
+	case []any:
+		for i, x := range t {
+			t[i] = fromJSON(x)
+		}
+		return t
+	case json.Number:
+		if i, err := t.Int64(); err == nil {
+			return i
+		}
+		f, _ := t.Float64()
+		return NormalizeNumbers(f)
+	}
+	return v
 }
 
 // NormalizeNumbers returns v with every integral number converted to int64 and every other

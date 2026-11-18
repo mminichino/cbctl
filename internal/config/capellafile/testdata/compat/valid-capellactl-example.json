@@ -1,0 +1,193 @@
+{
+  "apiVersion": "capellactl/v1",
+  "clusters": [
+    {
+      "allowedCidrs": [
+        {
+          "cidr": "203.0.113.10/32",
+          "comment": "Office VPN egress"
+        },
+        {
+          "cidr": "198.51.100.0/24",
+          "comment": "CI runners",
+          "expiresAt": "2026-12-31T23:59:59Z"
+        }
+      ],
+      "availability": {
+        "type": "multi"
+      },
+      "buckets": [
+        {
+          "bucketConflictResolution": "seqno",
+          "durabilityLevel": "majority",
+          "evictionPolicy": "fullEviction",
+          "flushEnabled": false,
+          "memoryAllocationInMb": 1024,
+          "name": "orders",
+          "replicas": 1,
+          "scopes": [
+            {
+              "collections": [
+                {
+                  "name": "items"
+                },
+                {
+                  "maxTTL": -1,
+                  "name": "suppliers"
+                }
+              ],
+              "name": "inventory"
+            },
+            {
+              "collections": [
+                {
+                  "name": "invoices"
+                }
+              ],
+              "name": "billing"
+            }
+          ],
+          "storageBackend": "magma",
+          "timeToLiveInSeconds": 0,
+          "type": "couchbase"
+        },
+        {
+          "evictionPolicy": "nruEviction",
+          "memoryAllocationInMb": 256,
+          "name": "sessions",
+          "replicas": 1,
+          "scopes": [
+            {
+              "collections": [
+                {
+                  "name": "carts"
+                }
+              ],
+              "name": "web"
+            }
+          ],
+          "timeToLiveInSeconds": 3600,
+          "type": "ephemeral"
+        }
+      ],
+      "cloudProvider": {
+        "cidr": "10.10.0.0/24",
+        "region": "us-east-1",
+        "type": "aws"
+      },
+      "configurationType": "multiNode",
+      "couchbaseServer": {
+        "version": "8.0"
+      },
+      "databaseCredentials": [
+        {
+          "access": [
+            {
+              "privileges": [
+                "data_reader",
+                "data_writer"
+              ],
+              "resources": {
+                "buckets": [
+                  {
+                    "name": "orders",
+                    "scopes": [
+                      {
+                        "collections": [
+                          "items",
+                          "suppliers"
+                        ],
+                        "name": "inventory"
+                      },
+                      {
+                        "name": "billing"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "name": "orders_app",
+          "password": "${ORDERS_APP_PASSWORD}"
+        },
+        {
+          "access": [
+            {
+              "privileges": [
+                "data_reader",
+                "data_writer"
+              ],
+              "resources": {
+                "buckets": [
+                  {
+                    "name": "sessions"
+                  }
+                ]
+              }
+            }
+          ],
+          "name": "web_sessions"
+        },
+        {
+          "access": [
+            {
+              "privileges": [
+                "data_reader"
+              ],
+              "resources": {
+                "buckets": [
+                  {
+                    "name": "orders"
+                  }
+                ]
+              }
+            }
+          ],
+          "name": "reporting_ro",
+          "password": "${file:./secrets/reporting_ro.txt}"
+        }
+      ],
+      "deletionProtection": true,
+      "description": "Nova development cluster",
+      "hibernation": {
+        "friday": "08:00-14:30",
+        "timezone": "US/Pacific",
+        "weekdays": "08:00-18:00",
+        "weekend": "off"
+      },
+      "name": "nova-dev-01",
+      "serviceGroups": [
+        {
+          "node": {
+            "compute": {
+              "cpu": 4,
+              "ram": 16
+            },
+            "disk": {
+              "iops": 3000,
+              "storage": 50,
+              "type": "gp3"
+            }
+          },
+          "numOfNodes": 3,
+          "services": [
+            "data",
+            "index",
+            "query"
+          ]
+        }
+      ],
+      "support": {
+        "plan": "developer pro",
+        "timezone": "PT"
+      }
+    }
+  ],
+  "credentialsOutput": "./.cbctl/credentials",
+  "organizationId": "${CAPELLA_ORG_ID}",
+  "project": {
+    "description": "Nova development environment",
+    "name": "nova-dev"
+  }
+}

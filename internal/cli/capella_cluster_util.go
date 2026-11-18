@@ -15,7 +15,9 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/layout"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +154,7 @@ func (rt *runtime) waitHooks(name string) engine.WaitHooks {
 func (rt *runtime) waitCluster(projectID, clusterID, name string, op engine.Op, free bool) (string, error) {
 	state, err := engine.WaitForCluster(rt.Ctx, rt.clusterGetter(free), projectID, clusterID, op, rt.Timeout, rt.Clock, name, rt.waitHooks(name))
 	if errors.Is(err, context.Canceled) {
-		fmt.Fprintln(rt.errOut(), "the operation continues in Capella")
+		writeLabeled(rt.errOut(), output.KindInfo, "the operation continues in Capella")
 	}
 	return state, err
 }
@@ -255,11 +257,6 @@ func clusterRegion(cl *capellaapi.Cluster) string {
 		return ""
 	}
 	return cl.CloudProvider.Region
-}
-
-// fixedSizeDisk reports whether the disk type sets its own size and IOPS (Azure premium disks).
-func fixedSizeDisk(provider, diskType string) bool {
-	return provider == "azure" && diskType != "Ultra"
 }
 
 // cloneGroups deep-copies service groups.
@@ -484,89 +481,11 @@ func (rt *runtime) checkCapacity(projectID, clusterID string, old, updated []cap
 
 // ---- disks (port of cluster_ops.make_disk) -------------------------------------------------
 
-// defaultDisk is the disk Capella gives a new group of each provider.
-func defaultDisk(provider string) *capellaapi.Disk {
-	switch provider {
-	case "gcp":
-		return &capellaapi.Disk{Type: "pd-ssd", Storage: intPtr(50)}
-	case "azure":
-		return &capellaapi.Disk{Type: "P6"}
-	default:
-		return &capellaapi.Disk{Type: "gp3", Storage: intPtr(50), IOPS: intPtr(3000)}
-	}
-}
-
 func intPtr(n int) *int { return &n }
-
-// makeDisk builds a group's disk: the provider default with the given values on top. Without
-// IOPS, gp3, io2 and Ultra disks get Capella's recommended IOPS for their size.
-func makeDisk(provider, diskType string, size, iops *int, autoExpansion *bool) *capellaapi.Disk {
-	disk := defaultDisk(provider)
-	if diskType != "" {
-		disk = &capellaapi.Disk{Type: diskType}
-		if !fixedSizeDisk(provider, diskType) {
-			disk.Storage = intPtr(smallestDiskSize(provider, diskType))
-		}
-	}
-	if size != nil {
-		disk.Storage = intPtr(*size)
-	}
-	switch {
-	case iops != nil:
-		disk.IOPS = intPtr(*iops)
-	case disk.Storage != nil:
-		if rec := recommendedIOPS(provider, disk.Type, *disk.Storage); rec > 0 {
-			disk.IOPS = intPtr(rec)
-		} else {
-			disk.IOPS = nil
-		}
-	}
-	if autoExpansion != nil {
-		disk.AutoExpansion = autoExpansion
-	}
-	return disk
-}
-
-func smallestDiskSize(provider, diskType string) int {
-	d, ok := presetDisk(provider, diskType)
-	switch {
-	case ok && len(d.Sizes) > 0:
-		return d.Sizes[0]
-	case ok && len(d.Size) > 0:
-		return d.Size[0]
-	}
-	return 50
-}
-
-func recommendedIOPS(provider, diskType string, size int) int {
-	if d, ok := presetDisk(provider, diskType); ok {
-		return d.DefaultIOPS(size)
-	}
-	return 0
-}
 
 // ---- CIDR helpers (port of suggest_cidr / _overlap) ----------------------------------------
 
 type usedCIDR struct{ cluster, cidr string }
-
-// suggestCIDR returns the first 10.N.M.0/24, in address order, that overlaps none of used.
-func suggestCIDR(used []string) string {
-	var nets []netip.Prefix
-	for _, c := range used {
-		if p, err := netip.ParsePrefix(strings.TrimSpace(c)); err == nil {
-			nets = append(nets, p)
-		}
-	}
-	for n := 0; n < 256; n++ {
-		for m := 0; m < 256; m++ {
-			cand := netip.PrefixFrom(netip.AddrFrom4([4]byte{10, byte(n), byte(m), 0}), 24)
-			if !slices.ContainsFunc(nets, cand.Overlaps) {
-				return cand.String()
-			}
-		}
-	}
-	return "10.255.255.0/24"
-}
 
 // overlapOf returns the first used network that overlaps cidr, or false.
 func overlapOf(cidr string, used []usedCIDR) (usedCIDR, bool) {
@@ -597,10 +516,27 @@ func confirmTyped(rt *runtime, question, want string) (bool, error) {
 	if p := prompterFor(rt); p != nil {
 		return p.Typed(fmt.Sprintf("%s (%s)", question, want), want)
 	}
-	fmt.Fprintf(errOut, "%s (%s): ", question, want)
+	writePrompt(errOut, "%s (%s): ", question, want)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {
 		return false, nil
 	}
 	return strings.TrimSpace(line) == want, nil
 }
+
+// The disk and network rules live in package layout so the manifest apply shares them; these
+// are the short names the cluster commands use.
+
+func defaultDisk(provider string) *capellaapi.Disk { return layout.DefaultDisk(provider) }
+
+func fixedSizeDisk(provider, diskType string) bool { return layout.FixedSizeDisk(provider, diskType) }
+
+func makeDisk(provider, diskType string, size, iops *int, autoExpansion *bool) *capellaapi.Disk {
+	return layout.MakeDisk(provider, diskType, size, iops, autoExpansion)
+}
+
+func smallestDiskSize(provider, diskType string) int {
+	return layout.SmallestDiskSize(provider, diskType)
+}
+
+func suggestCIDR(used []string) string { return layout.SuggestCIDR(used) }

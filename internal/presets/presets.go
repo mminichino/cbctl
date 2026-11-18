@@ -4,12 +4,13 @@ package presets
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
-	"gopkg.in/yaml.v3"
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 //go:embed presets.yaml
@@ -23,13 +24,13 @@ var disksYAML []byte
 
 // Preset is a named cluster size from presets.yaml.
 type Preset struct {
-	Description       string   `yaml:"description"`
-	ConfigurationType string   `yaml:"configurationType"` // singleNode | multiNode
-	Availability      string   `yaml:"availability"`      // single | multi
-	NumOfNodes        int      `yaml:"numOfNodes"`
-	CPU               int      `yaml:"cpu"` // vCPUs per node
-	RAM               int      `yaml:"ram"` // GB per node
-	Services          []string `yaml:"services"`
+	Description       string   `json:"description"`
+	ConfigurationType string   `json:"configurationType"` // singleNode | multiNode
+	Availability      string   `json:"availability"`      // single | multi
+	NumOfNodes        int      `json:"numOfNodes"`
+	CPU               int      `json:"cpu"` // vCPUs per node
+	RAM               int      `json:"ram"` // GB per node
+	Services          []string `json:"services"`
 }
 
 // Size is a node size written "<vCPU>/<RAM GB>" in compute.yaml.
@@ -58,11 +59,11 @@ func ParseSize(s string) (Size, error) {
 	return Size{CPU: c, RAM: r}, nil
 }
 
-// UnmarshalYAML decodes a "cpu/ram" scalar.
-func (s *Size) UnmarshalYAML(n *yaml.Node) error {
+// UnmarshalJSON decodes a "cpu/ram" string.
+func (s *Size) UnmarshalJSON(b []byte) error {
 	var raw string
-	if err := n.Decode(&raw); err != nil {
-		return err
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return fmt.Errorf("size must be a cpu/ram string: %w", err)
 	}
 	v, err := ParseSize(raw)
 	if err != nil {
@@ -75,9 +76,9 @@ func (s *Size) UnmarshalYAML(n *yaml.Node) error {
 // Compute lists the node sizes one cloud provider offers.
 type Compute struct {
 	// SingleNode sizes are offered only for single-node clusters.
-	SingleNode []Size `yaml:"singleNode"`
+	SingleNode []Size `json:"singleNode"`
 	// Sizes are offered for every cluster.
-	Sizes []Size `yaml:"sizes"`
+	Sizes []Size `json:"sizes"`
 }
 
 // Offered reports whether size is offered, counting the single-node sizes only when singleNode.
@@ -100,23 +101,23 @@ func (c Compute) Offered(size Size, singleNode bool) bool {
 // DiskType describes one disk type of one cloud provider from disks.yaml. Which fields are set
 // depends on the type; see the comments in disks.yaml.
 type DiskType struct {
-	For string `yaml:"for"` // what the type is for
+	For string `json:"for"` // what the type is for
 	// Size is [min, max] GB per node; a single element means there is no documented maximum.
-	Size []int `yaml:"size"`
+	Size []int `json:"size"`
 	// Sizes, when set, are the only sizes allowed.
-	Sizes []int `yaml:"sizes"`
+	Sizes []int `json:"sizes"`
 	// FixedSize is set when the type determines the size (no choice).
-	FixedSize int `yaml:"fixedSize"`
+	FixedSize int `json:"fixedSize"`
 	// IOPS is [min, max].
-	IOPS []int `yaml:"iops"`
+	IOPS []int `json:"iops"`
 	// IOPSCap is the highest IOPS per size as [size GB, IOPS] pairs.
-	IOPSCap [][]int `yaml:"iopsCap"`
+	IOPSCap [][]int `json:"iopsCap"`
 	// FixedIOPS is set when the type determines the IOPS.
-	FixedIOPS int `yaml:"fixedIops"`
+	FixedIOPS int `json:"fixedIops"`
 	// PerGB is set when IOPS follow the size.
-	PerGB int `yaml:"perGb"`
+	PerGB int `json:"perGb"`
 	// Defaults are the recommended IOPS per size as [from GB, IOPS] steps.
-	Defaults [][]int `yaml:"defaults"`
+	Defaults [][]int `json:"defaults"`
 }
 
 // DefaultIOPS returns the recommended IOPS for a disk of sizeGB, or 0 when the type has no
@@ -141,31 +142,15 @@ var (
 	diskOrder   map[string][]string
 )
 
-// mappingKeys returns the keys of a YAML mapping node in file order.
-func mappingKeys(n *yaml.Node) []string {
-	var out []string
-	if n != nil && n.Kind == yaml.MappingNode {
-		for i := 0; i+1 < len(n.Content); i += 2 {
-			out = append(out, n.Content[i].Value)
-		}
-	}
-	return out
-}
-
 // load parses the embedded files once. They are compiled in and covered by tests, so a parse
 // failure is a programmer error and panics.
 func load() {
 	loadOnce.Do(func() {
-		var doc yaml.Node
-		if err := yaml.Unmarshal(presetsYAML, &doc); err != nil {
+		keys, err := yamlio.KeysAt(presetsYAML, "")
+		if err != nil {
 			panic(fmt.Sprintf("presets: parse presets.yaml: %v", err))
 		}
-		if len(doc.Content) == 1 && doc.Content[0].Kind == yaml.MappingNode {
-			m := doc.Content[0]
-			for i := 0; i+1 < len(m.Content); i += 2 {
-				presetNames = append(presetNames, m.Content[i].Value)
-			}
-		}
+		presetNames = keys
 		mustDecode("presets.yaml", presetsYAML, &presetMap)
 		m, err := decodeCompute(computeYAML)
 		if err != nil {
@@ -173,16 +158,17 @@ func load() {
 		}
 		computeMap = m
 		mustDecode("disks.yaml", disksYAML, &diskMap)
-		var disks yaml.Node
-		if err := yaml.Unmarshal(disksYAML, &disks); err != nil {
+		providers, err := yamlio.KeysAt(disksYAML, "")
+		if err != nil {
 			panic(fmt.Sprintf("presets: parse disks.yaml: %v", err))
 		}
 		diskOrder = map[string][]string{}
-		if len(disks.Content) == 1 {
-			m := disks.Content[0]
-			for i := 0; i+1 < len(m.Content); i += 2 {
-				diskOrder[m.Content[i].Value] = mappingKeys(m.Content[i+1])
+		for _, prov := range providers {
+			keys, err := yamlio.KeysAt(disksYAML, "/"+prov)
+			if err != nil {
+				panic(fmt.Sprintf("presets: parse disks.yaml: %v", err))
 			}
+			diskOrder[prov] = keys
 		}
 	})
 }
@@ -190,14 +176,14 @@ func load() {
 // decodeCompute parses a compute.yaml document: the node sizes come only from this text.
 func decodeCompute(data []byte) (map[string]Compute, error) {
 	var out map[string]Compute
-	if err := yaml.Unmarshal(data, &out); err != nil {
+	if err := yamlio.Unmarshal(data, &out); err != nil {
 		return nil, fmt.Errorf("decoding compute sizes: %w", err)
 	}
 	return out, nil
 }
 
 func mustDecode(name string, data []byte, out any) {
-	if err := yaml.Unmarshal(data, out); err != nil {
+	if err := yamlio.Unmarshal(data, out); err != nil {
 		panic(fmt.Sprintf("presets: parse %s: %v", name, err))
 	}
 }

@@ -1,0 +1,161 @@
+{
+  "apiVersion": "cbctl/v1",
+  "credentialsOutput": "./secrets-out",
+  "organizationId": "${CAPELLA_ORG_ID}",
+  "projects": [
+    {
+      "clusters": [
+        {
+          "availability": {
+            "type": "multi"
+          },
+          "buckets": [
+            {
+              "memoryAllocationInMb": 512,
+              "name": "orders",
+              "scopes": [
+                {
+                  "collections": [
+                    {
+                      "name": "items"
+                    }
+                  ],
+                  "name": "inventory"
+                }
+              ]
+            }
+          ],
+          "cloudProvider": {
+            "cidr": "10.20.0.0/24",
+            "region": "us-east-1",
+            "type": "aws"
+          },
+          "databaseCredentials": [
+            {
+              "access": [
+                {
+                  "privileges": [
+                    "read",
+                    "write"
+                  ],
+                  "resources": {
+                    "buckets": [
+                      {
+                        "name": "orders",
+                        "scopes": [
+                          {
+                            "collections": [
+                              "items"
+                            ],
+                            "name": "inventory"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "name": "app",
+              "password": "${APP_PASSWORD}"
+            }
+          ],
+          "deletionProtection": true,
+          "name": "shared-name",
+          "serviceGroups": [
+            {
+              "node": {
+                "compute": {
+                  "cpu": 4,
+                  "ram": 16
+                },
+                "disk": {
+                  "iops": 3000,
+                  "storage": 50,
+                  "type": "gp3"
+                }
+              },
+              "numOfNodes": 3,
+              "services": [
+                "data",
+                "query"
+              ]
+            },
+            {
+              "node": {
+                "compute": {
+                  "cpu": 4,
+                  "ram": 16
+                },
+                "disk": {
+                  "iops": 3000,
+                  "storage": 50,
+                  "type": "gp3"
+                }
+              },
+              "numOfNodes": 2,
+              "services": [
+                "index"
+              ]
+            }
+          ],
+          "support": {
+            "plan": "enterprise",
+            "timezone": "ET"
+          }
+        }
+      ],
+      "name": "alpha"
+    },
+    {
+      "clusters": [
+        {
+          "availability": {
+            "type": "single"
+          },
+          "backupSchedule": {
+            "interval": 24,
+            "retention": 720,
+            "startTime": "02:00"
+          },
+          "cloudProvider": {
+            "cidr": "10.21.0.0/24",
+            "region": "us-east1",
+            "type": "gcp"
+          },
+          "id": "66666666-7777-8888-9999-000000000000",
+          "name": "shared-name",
+          "serviceGroups": [
+            {
+              "node": {
+                "compute": {
+                  "cpu": 4,
+                  "ram": 16
+                },
+                "disk": {
+                  "storage": 100,
+                  "type": "pd-ssd"
+                }
+              },
+              "numOfNodes": 3,
+              "services": [
+                "data",
+                "index",
+                "query"
+              ]
+            }
+          ],
+          "support": {
+            "plan": "basic",
+            "timezone": "GMT"
+          },
+          "zones": [
+            "us-east1-b"
+          ]
+        }
+      ],
+      "description": "second project",
+      "id": "11111111-2222-3333-4444-555555555555",
+      "name": "beta"
+    }
+  ]
+}

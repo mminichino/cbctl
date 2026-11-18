@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -90,7 +91,7 @@ func deprecateLegacy(cmd *cobra.Command, replacement string) {
 // warnDeprecated prints the one-line deprecation warning. It ignores --quiet on purpose: the
 // warning is the only signal a script gets before the command is removed.
 func warnDeprecated(w io.Writer, path, replacement string) {
-	fmt.Fprintf(w, "Warning: '%s' is deprecated and will be removed; use %s\n", path, replacement)
+	writeLabeled(w, output.KindWarning, "'%s' is deprecated and will be removed; use %s", path, replacement)
 }
 
 // usesLegacyFlags says whether any pre-port legacy flag was given on cmd.
@@ -141,7 +142,7 @@ func forwardToAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no 'add' command next to %s", cmd.CommandPath())
 	}
 	kind := cmd.Parent().Name()
-	fmt.Fprintf(cmd.ErrOrStderr(), "Note: 'capella %s create' is 'capella %s add' in cbctl\n", kind, kind)
+	writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "'capella %s create' is 'capella %s add' in cbctl", kind, kind)
 	add.InheritedFlags() // merges the persistent flags, so shared ones resolve to the same flag
 	var problems []string
 	cmd.Flags().Visit(func(f *pflag.Flag) {

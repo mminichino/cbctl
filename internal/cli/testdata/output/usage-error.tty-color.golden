@@ -1,0 +1,5 @@
+stdout:
+stderr:
+<ESC>[1;31m[error]<ESC>[0m - accepts 1 arg(s), received 0
+  → run 'cbctl bucket create --help' for usage
+exit: 3

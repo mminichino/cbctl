@@ -84,10 +84,10 @@ func (w *clusterWizard) ask(prompt, def string, check func(string) error) (strin
 		if def != "" {
 			label += " [" + def + "]"
 		}
-		fmt.Fprintf(w.out, "%s: ", label)
+		writePrompt(w.out, "%s: ", label)
 		line, err := w.in.ReadString('\n')
 		if err != nil && line == "" {
-			fmt.Fprintln(w.out)
+			writeProse(w.out, "")
 			return "", errWizardCancelled
 		}
 		v := strings.TrimSpace(line)
@@ -95,7 +95,7 @@ func (w *clusterWizard) ask(prompt, def string, check func(string) error) (strin
 			v = def
 		}
 		if cerr := check(v); cerr != nil {
-			fmt.Fprintf(w.out, "  %v\n", cerr)
+			writeProse(w.out, "  %v", cerr)
 			continue
 		}
 		return v, nil

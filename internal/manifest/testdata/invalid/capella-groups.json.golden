@@ -1,0 +1,159 @@
+{
+  "source": "capella-groups.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/cidr",
+      "line": 8,
+      "column": 3,
+      "message": "10.0.0.5/24 has host bits set (did you mean 10.0.0.0/24?)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups",
+      "line": 9,
+      "column": 3,
+      "message": "the group that runs data must come first (it is serviceGroups[1])"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups",
+      "line": 9,
+      "column": 3,
+      "message": "a cluster can have at most 27 nodes (declared 35)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/0/nodes",
+      "line": 11,
+      "column": 7,
+      "message": "the first group needs 3–27 nodes (got 2)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/1/services/1",
+      "line": 13,
+      "column": 24,
+      "message": "\"fts\" is an alias that only CouchbaseServer accepts; use search"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/1/nodes",
+      "line": 14,
+      "column": 7,
+      "message": "the other group needs 2–24 nodes (got 30)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/1/compute",
+      "line": 15,
+      "column": 7,
+      "message": "3/7 is not a node size aws offers (cpu/ramGb: 4/16, 4/32, 8/16, 8/32, 8/64, 16/32, 16/64, 16/128, 32/64, 32/128, 32/256, 48/96, 48/192, 48/384, 64/128, 64/256, 64/512)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/1/disk/type",
+      "line": 16,
+      "column": 15,
+      "message": "disk type \"pd-ssd\" is not valid for aws (use: gp3, io2)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/2/services",
+      "line": 17,
+      "column": 7,
+      "message": "serviceGroups[1] already runs data,search; each group needs a different set of services"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/2/nodes",
+      "line": 18,
+      "column": 7,
+      "message": "the other group needs 2–24 nodes (got 1)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/2/disk/sizeGb",
+      "line": 20,
+      "column": 26,
+      "message": "gp3 disks are at most 16000 GB (got 20000)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/2/disk/iops",
+      "line": 20,
+      "column": 41,
+      "message": "gp3 disks take 3000–16000 IOPS (got 100)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/3/services/0",
+      "line": 21,
+      "column": 18,
+      "message": "the backup service exists only on CouchbaseServer",
+      "fix": "use one of: data, index, query, search, analytics, eventing"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/serviceGroups/3/compute",
+      "line": 23,
+      "column": 7,
+      "message": "compute needs cpu and ramGb",
+      "fix": "see 'cbctl capella cluster options'"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/allowedCidrs/0/cidr",
+      "line": 25,
+      "column": 7,
+      "message": "0.0.0.0/0 allows every address; confirm with allowAnyIp: true"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/allowedCidrs/1/cidr",
+      "line": 26,
+      "column": 7,
+      "message": "1.2.3.4/24 has host bits set (did you mean 1.2.3.0/24?)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/allowedCidrs/2/expiresAt",
+      "line": 28,
+      "column": 7,
+      "message": "expiresAt \"tomorrow\" is not an RFC 3339 time, for example 2027-01-31T00:00:00Z"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/allowedCidrs/3/cidr",
+      "line": 29,
+      "column": 7,
+      "message": "203.0.113.0/24 is already listed at allowedCidrs[2]"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/groups",
+      "pointer": "/spec/wait/timeout",
+      "line": 31,
+      "column": 5,
+      "message": "must be at most 24h (got \"25h\")"
+    }
+  ]
+}

@@ -14,10 +14,10 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/importer"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 type syncFlags struct {
@@ -68,11 +68,10 @@ func readOldFile(path string) (text string, old capellafile.Obj, ok bool, err er
 	if err != nil {
 		return "", nil, false, err
 	}
-	var doc map[string]any
-	if yerr := yaml.Unmarshal(raw, &doc); yerr != nil || doc == nil {
+	old, yerr := capellafile.ParseObj(raw)
+	if yerr != nil || old == nil {
 		return string(raw), nil, false, nil
 	}
-	old, _ = capellafile.NormalizeNumbers(doc).(map[string]any)
 	_, hasProjects := old["projects"]
 	_, hasProject := old["project"]
 	return string(raw), old, hasProjects || hasProject, nil
@@ -289,11 +288,11 @@ func (s *syncer) fresh(exists bool, oldText string) error {
 		return fmt.Errorf("rendering %s: %w", s.name, err)
 	}
 	if sf.stdout {
-		fmt.Fprint(rt.cmd.OutOrStdout(), strings.TrimRight(text, "\n")+"\n")
+		writeDocument(rt.cmd.OutOrStdout(), text)
 		return nil
 	}
 	if sf.dryRun {
-		fmt.Fprint(rt.cmd.OutOrStdout(), strings.TrimRight(text, "\n")+"\n")
+		writeDocument(rt.cmd.OutOrStdout(), text)
 		return Errorf(ExitChanges, "Run 'cbctl capella sync' to write it from Capella.", "%s does not exist yet", s.name)
 	}
 	if exists {
@@ -348,7 +347,7 @@ func ignoreCredentials(w io.Writer, configPath string, quiet bool) {
 		printNotice(w, fmt.Sprintf("could not add .cbctl/ to .gitignore: %v", err),
 			"Add .cbctl/ to .gitignore so generated passwords are never committed.")
 	case added && !quiet:
-		fmt.Fprintf(w, "added .cbctl/ to %s\n", displayPath(filepath.Join(filepath.Dir(configPath), ".gitignore")))
+		writeLabeled(w, output.KindInfo, "added .cbctl/ to %s", displayPath(filepath.Join(filepath.Dir(configPath), ".gitignore")))
 	}
 }
 
@@ -721,7 +720,7 @@ func (s *syncer) refresh(oldText string, old capellafile.Obj) error {
 		return fmt.Errorf("rendering %s: %w", s.name, err)
 	}
 	if sf.stdout {
-		fmt.Fprint(rt.cmd.OutOrStdout(), strings.TrimRight(newText, "\n")+"\n")
+		writeDocument(rt.cmd.OutOrStdout(), newText)
 		return nil
 	}
 
@@ -766,8 +765,8 @@ func (s *syncer) refresh(oldText string, old capellafile.Obj) error {
 		}
 	}
 
-	var newDoc map[string]any
-	if err := yaml.Unmarshal([]byte(newText), &newDoc); err != nil {
+	newDoc, err := capellafile.ParseObj([]byte(newText))
+	if err != nil {
 		return fmt.Errorf("checking the new %s: %w", s.name, err)
 	}
 	before := importer.Comparable(importer.ToProjectsForm(old))
@@ -819,7 +818,7 @@ func (s *syncer) refresh(oldText string, old capellafile.Obj) error {
 	}
 	ignoreCredentials(rt.errOut(), s.path, rt.Quiet)
 	for _, k := range kept {
-		fmt.Fprintf(rt.errOut(), "kept %s\n", k)
+		writeLabeled(rt.errOut(), output.KindInfo, "kept %s", k)
 	}
 	if rt.JSON {
 		s.report(combined, all)

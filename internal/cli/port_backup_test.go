@@ -10,7 +10,8 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/clitest"
-	"gopkg.in/yaml.v3"
+	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"go.yaml.in/yaml/v3"
 )
 
 // clusterPath is the fake's cluster URL as a Calls glob.
@@ -333,28 +334,31 @@ const planNoChanges = "Plan: 0 to add, 0 to change, 0 to delete, 0 blocked."
 // clusterSchedule returns the first cluster's backupSchedule in capella.yaml (nil when absent).
 func clusterSchedule(t *testing.T, s *clitest.Scenario) map[string]any {
 	t.Helper()
-	var doc struct {
-		Projects []struct {
-			Clusters []map[string]any `yaml:"clusters"`
-		} `yaml:"projects"`
-	}
-	if err := yaml.Unmarshal([]byte(s.ReadFile("capella.yaml")), &doc); err != nil {
+	doc, err := capellafile.ParseObj([]byte(s.ReadFile("capella.yaml")))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if len(doc.Projects) == 0 || len(doc.Projects[0].Clusters) == 0 {
+	projects, _ := doc["projects"].([]any)
+	if len(projects) == 0 {
 		t.Fatal("capella.yaml has no cluster")
 	}
-	m, _ := doc.Projects[0].Clusters[0]["backupSchedule"].(map[string]any)
+	project, _ := projects[0].(map[string]any)
+	clusters, _ := project["clusters"].([]any)
+	if len(clusters) == 0 {
+		t.Fatal("capella.yaml has no cluster")
+	}
+	cluster, _ := clusters[0].(map[string]any)
+	m, _ := cluster["backupSchedule"].(map[string]any)
 	return m
 }
 
 func wantYAML(t *testing.T, got map[string]any, want string) {
 	t.Helper()
-	var w map[string]any
-	if err := yaml.Unmarshal([]byte(want), &w); err != nil {
+	w, err := capellafile.ParseObj([]byte(want))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, w) {
+	if !reflect.DeepEqual(capellafile.NormalizeNumbers(got), capellafile.NormalizeNumbers(w)) {
 		t.Errorf("backupSchedule = %v, want %v", got, w)
 	}
 }
@@ -364,7 +368,7 @@ func wantYAML(t *testing.T, got map[string]any, want string) {
 func TestClusterBackupSchedule_CAP056_AC1_SetBody(t *testing.T) {
 	e := newBackupEnv(t)
 	r := e.must(t, "--yes", "cluster", "backup", "schedule", "set", "nova-dev-01", "--every", "24", "--retain", "30d")
-	wantContains(t, r.Stdout, "+ backup-schedule nova-dev-01  every 24 h · kept 30 days")
+	wantContains(t, r.Stdout, "+ backup-schedule nova-dev-01  every 24 h - kept 30 days")
 	if len(e.s.Fake.Calls("GET", clusterPath+"/cloudsnapshotbackupschedule/options")) == 0 {
 		t.Error("schedule options not read before the write")
 	}
@@ -465,7 +469,7 @@ func TestClusterBackupSchedule_CAP056_AC4_Show(t *testing.T) {
 	wantContains(t, e.must(t, "cluster", "backup", "schedule", "show", "nova-dev-01").Stdout, "has no backup schedule")
 	e.seedSnapshotSchedule(t)
 	r := e.must(t, "cluster", "backup", "schedule", "show", "nova-dev-01")
-	wantContains(t, r.Stdout, "every 24 h · kept 30 days · first at 02:00 UTC · copies: us-west-2", "next backup: ")
+	wantContains(t, r.Stdout, "every 24 h - kept 30 days - first at 02:00 UTC - copies: us-west-2", "next backup: ")
 	var data map[string]any
 	if err := json.Unmarshal([]byte(e.must(t, "-o", "json", "cluster", "backup", "schedule", "show", "nova-dev-01").Stdout), &data); err != nil {
 		t.Fatal(err)
@@ -529,7 +533,7 @@ func TestClusterBackupSchedule_CAP056_AC6_DriftAndPrune(t *testing.T) {
 		t.Errorf("plan changes the undeclared schedule:\n%s", r.Stdout)
 	}
 	clitest.AssertNoWrites(t, e.s.Fake)
-	wantContains(t, e.must(t, "drift").Stdout, "backup-schedule nova-dev-01  every 24 h · kept 30 days")
+	wantContains(t, e.must(t, "drift").Stdout, "backup-schedule nova-dev-01  every 24 h - kept 30 days")
 	r = e.must(t, "--yes", "apply", "--prune")
 	wantContains(t, r.Stdout, "- backup-schedule nova-dev-01")
 	if n := len(e.s.Fake.Calls("DELETE", clusterPath+"/cloudsnapshotbackupschedule")); n != 1 {
@@ -845,8 +849,8 @@ func (e backupEnv) ordersSchedule(t *testing.T) capellaapi.Object {
 func TestBucketBackupSchedule_CAP058_AC1_SetCreate(t *testing.T) {
 	e := newOrdersEnv(t)
 	r := mustScenario(t, setOrders(e), "set")
-	wantContains(t, r.Stdout, "+ bucket-backup-schedule nova-dev-01/orders  weekly full on sunday at 00:00 UTC · "+
-		"incremental every 24 h · kept 30 days")
+	wantContains(t, r.Stdout, "+ bucket-backup-schedule nova-dev-01/orders  weekly full on sunday at 00:00 UTC - "+
+		"incremental every 24 h - kept 30 days")
 	wantBody(t, bodies(e.s, "POST", clusterPath+"/buckets/*/backup/schedules"),
 		`{"type":"weekly","weeklySchedule":{"dayOfWeek":"sunday","startAt":0,"incrementalEvery":24,"retentionTime":"30days","costOptimizedRetention":false}}`)
 	wantYAML(t, ordersSchedule(t, e.s), bucketScheduleDefaults)
@@ -864,7 +868,7 @@ func TestBucketBackupSchedule_CAP058_AC1_SetUpdate(t *testing.T) {
 	mustScenario(t, setOrders(e), "set")
 	e.s.Fake.ResetCalls()
 	r := mustScenario(t, setOrders(e, "--incremental-every", "12"), "set --incremental-every 12")
-	wantContains(t, r.Stdout, "incrementalEvery:  24 → 12")
+	wantContains(t, r.Stdout, "incrementalEvery:  24 -> 12")
 	puts := bodies(e.s, "PUT", clusterPath+"/buckets/*/backup/schedules")
 	if len(puts) != 1 {
 		t.Fatalf("PUTs = %v", puts)
@@ -922,7 +926,7 @@ func TestBucketBackupSchedule_CAP058_AC4_Show(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantContains(t, e.must(t, "bucket", "backup", "schedule", "show", "nova-dev-01", "orders").Stdout,
-		"weekly full on sunday at 02:00 UTC · incremental every 24 h · kept 1 year")
+		"weekly full on sunday at 02:00 UTC - incremental every 24 h - kept 1 year")
 	var data map[string]any
 	if err := json.Unmarshal([]byte(e.must(t, "-o", "json", "bucket", "backup", "schedule", "show", "nova-dev-01", "orders").Stdout), &data); err != nil {
 		t.Fatal(err)

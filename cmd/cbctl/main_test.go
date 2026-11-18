@@ -85,6 +85,12 @@ func TestBinarySmoke(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// The .env search walks up from the working directory to the first directory holding go.mod
+	// or .git. A temp dir inside a checkout (GOTMPDIR under the project) would find the
+	// developer's .env and its API key, so the work dir is made its own project root.
+	if err := os.WriteFile(filepath.Join(work, "go.mod"), []byte("module smoke\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	valid := filepath.Join(work, "capella.yaml")
 	bad := filepath.Join(work, "bad.yaml")
 	if err := os.WriteFile(valid, []byte(smokeConfig), 0o600); err != nil {

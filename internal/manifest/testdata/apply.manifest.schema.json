@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["apiVersion", "dryRun", "status", "documents"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"const": "cbctl/v1"},
+    "dryRun": {"type": "boolean"},
+    "status": {"enum": ["applied", "unchanged", "planned", "failed", "interrupted"]},
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "name", "status", "steps"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {"enum": ["CouchbaseServer", "CouchbaseCapella"]},
+          "name": {"type": "string", "minLength": 1},
+          "source": {"type": "string"},
+          "status": {"enum": ["applied", "unchanged", "planned", "failed", "not-run", "interrupted"]},
+          "summary": {"type": "string"},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "error": {"type": "string"},
+          "connectionString": {"type": "string"},
+          "credentialPasswords": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["credential", "password"],
+              "additionalProperties": false,
+              "properties": {"credential": {"type": "string"}, "password": {"type": "string"}}
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "status"],
+              "additionalProperties": false,
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "target": {"type": "string"},
+                "status": {"enum": ["done", "unchanged", "skipped", "planned", "failed"]},
+                "detail": {"type": "string"},
+                "count": {"type": "integer", "minimum": 0},
+                "error": {"type": "string"},
+                "durationMs": {"type": "integer", "minimum": 0}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

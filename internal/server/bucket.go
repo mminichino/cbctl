@@ -75,3 +75,20 @@ func (s *Server) IsBucket(name string) (bool, error) {
 	_, ok := buckets[name]
 	return ok, nil
 }
+
+// BucketQuotaMiB returns the RAM quota of the named bucket in MiB. found is false when the
+// bucket does not exist.
+func (s *Server) BucketQuotaMiB(name string) (quota int, found bool, err error) {
+	if err := s.requireCluster(); err != nil {
+		return 0, false, err
+	}
+	buckets, err := s.Cluster.Buckets().GetAllBuckets(nil)
+	if err != nil {
+		return 0, false, err
+	}
+	b, ok := buckets[name]
+	if !ok {
+		return 0, false, nil
+	}
+	return int(b.RAMQuotaMB), true, nil
+}

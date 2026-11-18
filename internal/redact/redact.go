@@ -92,9 +92,9 @@ func Object(v any) any {
 	}
 }
 
-// MaskTail returns "••••" + last 4 chars, or ASCII "****" when stdout is not a TTY / NO_COLOR.
-// Empty input returns "(not set)".
-func MaskTail(s string) string {
+// MaskTail returns mask + the last 4 chars of s, for example "••••abcd". The caller picks mask
+// for its output stream (output.Glyphs.Mask). Empty input returns "(not set)".
+func MaskTail(s, mask string) string {
 	if s == "" {
 		return "(not set)"
 	}
@@ -102,11 +102,7 @@ func MaskTail(s string) string {
 	if len(tail) > 4 {
 		tail = tail[len(tail)-4:]
 	}
-	prefix := "••••"
-	if !unicodeMask() {
-		prefix = "****"
-	}
-	return prefix + tail
+	return mask + tail
 }
 
 // HasPrintableSecret reports whether s contains non-space printable runes (tests/helpers).

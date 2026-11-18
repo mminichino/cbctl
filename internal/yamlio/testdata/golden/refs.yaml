@@ -1,0 +1,5 @@
+password: ${DB_PASSWORD}
+quoted: "${X}"
+file: ${file:./p w}
+mixed: prefix-${A}-${file:b}-suffix
+dollar: $5

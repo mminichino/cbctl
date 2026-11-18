@@ -1,0 +1,8 @@
+capella-xor.yaml has 5 problems:
+  capella-xor.yaml:7:3 (document 1, CouchbaseCapella/both): spec.size: size and serviceGroups are mutually exclusive
+    action: keep size, or keep serviceGroups
+  capella-xor.yaml:17:1 (document 2, CouchbaseCapella/neither): spec: set size or serviceGroups
+    action: size: dev | large | medium | small, or list serviceGroups
+  capella-xor.yaml:27:3 (document 3, CouchbaseCapella/dev-multi): spec.availability: size: dev is a single-node cluster; availability must be single (or omitted)
+  capella-xor.yaml:30:7 (document 3, CouchbaseCapella/dev-multi): spec.buckets[0].replicas: a single-node cluster (size: dev) only supports replicas: 0; there is no second node for a copy
+  capella-xor.yaml:38:3 (document 4, CouchbaseCapella/bad-size): spec.size: size "smal" is not valid (did you mean small?); use one of: dev, large, medium, small

@@ -401,7 +401,9 @@ func (r *credentialRec) Diff(_ context.Context, rc *plan.RunContext, desiredAny 
 		return a, nil
 	}
 	a.Changes = AccessChanges(desired["access"], observed.Body["access"])
-	if rc.RotatePasswords {
+	// An in-memory run keeps no state, so a changed ${VAR} cannot be told from an unchanged one:
+	// it never rotates (D3).
+	if rc.RotatePasswords && !rc.Ephemeral {
 		a.Set("rotate", true)
 		a.Label = "rotate password"
 	}
@@ -511,6 +513,9 @@ func (r *credentialRec) create(ctx context.Context, rc *plan.RunContext, a *plan
 		return fmt.Errorf("credential %s was created but its password could not be saved: %w", a.Key, err)
 	}
 	rc.Say(secrets.SavedMessage(path))
+	if rc.OnGeneratedPassword != nil {
+		rc.OnGeneratedPassword(cluster, name, generated)
+	}
 	if !r.gitWarned {
 		if what, action, ok := secrets.GitWarning(dir); ok {
 			r.gitWarned = true

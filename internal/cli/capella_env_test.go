@@ -135,7 +135,7 @@ func TestPlanApplyIdempotent(t *testing.T) {
 	t.Setenv("CBCTL_CONFIG", "")
 
 	res := mustRun(t, "plan")
-	wantContains(t, res.Stdout, "Project envproj · organization "+f.OrgID, "+ project envproj", "+ cluster envclu", "Plan: ")
+	wantContains(t, res.Stdout, "Project envproj - organization "+f.OrgID, "+ project envproj", "+ cluster envclu", "Plan: ")
 	noWrites(t, f)
 
 	res = runResource(t, "plan", "--detailed-exitcode")
@@ -473,4 +473,25 @@ func TestInitAllowAnyIPConfirm(t *testing.T) {
 		t.Fatalf("init: %v\n%s\n%s", res.Err, res.Stdout, res.Stderr)
 	}
 	wantContains(t, res.Stdout, "allowAnyIp: true", "0.0.0.0/0")
+}
+
+func TestDisplayPathUncleanWorkingDirectory(t *testing.T) {
+	base := t.TempDir()
+	// A working directory spelled with ".." (for example a TMPDIR set from a relative path)
+	// still shows files below it relative.
+	unclean := base + "/a/../work" // not filepath.Join: it would clean the path
+	if err := os.MkdirAll(filepath.Join(base, "work"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(base, "a"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(unclean)
+	t.Setenv("PWD", unclean)
+	if got := displayPath(filepath.Join(base, "work", "capella.yaml")); got != "capella.yaml" {
+		t.Errorf("displayPath = %q, want capella.yaml", got)
+	}
+	if got := displayPath(filepath.Join(base, "other", "capella.yaml")); got != filepath.Join(base, "other", "capella.yaml") {
+		t.Errorf("a path outside the working directory changed: %q", got)
+	}
 }

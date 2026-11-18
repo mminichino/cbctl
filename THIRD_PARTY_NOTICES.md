@@ -13,7 +13,6 @@ edit by hand. "Needed" names the platforms that compile a module in when not all
 | github.com/couchbase/goprotostellar | v1.0.6-0.20260407143512-d7af25156dcc | Apache-2.0 |  | https://pkg.go.dev/github.com/couchbase/goprotostellar |
 | github.com/couchbaselabs/gocbconnstr/v2 | v2.0.0 | Apache-2.0 |  | https://pkg.go.dev/github.com/couchbaselabs/gocbconnstr/v2 |
 | github.com/danieljoos/wincred | v1.2.3 | MIT | windows | https://pkg.go.dev/github.com/danieljoos/wincred |
-| github.com/fatih/color | v1.19.0 | MIT |  | https://pkg.go.dev/github.com/fatih/color |
 | github.com/go-logr/logr | v1.4.3 | Apache-2.0 |  | https://pkg.go.dev/github.com/go-logr/logr |
 | github.com/go-logr/stdr | v1.2.2 | Apache-2.0 |  | https://pkg.go.dev/github.com/go-logr/stdr |
 | github.com/godbus/dbus/v5 | v5.2.2 | BSD-2-Clause | linux | https://pkg.go.dev/github.com/godbus/dbus/v5 |
@@ -22,8 +21,6 @@ edit by hand. "Needed" names the platforms that compile a module in when not all
 | github.com/gorilla/websocket | v1.5.3 | BSD-2-Clause |  | https://pkg.go.dev/github.com/gorilla/websocket |
 | github.com/inconshreveable/mousetrap | v1.1.0 | Apache-2.0 | windows | https://pkg.go.dev/github.com/inconshreveable/mousetrap |
 | github.com/joho/godotenv | v1.5.1 | MIT |  | https://pkg.go.dev/github.com/joho/godotenv |
-| github.com/mattn/go-colorable | v0.1.14 | MIT |  | https://pkg.go.dev/github.com/mattn/go-colorable |
-| github.com/mattn/go-isatty | v0.0.20 | MIT |  | https://pkg.go.dev/github.com/mattn/go-isatty |
 | github.com/santhosh-tekuri/jsonschema/v6 | v6.0.3 | Apache-2.0 |  | https://pkg.go.dev/github.com/santhosh-tekuri/jsonschema/v6 |
 | github.com/spf13/cobra | v1.10.2 | Apache-2.0 |  | https://pkg.go.dev/github.com/spf13/cobra |
 | github.com/spf13/pflag | v1.0.9 | BSD-3-Clause |  | https://pkg.go.dev/github.com/spf13/pflag |
@@ -35,6 +32,7 @@ edit by hand. "Needed" names the platforms that compile a module in when not all
 | go.opentelemetry.io/otel/trace | v1.44.0 | Apache-2.0 AND BSD-3-Clause |  | https://pkg.go.dev/go.opentelemetry.io/otel/trace |
 | go.uber.org/multierr | v1.11.0 | MIT |  | https://pkg.go.dev/go.uber.org/multierr |
 | go.uber.org/zap | v1.27.1 | MIT |  | https://pkg.go.dev/go.uber.org/zap |
+| go.yaml.in/yaml/v3 | v3.0.6 | Apache-2.0 AND MIT |  | https://pkg.go.dev/go.yaml.in/yaml/v3 |
 | golang.org/x/net | v0.56.0 | BSD-3-Clause |  | https://pkg.go.dev/golang.org/x/net |
 | golang.org/x/sys | v0.50.0 | BSD-3-Clause |  | https://pkg.go.dev/golang.org/x/sys |
 | golang.org/x/term | v0.48.0 | BSD-3-Clause |  | https://pkg.go.dev/golang.org/x/term |
@@ -42,4 +40,3 @@ edit by hand. "Needed" names the platforms that compile a module in when not all
 | google.golang.org/genproto/googleapis/rpc | v0.0.0-20260414002931-afd174a4e478 | Apache-2.0 |  | https://pkg.go.dev/google.golang.org/genproto/googleapis/rpc |
 | google.golang.org/grpc | v1.82.1 | Apache-2.0 |  | https://pkg.go.dev/google.golang.org/grpc |
 | google.golang.org/protobuf | v1.36.11 | BSD-3-Clause |  | https://pkg.go.dev/google.golang.org/protobuf |
-| gopkg.in/yaml.v3 | v3.0.1 | Apache-2.0 AND MIT |  | https://pkg.go.dev/gopkg.in/yaml.v3 |

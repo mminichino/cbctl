@@ -10,6 +10,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/redact"
 )
 
@@ -144,7 +145,7 @@ Unmanaged (not in capella.yaml; use --prune to delete):
 Plan: 2 to add, 1 to change, 1 to delete, 2 blocked, 2 deferred.`
 
 func TestRenderPlanText_Golden(t *testing.T) {
-	got := RenderPlanText(fixedPlan(), "Project nova · org-1", false)
+	got := RenderPlanText(fixedPlan(), "Project nova · org-1", false, output.UnicodeGlyphs)
 	if got != wantFixedText {
 		t.Fatalf("got:\n%s\n\nwant:\n%s", got, wantFixedText)
 	}
@@ -152,17 +153,17 @@ func TestRenderPlanText_Golden(t *testing.T) {
 
 func TestRenderPlanText_QuietAndEmpty(t *testing.T) {
 	p := &Plan{}
-	if got := RenderPlanText(p, "", true); got != "Plan: 0 to add, 0 to change, 0 to delete, 0 blocked." {
+	if got := RenderPlanText(p, "", true, output.UnicodeGlyphs); got != "Plan: 0 to add, 0 to change, 0 to delete, 0 blocked." {
 		t.Fatal(got)
 	}
-	if got := RenderPlanText(p, "", false); got != "\nPlan: 0 to add, 0 to change, 0 to delete, 0 blocked." {
+	if got := RenderPlanText(p, "", false, output.UnicodeGlyphs); got != "\nPlan: 0 to add, 0 to change, 0 to delete, 0 blocked." {
 		t.Fatalf("%q", got)
 	}
-	if got := RenderPlanText(fixedPlan(), "H", true); !strings.Contains(got, "! cluster nova-stg") || !strings.HasPrefix(got, "H\n\n") {
+	if got := RenderPlanText(fixedPlan(), "H", true, output.UnicodeGlyphs); !strings.Contains(got, "! cluster nova-stg") || !strings.HasPrefix(got, "H\n\n") {
 		t.Fatal("quiet with a blocked action prints the full plan")
 	}
 	noBlock := &Plan{Actions: []*Action{act(newStub("t", "", Flags{}), "bucket", "b", Create, nil)}}
-	if got := RenderPlanText(noBlock, "H", true); got != "Plan: 1 to add, 0 to change, 0 to delete, 0 blocked." {
+	if got := RenderPlanText(noBlock, "H", true, output.UnicodeGlyphs); got != "Plan: 1 to add, 0 to change, 0 to delete, 0 blocked." {
 		t.Fatal(got)
 	}
 }
@@ -175,7 +176,7 @@ func TestRenderPlanText_Redacts(t *testing.T) {
 	a.Changes = []Change{{Path: "note", Before: nil, After: "s3cr3t-value"}}
 	a.Notes = []string{"s3cr3t-value"}
 	p := &Plan{Actions: []*Action{a}}
-	if text := RenderPlanText(p, "", false); strings.Contains(text, "s3cr3t-value") {
+	if text := RenderPlanText(p, "", false, output.UnicodeGlyphs); strings.Contains(text, "s3cr3t-value") {
 		t.Fatal(text)
 	}
 	b, _ := json.Marshal(RenderPlanJSON(p))
@@ -369,5 +370,18 @@ func TestSchemaRejectsBadOutput(t *testing.T) {
 	inst, _ := jsonschema.UnmarshalJSON(bytes.NewReader(raw))
 	if planSchema.Validate(inst) == nil {
 		t.Fatal("schema must reject unknown action")
+	}
+}
+
+func TestRenderPlanText_ASCIIGlyphs(t *testing.T) {
+	got := RenderPlanText(fixedPlan(), "Project nova "+output.ASCIIGlyphs.Dot+" org-1", false, output.ASCIIGlyphs)
+	g := output.UnicodeGlyphs
+	for _, glyph := range []string{g.Arrow, g.Dot, g.PlusMinus, g.Ellipsis, g.Mask} {
+		if strings.Contains(got, glyph) {
+			t.Errorf("plan text has the Unicode glyph %q for ASCII glyphs:\n%s", glyph, got)
+		}
+	}
+	if !strings.HasPrefix(got, "Project nova - org-1\n") {
+		t.Errorf("header glyph not localized:\n%s", got)
 	}
 }

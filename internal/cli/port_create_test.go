@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/cli"
@@ -147,7 +147,7 @@ func TestClusterCreate_CAP051_AC6_InteractiveTwoGroups(t *testing.T) {
 		"n", "", "", ""}, "nova-prod-01")
 	mustScenario(t, r, "cluster create")
 	wantContains(t, r.Stderr, "Service group 2  (nodes so far: 3 of 27)", "Node size (vCPU / RAM GB)")
-	wantContains(t, r.Stdout+r.Stderr, "2 groups · 5 nodes (data 3 × 8/32 · index,query 2 × 4/32)")
+	wantContains(t, r.Stdout+r.Stderr, "2 groups - 5 nodes (data 3 × 8/32 - index,query 2 × 4/32)")
 	groups := groupsOf(fileCluster(t, s, "nova-prod-01"))
 	type row struct {
 		Services any

@@ -169,6 +169,9 @@ func (g globalFlags) logLevel() logging.Level {
 // leaves included, and rejects invalid global flag values early. It never touches the log
 // writers, so legacy leaves behave exactly as before.
 func capellaPersistentPreRun(cmd *cobra.Command, _ []string) error {
+	if err := applyOutputFlags(cmd); err != nil {
+		return err
+	}
 	g, err := readGlobals(cmd)
 	if err != nil {
 		return err

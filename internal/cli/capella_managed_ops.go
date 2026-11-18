@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -13,12 +14,15 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/mminichino/cbctl/internal/resources"
+	"github.com/mminichino/cbctl/internal/yamlio"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // managedBuild turns the flags and arguments of a resource command into the file mutation it
@@ -242,7 +246,7 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 				return err
 			}
 			if g.Output != "json" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Removed %s from %s. Capella still has it.\n", label, file)
+				logging.Success("Removed %s from %s. Capella still has it.", label, file)
 			}
 			return nil
 		}
@@ -251,7 +255,7 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 			if !errorAsCLI(err, &ce) || ce.Code != ExitConfigInvalid || !strings.Contains(ce.Message, "not found") {
 				return err
 			}
-			fmt.Fprintf(cmd.ErrOrStderr(), "%s is not in Capella; removing it from %s\n", label, file)
+			writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "%s is not in Capella; removing it from %s", label, file)
 		} else if cmd.Annotations[cancelledAnnotation] != "" {
 			return nil
 		}
@@ -275,7 +279,7 @@ func removeFromFile(cmd *cobra.Command, ed *capellafile.Editor, spec deleteSpec,
 	}
 	g, _ := readGlobals(cmd)
 	if !g.Quiet && backup != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s updated: removed %s (previous version kept as %s)\n",
+		writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "%s updated: removed %s (previous version kept as %s)",
 			filepath.Base(ed.Path), spec.label(args), filepath.Base(backup))
 	}
 	return nil
@@ -494,7 +498,7 @@ func managedBucketAdd(cmd *cobra.Command, args []string, env *envRuntime, ed *ca
 	// later update could not set the storage backend or type.
 	finish := recordedButMissingBucket(cmd, args, env, ed)
 	if finish {
-		fmt.Fprintf(cmd.ErrOrStderr(), "bucket %s is in %s but not in Capella yet (an earlier run did not finish); creating it now\n",
+		writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "bucket %s is in %s but not in Capella yet (an earlier run did not finish); creating it now",
 			name, fileName(ed))
 	}
 	return Mutation{
@@ -806,10 +810,14 @@ func filePrivileges(cmd *cobra.Command, args []string, ed *capellafile.Editor) (
 		return nil, notInFile("credential", args[1], fileName(ed))
 	}
 	var grants []struct {
-		Privileges []string `yaml:"privileges"`
+		Privileges []string `json:"privileges"`
 	}
 	if n := ed.Child(c, "access"); n != nil {
-		if err := n.Decode(&grants); err != nil {
+		js, err := yamlio.NodeToJSON(n)
+		if err == nil {
+			err = json.Unmarshal(js, &grants)
+		}
+		if err != nil {
 			return nil, Errorf(ExitConfigInvalid, "fix the access of the credential in "+fileName(ed), "reading the access of credential %s: %v", args[1], err)
 		}
 	}

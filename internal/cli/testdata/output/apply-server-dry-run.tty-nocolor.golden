@@ -1,0 +1,11 @@
+stdout:
+[info] - Would initialize the cluster on 10.0.0.1 if it is not configured
+[info] - Would join node 10.0.0.2 to the cluster at 10.0.0.1 if it is not a member
+[info] - Would rebalance if nodes are waiting to be rebalanced in
+[info] - Would create bucket "orders" if it does not exist
+[info] - Would create scope "orders.sales" if it does not exist
+[info] - Would create collection "orders.sales.items" if it does not exist
+[info] - Would import into orders.sales.items if it is empty
+[info] - CouchbaseServer/demo: dry run, nothing was changed
+stderr:
+exit: 0

@@ -1,0 +1,52 @@
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: airline-ops
+  labels:
+    team: field-eng
+spec:
+  credentials:
+    username: Administrator
+    password: ${CB_PASSWORD}
+  tls:
+    enabled: false
+  nodeDefaults:
+    services: [data, index, query, fts]
+    dataPath: /data/couchbase
+  nodes:
+    - ipAddress: 10.0.1.10
+      externalIpAddress: 203.0.113.10
+      serverGroup: us-east-1a
+      primary: true
+    - ipAddress: 10.0.2.10
+      externalIpAddress: 203.0.113.11
+      serverGroup: us-east-1b
+    - ipAddress: 10.0.3.10
+      serverGroup: us-east-1c
+      services: [index, query, backup]
+      ramGiB: 32
+    - ipAddress: 10.0.3.11
+      serverGroup: us-east-1c
+      arbiter: true
+  rebalance: true
+  buckets:
+    - name: flights
+      quotaMiB: 1024
+      replicas: 1
+      scopes:
+        - name: ops
+          collections: [schedules, gates]
+      import:
+        - scope: ops
+          collection: schedules
+          file: data/schedules.jsonl
+          keyField: flightId
+        - scope: ops
+          collection: gates
+          keyField: gateId
+          data:
+            - gateId: DAL-E10
+              terminal: E
+              opened: 2026-01-02T03:04:05Z
+            - gateId: DAL-E12
+              terminal: E

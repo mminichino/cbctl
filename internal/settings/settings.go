@@ -104,10 +104,11 @@ func Resolve(in Inputs) (*Settings, error) {
 	profileName := firstNonEmpty(in.Profile, env(envProfile), defaultProfile)
 
 	store := ProfileStore{Path: ProfilesPath(home)}
-	profiles, err := store.Load()
+	profiles, storeWarnings, err := store.LoadWithWarnings()
 	if err != nil {
 		return nil, err
 	}
+	warnings = append(warnings, storeWarnings...)
 	profile, profileOK := profiles[profileName]
 	legacyProfile := false
 	if !profileOK && in.LegacyHome != "" && filepath.Clean(in.LegacyHome) != filepath.Clean(home) {

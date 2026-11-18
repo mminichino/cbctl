@@ -1,0 +1,31 @@
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: groups
+spec:
+  project: p
+  provider: aws
+  cidr: 10.0.0.5/24
+  serviceGroups:
+    - services: [index, query]
+      nodes: 2
+      compute: { cpu: 8, ramGb: 32 }
+    - services: [data, fts]
+      nodes: 30
+      compute: { cpu: 3, ramGb: 7 }
+      disk: { type: pd-ssd, sizeGb: 20, iops: 3000 }
+    - services: [search, data]
+      nodes: 1
+      compute: { cpu: 8, ramGb: 32 }
+      disk: { type: gp3, sizeGb: 20000, iops: 100 }
+    - services: [backup]
+      nodes: 2
+      compute: {}
+  allowedCidrs:
+    - cidr: 0.0.0.0/0
+    - cidr: 1.2.3.4/24
+    - cidr: 203.0.113.0/24
+      expiresAt: tomorrow
+    - cidr: 203.0.113.0/24
+  wait:
+    timeout: 25h

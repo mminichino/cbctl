@@ -1,0 +1,111 @@
+{
+  "source": "imports.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/0",
+      "line": 13,
+      "column": 11,
+      "message": "set exactly one of file or data, not both"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/1",
+      "line": 16,
+      "column": 11,
+      "message": "set exactly one of file or data"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/1",
+      "line": 16,
+      "column": 11,
+      "message": "_default._default is already imported by import[0]; each scope and collection pair may appear once"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/2/data",
+      "line": 19,
+      "column": 11,
+      "message": "data must not be empty",
+      "fix": "list the documents to import, or remove the import entry"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/3",
+      "line": 20,
+      "column": 11,
+      "message": "ops.gates is already imported by import[2]; each scope and collection pair may appear once"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/3/credential",
+      "line": 22,
+      "column": 11,
+      "message": "credential applies to CouchbaseCapella only; imports use the admin credentials"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/3/data/1",
+      "line": 25,
+      "column": 15,
+      "message": "each data item must be a mapping that becomes one document"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/4/file",
+      "line": 27,
+      "column": 11,
+      "message": "cannot read data/missing.jsonl: no such file or directory",
+      "fix": "relative paths resolve from the manifest's directory (from the working directory with -f -)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/5/data/1",
+      "line": 32,
+      "column": 15,
+      "message": "keyField id: key \"a\" duplicates data[0]"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/5/data/2",
+      "line": 33,
+      "column": 15,
+      "message": "keyField id is missing"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/5/data/3",
+      "line": 34,
+      "column": 15,
+      "message": "keyField id must be a non-empty string or an integer (got 1.5)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/5/data/4",
+      "line": 35,
+      "column": 15,
+      "message": "keyField id must be a non-empty string or an integer (got a boolean)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/import/5/data/5",
+      "line": 36,
+      "column": 15,
+      "message": "keyField id must not be an empty string"
+    }
+  ]
+}

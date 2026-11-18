@@ -54,7 +54,7 @@ func (w *clusterWizard) askGroups(provider string) ([]string, error) {
 		if len(groups) > 0 {
 			head += fmt.Sprintf("  (nodes so far: %d of %d)", total, maxClusterNodes)
 		}
-		fmt.Fprintln(w.out, head)
+		writeProse(w.out, "%s", head)
 		dataTaken := false
 		var unused []string
 		for _, s := range clusterServices {
@@ -123,15 +123,15 @@ func (w *clusterWizard) askGroups(provider string) ([]string, error) {
 // for vCPUs and RAM.
 func (w *clusterWizard) askNodeSize(provider string, def presets.Size) (presets.Size, error) {
 	sizes := presets.ComputeSizes()[provider].Sizes
-	fmt.Fprintln(w.out, "  Node size (vCPU / RAM GB):")
+	writeProse(w.out, "  Node size (vCPU / RAM GB):")
 	for row := 0; row < len(sizes); row += 6 {
 		var cells []string
 		for i := row; i < min(row+6, len(sizes)); i++ {
 			cells = append(cells, fmt.Sprintf("%2d) %s", i+1, sizes[i]))
 		}
-		fmt.Fprintln(w.out, "    "+strings.Join(cells, "  "))
+		writeProse(w.out, "%s", "    "+strings.Join(cells, "  "))
 	}
-	fmt.Fprintf(w.out, "    %2d) other\n", len(sizes)+1)
+	writeProse(w.out, "    %2d) other", len(sizes)+1)
 	pick := 1
 	if i := slices.Index(sizes, def); i >= 0 {
 		pick = i + 1
@@ -171,7 +171,7 @@ func (w *clusterWizard) askDisk(provider string, current *capellaapi.Disk) (disk
 	if current == nil {
 		current = makeDisk(provider, "", nil, nil, nil)
 	}
-	fmt.Fprintln(w.out, "  Disk type:")
+	writeProse(w.out, "  Disk type:")
 	tw := tabwriter.NewWriter(w.out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "    S.NO\tTYPE\tSIZE (GB)\tIOPS\tFOR")
 	all := presets.DiskTypes()[provider]
@@ -193,7 +193,7 @@ func (w *clusterWizard) askDisk(provider string, current *capellaapi.Disk) (disk
 	name := names[n-1]
 	facts := all[name]
 	if facts.FixedSize > 0 {
-		fmt.Fprintf(w.out, "    %s: %d GB, %d IOPS (set by the type)\n", name, facts.FixedSize, facts.FixedIOPS)
+		writeProse(w.out, "    %s: %d GB, %d IOPS (set by the type)", name, facts.FixedSize, facts.FixedIOPS)
 		return diskAnswer{diskType: name}, nil
 	}
 	same := current.Type == name
@@ -237,7 +237,7 @@ func (w *clusterWizard) askDisk(provider string, current *capellaapi.Disk) (disk
 	}
 	if facts.PerGB > 0 {
 		per := facts.PerGB / 2
-		fmt.Fprintf(w.out, "    %s %d GB: up to %d read and %d write IOPS\n", name, size, per*size, per*size)
+		writeProse(w.out, "    %s %d GB: up to %d read and %d write IOPS", name, size, per*size, per*size)
 		return diskAnswer{diskType: name, size: size}, nil
 	}
 	lo, hi, ok := iopsRange(facts, size)

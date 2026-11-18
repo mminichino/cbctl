@@ -606,27 +606,43 @@ func TestLoadEdgeCases(t *testing.T) {
 			t.Errorf("alias not expanded: %v", groups[1])
 		}
 	})
-	t.Run("10k lines load quickly", func(t *testing.T) {
-		var sb strings.Builder
-		sb.WriteString(minimalYAML)
-		sb.WriteString("    buckets:\n")
-		for i := 0; i < 1500; i++ {
-			fmt.Fprintf(&sb, "      - name: b%d\n        memoryAllocationInMb: 100\n        scopes:\n          - name: s\n            collections:\n              - name: c\n", i)
+	t.Run("10k lines load in linear time", func(t *testing.T) {
+		build := func(buckets int) string {
+			var sb strings.Builder
+			sb.WriteString(minimalYAML)
+			sb.WriteString("    buckets:\n")
+			for i := 0; i < buckets; i++ {
+				fmt.Fprintf(&sb, "      - name: b%d\n        memoryAllocationInMb: 100\n        scopes:\n          - name: s\n            collections:\n              - name: c\n", i)
+			}
+			return sb.String()
 		}
-		// Fastest of three: the bound catches pathological (e.g. quadratic) loading, and a single
-		// sample on a shared CI runner can stall for a second without any code being slow.
-		text := sb.String()
-		var cfg *Config
-		best := time.Duration(1<<63 - 1)
-		for range 3 {
-			start := time.Now()
-			cfg = mustLoadText(t, text)
-			best = min(best, time.Since(start))
+		// The bound catches pathological (e.g. quadratic) loading. An absolute time limit cannot
+		// do that on shared CI runners, where -race on macOS runs the same load 10x slower than a
+		// laptop, so compare two sizes on the same machine instead: quadratic growth makes the
+		// 4x larger input take about 16x as long, linear about 4x. Fastest of three per size
+		// removes one-off stalls.
+		const small, large = 375, 1500
+		fastest := func(text string) (time.Duration, *Config) {
+			var cfg *Config
+			best := time.Duration(1<<63 - 1)
+			for range 3 {
+				start := time.Now()
+				cfg = mustLoadText(t, text)
+				best = min(best, time.Since(start))
+			}
+			return best, cfg
 		}
-		if best > time.Second {
-			t.Errorf("loading %d lines took %v (fastest of 3)", strings.Count(text, "\n"), best)
+		smallTime, _ := fastest(build(small))
+		text := build(large)
+		largeTime, cfg := fastest(text)
+		if ratio := float64(largeTime) / float64(max(smallTime, time.Microsecond)); ratio > 10 {
+			t.Errorf("loading %d lines took %v, %.1fx the time of %d buckets (%v); want about 4x for linear loading",
+				strings.Count(text, "\n"), largeTime, ratio, small, smallTime)
 		}
-		if cfg.Counts().Buckets != 1500 {
+		if largeTime > time.Minute {
+			t.Errorf("loading %d lines took %v", strings.Count(text, "\n"), largeTime)
+		}
+		if cfg.Counts().Buckets != large {
 			t.Errorf("buckets = %d", cfg.Counts().Buckets)
 		}
 	})
@@ -704,5 +720,20 @@ func TestSchemaEmbeddedAndNodeLookup(t *testing.T) {
 	cred, ok := SchemaNode(Path{"credentialsOutput"})
 	if !ok || cred["default"] != "./.cbctl/credentials" {
 		t.Errorf("credentialsOutput default = %v", cred["default"])
+	}
+}
+
+func TestLoadTextRejectsKind(t *testing.T) {
+	t.Parallel()
+	ce := loadErr(t, "apiVersion: cbctl/v1\nkind: CouchbaseCapella\nmetadata:\n  name: x\n")
+	if len(ce.Issues) != 1 {
+		t.Fatalf("want 1 issue, got %d: %v", len(ce.Issues), ce.Issues)
+	}
+	is := ce.Issues[0]
+	if is.Path != "kind" || is.Line != 2 {
+		t.Errorf("issue at %q line %d, want kind line 2", is.Path, is.Line)
+	}
+	if !strings.Contains(is.Fix, "cbctl apply -f") {
+		t.Errorf("fix %q lacks the apply hint", is.Fix)
 	}
 }

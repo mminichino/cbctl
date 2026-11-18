@@ -1,6 +1,11 @@
 package server
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -111,5 +116,90 @@ func TestFatalError(t *testing.T) {
 	err := &FatalError{Msg: "nope"}
 	if err.Error() != "nope" {
 		t.Fatalf("got %q", err.Error())
+	}
+}
+
+func TestDocumentKey(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		doc      any
+		keyField string
+		want     string
+		wantErr  string
+	}{
+		{"string key", map[string]any{"id": "a-1"}, "id", "a-1", ""},
+		{"float integer key", map[string]any{"id": float64(42)}, "id", "42", ""},
+		{"json number integer", map[string]any{"id": json.Number("9007199254740993")}, "id", "9007199254740993", ""},
+		{"json number integral float", map[string]any{"id": json.Number("1e3")}, "id", "1000", ""},
+		{"negative zero", map[string]any{"id": json.Number("-0")}, "id", "0", ""},
+		{"fractional", map[string]any{"id": json.Number("1.5")}, "id", "", "string or an integer"},
+		{"float fractional", map[string]any{"id": 1.5}, "id", "", "string or an integer"},
+		{"missing", map[string]any{"x": 1}, "id", "", "is missing"},
+		{"empty string", map[string]any{"id": ""}, "id", "", "is empty"},
+		{"wrong type", map[string]any{"id": true}, "id", "", "string or an integer"},
+		{"not an object", []any{1}, "id", "", "JSON object"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := documentKey(tt.doc, tt.keyField, "here")
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) || !strings.Contains(err.Error(), "here") {
+					t.Fatalf("error = %v, want it to contain %q and the position", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil || got != tt.want {
+				t.Fatalf("key = %q, %v; want %q", got, err, tt.want)
+			}
+		})
+	}
+	if key, err := documentKey(map[string]any{}, "", "here"); err != nil || len(key) != 36 {
+		t.Fatalf("no keyField: key %q, %v; want a UUID", key, err)
+	}
+}
+
+func TestFileSource(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "d.jsonl")
+	if err := os.WriteFile(path, []byte("{\"n\":1}\n\n{\"n\":2}\n{bad\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	src, err := FileSource(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = src.Close() }()
+	for i, wantWhere := range []string{path + ":1", path + ":3"} {
+		doc, where, err := src.Next()
+		if err != nil || where != wantWhere || doc.(map[string]any)["n"].(float64) != float64(i+1) {
+			t.Fatalf("doc %d = %v at %q, %v; want position %q", i, doc, where, err, wantWhere)
+		}
+	}
+	if _, _, err := src.Next(); err == nil || !strings.Contains(err.Error(), "invalid JSON on line 4") {
+		t.Fatalf("error = %v, want invalid JSON on line 4", err)
+	}
+	if _, err := FileSource(path + ".missing"); err == nil {
+		t.Fatal("FileSource of a missing file succeeded")
+	}
+}
+
+func TestInlineSource(t *testing.T) {
+	t.Parallel()
+	src := InlineSource([]json.RawMessage{json.RawMessage(`{"id":12345678901234567890}`), json.RawMessage(`{`)}, "data")
+	doc, where, err := src.Next()
+	if err != nil || where != "data[0]" {
+		t.Fatalf("first = %v at %q, %v", doc, where, err)
+	}
+	if got := doc.(map[string]any)["id"]; got != json.Number("12345678901234567890") {
+		t.Fatalf("id = %#v, want the exact number text", got)
+	}
+	if _, _, err := src.Next(); err == nil || !strings.Contains(err.Error(), "data[1]") {
+		t.Fatalf("second error = %v, want position data[1]", err)
+	}
+	empty := InlineSource(nil, "data")
+	if _, _, err := empty.Next(); !errors.Is(err, io.EOF) {
+		t.Fatalf("empty source error = %v, want io.EOF", err)
 	}
 }

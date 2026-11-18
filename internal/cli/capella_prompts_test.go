@@ -92,6 +92,7 @@ func TestPrompts(t *testing.T) {
 }
 
 func TestCapellaCompletionPointsToRoot(t *testing.T) {
+	isolatePrinter(t)
 	root := NewRootCmd(DefaultDeps())
 	root.SilenceUsage, root.SilenceErrors = true, true
 	root.SetOut(io.Discard)

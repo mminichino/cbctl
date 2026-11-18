@@ -264,7 +264,7 @@ func TestSync_CAP036_AC9_TurnedOffCluster(t *testing.T) {
 	s.Fake.FailNext("GET", `/buckets$`, 500, 6) // what Capella answers while the cluster is off
 	r := syncOK(t, s)
 	wantContains(t, r.Stderr, "[warning] - cluster nova-dev-01: buckets and database credentials not imported (turnedOff)",
-		"→ Turn it on")
+		"-> Turn it on")
 	wantNotContains(t, r.Stdout+r.Stderr, "retrying")
 	if n := s.Fake.Count("GET", `/clusters/`+cid+`/(buckets|users)$`); n != 0 {
 		t.Errorf("%d bucket/credential reads of a turned-off cluster, want 0", n)

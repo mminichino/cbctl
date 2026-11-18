@@ -6,6 +6,88 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-17
+
+Adds `cbctl apply -f` for declarative manifests, consistent output and color for every command, and a
+YAML-through-JSON codec. **Breaking:** success lines are labelled `[ok]` instead of `[info]`; see
+[Migration](#migration-from-06x).
+
+### Added
+
+- `cbctl apply -f FILE|-|DIR` applies `cbctl/v1` manifests (see [docs/manifests.md](docs/manifests.md)).
+  - `kind: CouchbaseServer` initializes the primary node, joins the other nodes (arbiters included),
+    rebalances, creates buckets, scopes and collections, and imports documents (a JSON Lines `file` or
+    inline `data`, with an optional `keyField`). Applying again changes nothing. A primary that already
+    belongs to another cluster is refused (exit 1, nothing changed). Nodes the manifest does not list are
+    reported and left in place.
+  - `kind: CouchbaseCapella` translates the manifest in memory and runs the existing Capella plan/apply
+    engine: project, cluster, service groups, allowed CIDRs, buckets, scopes, collections, credentials,
+    then an import over the SDK. It never reads or writes `capella.yaml`, writes no `.bak` and pins no ids.
+    It never deletes. Immutable differences (`provider`, `region`, `cidr`, `availability`, release line,
+    bucket `storageBackend`) exit 3; removing a service group exits 4. A field left out of the manifest
+    keeps the value Capella has.
+  - `--dry-run` validates and shows the plan without changing anything (exit 0 with or without changes).
+    `-o json` prints one report document (`internal/manifest/testdata/apply.manifest.schema.json`). `-y`
+    skips the confirmation (needed without a terminal for scale-in and for turning
+    `deletionProtection` off).
+  - Secrets are `${VAR}`, `${file:PATH}` or the new `${base64:VALUE}` (manifests only, not `capella.yaml`);
+    a literal password is rejected. Every reference is resolved and the whole file validated before any
+    node or API is contacted.
+  - A file may hold several documents, of either kind. The first failure stops the run and the report lists
+    the rest as `not-run`; Ctrl-C stops between steps (exit 130).
+  - A `capella.yaml` given to `apply -f` (no `kind`) exits 3 with a hint, and the `capella` commands reject
+    a manifest the same way.
+- `--color auto|always|never` on every command, and the `CLICOLOR`, `CLICOLOR_FORCE` and `FORCE_COLOR`
+  variables, next to `NO_COLOR`. Color is decided for stdout and stderr independently.
+- New `[ok]` label (bold green) for "a change was made or a check passed"; `[debug]` is dim.
+- New `internal/output` package behind all command output, and `internal/yamlio` behind all YAML.
+- Documentation: `docs/manifests.md`, README sections "Manifests" and "Output and color", and a manifests
+  note in the `ci` guide topic and `docs/capella/terraform.md`.
+
+### Changed
+
+- **Breaking:** success lines read `[ok] - ...` instead of `[info] - ...`. Cluster and node lines: `Cluster created
+  on`, `Node ... added`, `Arbiter node ...`, `Cluster rebalanced`, `Cluster test passed`. Keyspace and data lines:
+  `Bucket`, `Scope`, `Collection` and `Keyspace ... created`, `Imported N documents`. Config and workflow
+  lines: `Saved profile`, `Removed profile`, `Wrote ...`, `Apply complete`, and the `doctor` and `configure
+  migrate` results. Unchanged `[info]`: `Cluster already configured`, `Node already configured`, `Connected to`.
+  Exit codes, `true`/`false` from `exists`, `Collection not empty`, one-time passwords and JSON documents are
+  unchanged.
+- **Breaking:** with `-o json`, `[ok]` and `[info]` lines go to stderr, so stdout holds only the JSON document.
+  In text mode they stay on stdout.
+- Color: info is no longer blue. Only the label word is colored (`[ok]` bold green, `[warning]` bold yellow,
+  `[error]` bold red, `[debug]` dim). `[error]` and `[warning]` lines from error handling, notices and the wizard
+  are now colored on a terminal too. The `fatih/color` dependency is gone.
+- Off a color terminal (pipes, logs, `NO_COLOR`) text is ASCII: `->`, `-`, `+/-`, `...` and `****`, including
+  `capella plan` and `drift` text that is piped. On a color terminal they stay `→`, `·`, `±`, `…` and `••••`.
+- All YAML goes through `internal/yamlio` (YAML <-> JSON, `json` tags only, strict decoding with file, line and
+  column, and a suggestion for a typo) on `go.yaml.in/yaml/v3` v3.0.6, replacing `gopkg.in/yaml.v3`.
+  `capella.yaml` is read as before and `capella sync` output is byte-identical to v0.6.1
+  (`scripts/sync-byte-identity.sh`). `profiles.yaml` is written in struct field order.
+- `cbctl apply` never rotates the password of an existing Capella database credential (use
+  `cbctl capella credential update --rotate-password`).
+
+### Fixed
+
+- `cbctl configure migrate --remove-legacy` keeps the comments, key order and unknown keys of capellactl's
+  `profiles.yaml` when it removes the migrated profiles.
+- An unknown key in cbctl's `profiles.yaml` is reported as one warning instead of being ignored silently.
+- `cbctl apply` for `CouchbaseCapella` picks an automatic cluster network (`cidr` omitted) that no cluster in the
+  whole organization uses. It only avoided the networks of the same project, so a first apply failed with
+  `422 ... CIDR of 10.0.0.0/24 is not unique within this organization` when another project had that range.
+- Tests: the printer settings of one test (`-o json`, a color decision) no longer leak into the next one, which
+  made `TestInitNonInteractive`, `TestInitInteractive`, `TestProjectDeleteCascade` and others fail under
+  `go test -count=2`; `TestBinarySmoke` no longer finds a developer's `.env` when its temp dir is inside a
+  checkout.
+
+### Migration from 0.6.x
+
+- A script that greps for `[info] - Cluster created` (or another success line listed above) should match
+  `[ok] - Cluster created` or, better, use the exit code or `-o json`.
+- A script that reads `[ok]`/`[info]` from stdout with `-o json` now finds them on stderr.
+- Anything that parsed blue or unlabeled color codes must follow the new scheme or pass `--color never`.
+- `capella.yaml` workflows are unchanged. Manifests are a separate, opt-in format selected by `kind`.
+
 ## [0.6.1] - 2026-11-17
 
 ### Changed
@@ -219,6 +301,7 @@ keeps that version. See [docs/capella/migrating-from-capellactl.md](docs/capella
 
 - Secret redaction in logs and CLI output; generated credential passwords written only to 0600 files.
 
-[Unreleased]: https://github.com/mminichino/cbctl/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/mminichino/cbctl/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/mminichino/cbctl/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/mminichino/cbctl/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/mminichino/cbctl/compare/v0.5.0...v0.6.0

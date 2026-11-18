@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/secrets"
 	"github.com/mminichino/cbctl/internal/settings"
 )
@@ -63,10 +63,11 @@ Nothing is changed and Capella is not contacted. With --detailed-exitcode, findi
 			} else {
 				out := cmd.OutOrStdout()
 				if len(rep.Items) == 0 {
-					fmt.Fprintln(out, "No capellactl leftovers found.")
+					logging.Success("No capellactl leftovers found.")
 				}
+				arrow := outGlyphs(out).Arrow
 				for _, it := range rep.Items {
-					fmt.Fprintf(out, "%s: %s\n  → %s\n", it.Kind, it.Detail, it.Action)
+					writeProse(out, "%s: %s\n  %s %s", it.Kind, it.Detail, arrow, it.Action)
 				}
 			}
 			if detailed && len(rep.Items) > 0 {
@@ -160,8 +161,8 @@ func rawString(path, key string) string {
 	if err != nil {
 		return ""
 	}
-	var doc map[string]any
-	if yaml.Unmarshal(raw, &doc) != nil {
+	doc, err := capellafile.ParseObj(raw)
+	if err != nil {
 		return ""
 	}
 	s, _ := doc[key].(string)

@@ -18,8 +18,8 @@ curl -sL "https://github.com/mminichino/cbctl/releases/download/latest/cbctl_Dar
 sudo mv cbctl /usr/local/bin/
 cbctl --version            # cbctl capella --version prints the same
 
-# Pin a version (replace v0.6.1)
-# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.6.1/cbctl_Darwin_arm64.tar.gz" | tar xz
+# Pin a version (replace v0.7.0)
+# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.7.0/cbctl_Darwin_arm64.tar.gz" | tar xz
 ```
 
 See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures. Asset URLs use `/releases/download/<tag>/...` (tag before the filename).
@@ -175,6 +175,150 @@ cbctl import <jsonl-file> <bucket.scope.collection> --host 127.0.0.1 -u Administ
 - Refuses non-empty collections: prints `Collection not empty` and exits 0 without importing.
 - Success: `Imported N documents`.
 
+## Manifests (`cbctl apply`)
+
+```bash
+cbctl apply -f couchbase.yaml [--dry-run] [-o json] [-y]
+cbctl apply -f manifests/        # every *.yaml / *.yml in the directory, in name order
+cat couchbase.yaml | cbctl apply -f -
+```
+
+A manifest is one or more YAML documents with `apiVersion: cbctl/v1`, a `kind` and a `metadata.name`.
+`kind: CouchbaseServer` builds a Server cluster: it initializes the primary node, joins the other
+nodes one by one, rebalances, creates buckets, scopes and collections, and imports documents.
+`kind: CouchbaseCapella` creates or updates a Capella project, cluster, buckets, scopes, collections,
+allowed CIDRs and database credentials, then imports documents (it needs a Capella API key, see
+`cbctl configure`). It runs on the same plan/apply engine as `cbctl capella apply`, but in memory:
+`capella.yaml` is never read or changed, no `.bak` files are written, ids are not pinned and nothing
+is deleted. Details:
+
+- Immutable fields (`provider`, `region`, `cidr`, `availability`, `serverVersion` release line, bucket
+  `storageBackend`) that differ from the existing cluster exit 3. Removing a service group exits 4.
+- Fields left out of the manifest (`deletionProtection`, `description`, disk auto-expansion) keep the value
+  Capella has. `cidr` omitted allocates a `10.x.y.0/24` that no cluster in the organization uses (Capella requires a unique network).
+- `apply` never changes the password of an existing database credential; a generated password for a new
+  one is printed once (saved to `credentialsOutput` with mode 0600).
+- On a terminal `apply` asks before changing anything. Without one, creating, updating and scaling out run
+  without `-y`; scaling in or turning `deletionProtection` off needs `-y` (exit 4).
+- `spec.wait.timeout` / `spec.wait.enabled` set how long to wait (exit 5 on timeout).
+- `import` connects with the SDK over TLS using a database credential; if the host cannot connect, check
+  `spec.allowedCidrs`. A non-empty collection skips its import.
+- `--dry-run` validates and plans against Capella without changing it.
+
+```yaml
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: airline-ops
+spec:
+  credentials:
+    password: ${CB_PASSWORD}        # ${VAR}, ${file:PATH} or ${base64:VALUE}; never a literal
+  nodes:
+    - ipAddress: 10.0.1.10
+    - ipAddress: 10.0.2.10
+  buckets:
+    - name: flights
+      quotaMiB: 1024
+      scopes:
+        - name: ops
+          collections: [schedules, gates]
+      import:
+        - scope: ops
+          collection: schedules
+          file: data/schedules.jsonl   # relative to the manifest
+          keyField: flightId           # document key; without it a UUID is used
+        - scope: ops
+          collection: gates
+          keyField: gateId
+          data:
+            - gateId: E10
+```
+
+- The whole manifest is validated and every `${...}` reference is resolved before any node is contacted. A problem exits 3 and applies nothing.
+- Applying again changes nothing that already matches (`[info] - ... no changes`). Existing buckets are left as they are; a different quota is a `[warning]`. An import into a collection that is not empty is skipped with a `[warning]`.
+- Nodes in the cluster that the manifest does not list are reported with a `[warning]` and left in place.
+- `--dry-run` validates and lists the steps without contacting any node (a Capella document is planned against Capella, read-only). It exits 0 whether or not there are changes.
+- `-o json` prints one document (`apiVersion`, `dryRun`, `status`, `documents[]` with `steps[]`) on stdout; status lines go to stderr.
+- Documents run in order; the first failure stops the run, earlier documents stay applied, and the report lists the rest as `not-run`. Ctrl-C stops between steps (exit 130); run the command again to finish.
+- A `capella.yaml` is not a manifest: `apply` rejects a file without `kind`, and the `capella` commands reject a file that has one.
+
+A `CouchbaseCapella` manifest names the project, provider, region and either a `size` preset
+(`dev|small|medium|large`) or `serviceGroups`:
+
+```yaml
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: airline-ops-prod
+spec:
+  project: airline-demo
+  provider: aws
+  region: us-east-1
+  availability: multi
+  serviceGroups:
+    - services: [data]
+      nodes: 3
+      compute: { cpu: 8, ramGb: 32 }
+      disk: { type: gp3, sizeGb: 100, iops: 3000 }
+    - services: [index, query]
+      nodes: 2
+      compute: { cpu: 8, ramGb: 32 }
+  allowedCidrs:
+    - { cidr: 203.0.113.7, comment: build runner }
+  buckets:
+    - name: flights
+      memoryMb: 1024
+      scopes:
+        - name: ops
+          collections: [{ name: schedules }]
+      import:
+        - credential: loader          # needs write access and a password reference
+          scope: ops
+          collection: schedules
+          file: data/schedules.jsonl
+          keyField: flightId
+  credentials:
+    - name: loader
+      password: ${LOADER_PASSWORD}
+      access: { privileges: read+write, bucket: flights }
+```
+
+Units follow each product's API: Server uses `ramGiB` (GiB) and `quotaMiB` (MiB); Capella uses `ramGb`, `sizeGb` and `memoryMb`.
+
+| Field | Server | Capella |
+|---|---|---|
+| RAM | `ramGiB` (GiB) | `compute.ramGb` (GB) |
+| Disk | OS default | `disk.sizeGb` (GB), `disk.iops` |
+| Bucket memory | `quotaMiB` (MiB) | `memoryMb` (MB) |
+
+From Terraform, write the manifest with `yamlencode` and apply it from a `remote-exec` provisioner. Pass the
+password as `${base64:...}` so characters in it cannot break the YAML:
+
+```hcl
+locals {
+  couchbase_manifest = yamlencode({
+    apiVersion = "cbctl/v1"
+    kind       = "CouchbaseServer"
+    metadata   = { name = var.cluster_name }
+    spec = {
+      credentials = { password = "$${base64:${base64encode(local.password)}}" }
+      nodes       = [for ip in local.node_ips : { ipAddress = ip, primary = ip == local.primary_ip }]
+    }
+  })
+}
+
+provisioner "file" {
+  content     = local.couchbase_manifest
+  destination = "/tmp/couchbase.yaml"
+}
+
+provisioner "remote-exec" {
+  inline = ["chmod 600 /tmp/couchbase.yaml", "sudo /usr/local/bin/cbctl apply -f /tmp/couchbase.yaml", "rm -f /tmp/couchbase.yaml"]
+}
+```
+
+The full guide, with exit codes, secrets and dry-run, is [docs/manifests.md](docs/manifests.md).
+
 ## Multi-node / MDS (`cluster create`)
 
 Repeat `--node` / `-n` with:
@@ -204,6 +348,22 @@ Rules:
 - Single-node without `--node`: use `--host` and optional `--alternate-address` / `-a` (`HOST` or `HOST;PORTMAP`).
 - With `--node`, do not use `--alternate-address`; put `#ALTERNATE` in each node spec.
 - `--ext-api`: management REST via alternate address; requires an alternate on at least one node. Primary connect host becomes the first node's alternate when set.
+
+## Output and color
+
+`--color auto|always|never` (all commands; default `auto`) controls ANSI color on the `[ok]`, `[warning]`, `[error]` and `[debug]` labels. Only the label word is styled, never the message. Each stream is decided on its own, in this order: `--color`, then `NO_COLOR` (non-empty: off), `TERM=dumb` (off), `CLICOLOR_FORCE` or `FORCE_COLOR` (set and not `0`: on; `FORCE_COLOR=0`: off), `CLICOLOR=0` (off), and otherwise on only when the stream is a terminal. Tables, `-o json` documents, `true`/`false`, `cluster map` and one-time passwords on stdout never carry color. `[ok]` and `[info]` lines go to stdout in text mode (stderr with `-o json`); warnings and errors go to stderr.
+
+| Label | Meaning | Color (SGR) | Stream |
+|---|---|---|---|
+| `[ok]` | A change was made or a check passed (`Cluster created on ...`, `Imported N documents`, `Apply complete in ...`) | bold green | stdout |
+| `[info]` | Status, progress and no-ops (`Cluster already configured`, `... accepted for cluster ...`) | none | stdout |
+| `[warning]` | Something to look at; the command went on | bold yellow | stderr |
+| `[error]` | The command failed; an action line follows (`  -> what to do`) | bold red | stderr |
+| `[debug]` | Shown with `--log-level debug` | dim | stderr |
+
+Off a color terminal (pipes, logs, `NO_COLOR`) output is plain ASCII: hint lines read `  -> action`, plan headers use `-`, changes that re-create read `+/-`, deferred ones `...`, and masked values `****`. On a color terminal they read `→`, `·`, `±`, `…` and `••••`.
+
+**Upgrading to 0.7.0.** Success lines that read `[info] - Cluster created on ...` now read `[ok] - Cluster created on ...` (same for `Bucket`, `Scope`, `Collection`, `Keyspace`, `Imported N documents`, `Node ... added`, `Cluster rebalanced`, `Cluster test passed`, `Apply complete`, `Wrote capella.yaml` and `Saved profile`). A script that greps for `[info] - Cluster created` should match on the exit code or `-o json` instead; `true`/`false` from `exists`, `Cluster already configured`, `Node already configured`, `Collection not empty` and generated passwords are unchanged.
 
 ## Capella
 
@@ -238,7 +398,7 @@ cbctl capella doctor            # offline: list what is left from capellactl (--
 |---|---|---|
 | `BEARER_TOKEN`, `ORG_ID`, `API_BASE_URL` | `CAPELLA_API_KEY`, `CAPELLA_ORG_ID`, `CAPELLA_API_BASE_URL` | Used when the cbctl variable is unset; when both are set to different values the cbctl one wins. |
 | `CAPELLACTL_CONFIG`, `CAPELLACTL_PROFILE`, `CAPELLACTL_QUIET`, `CAPELLACTL_HOME` | `CBCTL_CONFIG`, `CBCTL_PROFILE`, `CBCTL_QUIET`, `CBCTL_HOME` | Same. |
-| `~/.config/capellactl/profiles.yaml` (`$XDG_CONFIG_HOME`, `%APPDATA%`, `CAPELLACTL_HOME`) | `~/.config/cbctl/profiles.yaml` | A profile cbctl does not have is read from capellactl's file. |
+| `~/.config/capellactl/profiles.yaml` (`$XDG_CONFIG_HOME`, `%APPDATA%`, `CAPELLACTL_HOME`) | `~/.config/cbctl/profiles.yaml` | A profile cbctl does not have is read from capellactl's file. `configure migrate --remove-legacy` deletes only the migrated profiles and keeps the rest of that file, comments included. |
 | Keychain service `capellactl` | Keychain service `cbctl` | A key cbctl's keychain lacks is read from capellactl's entry for the same profile. |
 | `./.capellactl/credentials` | `./.cbctl/credentials` | Without `credentialsOutput`, capellactl's directory is used while `.cbctl/credentials` does not exist. |
 | `apiVersion: capellactl/v1` | `apiVersion: cbctl/v1` | Both are accepted; `sync` keeps the file's version (`--api-version` changes it). |
@@ -381,6 +541,8 @@ make build              # bin/cbctl
 make test-unit          # with -race (./internal/...)
 make test-integration-fake   # Capella integration suite against the in-memory fake
 make test-server-it     # Couchbase Server Docker flow (-tags=integration,server; needs Docker)
+                        # CBCTL_IT_SERVER_MULTI=1 adds the two-node manifest test (Linux Docker host)
+make test-server-multi-it  # the two-node test on macOS/Windows Docker Desktop: runs the test binary in a Linux container (scripts/server-it-linux.sh)
 make cover-gate         # tiered coverage gate over the unit suite + Server flow (needs Docker)
 make test-integration   # Capella integration suite against a sandbox org (CAPELLA_API_KEY, CAPELLA_ORG_ID; CBCTL_IT_CLUSTERS=1 adds billable clusters)
 make janitor PREFIX=cbctl-ci-   # delete leftover test projects (prefix of at least 4 characters, ending in -)

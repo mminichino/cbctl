@@ -38,7 +38,8 @@ files git would commit are refused (exit 4).
 (`--api-version` to choose).
 
 **Exit codes**: usage errors 2 → 3; a confirmation without a terminal and without `-y` 1 → 4.
-Messages read `[error] -`, `[warning] -` and `→ action`.
+Messages read `[error] -`, `[warning] -` and `-> action` (`→` on a color terminal). Success lines read
+`[ok] -` where capellactl printed `[info]`.
 
 **JSON**: `configure list|show -o json --output-format legacy` gives capellactl's shape.
 

@@ -202,6 +202,7 @@ func TestLegacyLeafFlagsUnchanged(t *testing.T) {
 }
 
 func TestLegacyHelpStillWorks(t *testing.T) {
+	isolatePrinter(t)
 	for _, path := range [][]string{
 		{"capella", "--help"},
 		{"capella", "cluster", "test", "--help"},

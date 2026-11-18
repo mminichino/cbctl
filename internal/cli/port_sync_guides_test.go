@@ -100,7 +100,7 @@ func wantEndState(t *testing.T, s *clitest.Scenario) {
 	wantContains(t, r.Stdout, "= bucket nova-dev-01/orders", "= credential nova-dev-01/orders_app")
 }
 
-// TestGuides_CAP033_AC5_FirstEnvironmentFromScratch: steps 1 → 3 → 5 → 6 → 9 of the guide, from an
+// TestGuides_CAP033_AC5_FirstEnvironmentFromScratch: steps 1 -> 3 -> 5 -> 6 -> 9 of the guide, from an
 // organization without projects: configure, project create, cluster create (every default),
 // bucket add, credential create.
 func TestGuides_CAP033_AC5_FirstEnvironmentFromScratch(t *testing.T) {
@@ -138,7 +138,7 @@ func TestGuides_CAP033_AC5_FirstEnvironmentFromScratch(t *testing.T) {
 }
 
 // TestGuides_CAP033_AC5_FirstEnvironmentWithInit: the guide's whole-environment path: init
-// --non-interactive writes capella.yaml, then validate → plan → apply.
+// --non-interactive writes capella.yaml, then validate -> plan -> apply.
 func TestGuides_CAP033_AC5_FirstEnvironmentWithInit(t *testing.T) {
 	guide := stepByStepShell(t)
 	for _, c := range []string{"cbctl capella init --non-interactive", "cbctl capella validate", "cbctl capella plan", "cbctl capella apply"} {

@@ -86,3 +86,53 @@ func TestCorruptProfilesError(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestProfileStoreLoadWithWarnings(t *testing.T) {
+	tests := []struct {
+		name     string
+		text     string
+		wantOrg  string
+		wantWarn []string
+		wantErr  string
+	}{
+		{"known keys only", "profiles:\n  dev:\n    organizationId: org-1\n", "org-1", nil, ""},
+		{"unknown keys are one warning", "version: 2\nprofiles:\n  dev:\n    organizationId: org-1\n    colour: red\n", "org-1", []string{"version", "profiles.dev.colour"}, ""},
+		{"empty file", "", "", nil, ""},
+		{"bad type names the line", "profiles:\n  dev:\n    organizationId: [a]\n", "", nil, "profiles.yaml:3:"},
+		{"syntax error", "profiles: [\n", "", nil, "profiles.yaml"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "profiles.yaml")
+			if err := os.WriteFile(path, []byte(tt.text), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			got, warns, err := settings.ProfileStore{Path: path}.LoadWithWarnings()
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("err = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got["dev"].OrganizationID != tt.wantOrg {
+				t.Errorf("organizationId = %q, want %q", got["dev"].OrganizationID, tt.wantOrg)
+			}
+			if len(tt.wantWarn) == 0 && len(warns) != 0 {
+				t.Errorf("warnings = %v, want none", warns)
+			}
+			if len(tt.wantWarn) > 0 {
+				if len(warns) != 1 {
+					t.Fatalf("warnings = %v, want exactly one", warns)
+				}
+				for _, k := range tt.wantWarn {
+					if !strings.Contains(warns[0], k) {
+						t.Errorf("warning %q does not name %q", warns[0], k)
+					}
+				}
+			}
+		})
+	}
+}

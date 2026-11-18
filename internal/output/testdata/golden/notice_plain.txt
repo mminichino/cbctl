@@ -1,0 +1,2 @@
+[warning] - cluster has no backup
+  -> Run 'cbctl capella cluster backup schedule set'.

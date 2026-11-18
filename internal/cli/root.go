@@ -77,7 +77,11 @@ func buildRootCmd() *cobra.Command {
 		Run:           func(cmd *cobra.Command, args []string) { _ = cmd.Help() },
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		// The capella group has its own PersistentPreRunE, which cobra runs instead of this one
+		// and which calls applyOutputFlags itself.
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error { return applyOutputFlags(cmd) },
 	}
+	addColorFlag(root)
 	root.SetVersionTemplate(versionTemplate)
 	root.AddCommand(newClusterCmd())
 	root.AddCommand(newBucketCmd())
@@ -85,6 +89,7 @@ func buildRootCmd() *cobra.Command {
 	root.AddCommand(newCollectionCmd())
 	root.AddCommand(newKeyspaceCmd())
 	root.AddCommand(newImportCmd())
+	root.AddCommand(newApplyCmd())
 	root.AddCommand(newCapellaCmd())
 	root.AddCommand(newConfigureCmd())
 	root.SetFlagErrorFunc(flagError)
@@ -258,6 +263,8 @@ func Execute() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx = contextWithDeps(ctx, d)
+	// Installed for the life of the process: main prints the error after Execute returns.
+	logging.SetPrinter(newPrinter(d))
 	root := NewRootCmd(d)
 	root.SetIn(d.Stdin)
 	root.SetOut(d.Stdout)

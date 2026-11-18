@@ -13,6 +13,7 @@ Scope: Couchbase Server management (top-level commands) and Capella cloud manage
 cbctl cluster create --host 127.0.0.1 -u Administrator -p password --no-ssl
 cbctl cluster create --name my-cluster --ip-address 10.0.0.1 --external-ip-address 203.0.113.10 --services data,index,query,fts --server-group us-east-1a --data-path /data/couchbase -p password --no-ssl
 cbctl cluster join --rally-ip-address 10.0.0.1 --ip-address 10.0.0.2 --external-ip-address 203.0.113.11 --services data,index,query,fts --server-group us-east-1b --data-path /data/couchbase -p password --no-ssl
+cbctl cluster join --rally-ip-address 10.0.0.1 --ip-address 10.0.0.3 --arbiter --server-group us-east-1c -p password --no-ssl # arbiter: no services, Server 7.6+
 cbctl cluster add --rally-ip-address 10.0.0.1 --ip-address 10.0.0.2 -p password --no-ssl
 cbctl cluster rebalance --rally-ip-address 10.0.0.1 -p password --no-ssl
 cbctl cluster exists --host 127.0.0.1 -u Administrator -p password --no-ssl
@@ -116,6 +117,9 @@ cbctl capella janitor --prefix P [--older-than-hours H] [--max-total-minutes M] 
 # Keyspace
 cbctl keyspace create <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
+# Manifests (cbctl/v1 YAML; kind CouchbaseServer or CouchbaseCapella; guide: docs/manifests.md)
+cbctl apply -f FILE|-|DIR [--dry-run] [-o json] [-y]
+
 # Import
 cbctl import <jsonl-file> <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
@@ -131,6 +135,8 @@ Most commands accept:
 | `-u` / `--username` | `Administrator` | Admin user |
 | `-p` / `--password` | `password` | Admin password |
 | `--ssl` / `--no-ssl` | `--no-ssl` | TLS for management/SDK |
+
+Every command also accepts the global `--color auto|always|never` (default `auto`; invalid value exits 3). Status labels (`[ok]`, `[info]`, `[warning]`, `[error]`) are colored per stream by `--color`, `NO_COLOR`, `TERM=dumb`, `CLICOLOR_FORCE`/`FORCE_COLOR`, `CLICOLOR` and the terminal check; stdout data (`true`/`false`, `-o json`, `cluster map`, one-time passwords) is never colored. Parse stdout by exit code or `-o json`, not by label text. Success lines are `[ok] - ...` (before 0.7.0 they were `[info] - ...`); no-ops such as `Cluster already configured` stay `[info]`. Off a color terminal output is ASCII (`->` for hint lines).
 
 Always pass explicit `--host`, credentials, and `--ssl`/`--no-ssl` in automation unless local defaults are intentional.
 
@@ -169,7 +175,7 @@ Two modes:
 Add one node to an existing cluster without rebalancing. `add` is an alias of `join`.
 
 Required: `--rally-ip-address`, `--ip-address` (or `--host`), `-p` / `--password`.
-Optional: `--external-ip-address`, `--services`, `--server-group`, `--data-path`, `--ram`, `-u`, `--ssl`/`--no-ssl`. `--ram` overrides the joining node's reported memory for quota sizing.
+Optional: `--arbiter` (no services, Server 7.6+; not with `--services`), `--external-ip-address`, `--services`, `--server-group`, `--data-path`, `--ram`, `-u`, `--ssl`/`--no-ssl`. `--ram` overrides the joining node's reported memory for quota sizing.
 
 Success: `Node <ip> added to cluster at <rally>`. Already a member: reconciles external address and server group, prints `Node already configured`, exits 0. Failure: stderr + exit 1.
 
@@ -215,6 +221,17 @@ Ensure a full keyspace exists.
 - Creates the collection unless it is `_default` (skipped).
 - Success: `Keyspace "<bucket.scope.collection>" created`. Failure: stderr + exit 1.
 
+### `apply -f FILE|-|DIR`
+Apply `cbctl/v1` manifest documents. `kind: CouchbaseServer` runs primary init (a primary that already belongs to a differently named cluster exits 1 and changes nothing), sequential joins, a membership report, rebalance, buckets/scopes/collections, then imports. `kind: CouchbaseCapella` translates the manifest in memory to a capella.yaml-style config and runs the Capella plan/apply engine in ephemeral mode (needs an API key like other Capella commands; per-document `spec.organizationId`).
+
+- `-f` is required (exit 3), repeatable; `-` is stdin (max 10 MiB, not a terminal); a directory reads its `*.yaml`/`*.yml` in name order. Relative `file:` paths resolve from the manifest's directory (cwd for stdin).
+- Everything is validated and `${VAR}` / `${file:PATH}` / `${base64:VALUE}` secrets are resolved before any network call; a problem exits 3 and nothing is applied. Passwords are never literals.
+- Idempotent: a second apply prints `[info]` lines and exits 0. Existing buckets are kept (a quota difference is a `[warning]`); a non-empty collection skips its import (`[warning]`); cluster nodes not in the manifest are warned about and left in place; rebalance runs only with `rebalance` not false and a node waiting to be rebalanced in.
+- `--dry-run` lists the steps and contacts nothing (exit 0). `-o json` prints one report on stdout (schema `internal/manifest/testdata/apply.manifest.schema.json`).
+- The first failing document stops the run (exit 1; later ones are `not-run`); Ctrl-C exits 130 between steps. Rerun to finish.
+- Capella manifests: no file side effects (capella.yaml untouched, no `.bak`, no id pinning, no deletes). Immutable differences (`provider`, `region`, `cidr`, `availability`, `serverVersion` release line, bucket `storageBackend`) exit 3 with the manifest pointer; removing a service group exits 4. Omitted `deletionProtection`/`description`/`autoExpansion` keep the Capella value; omitted `cidr` is allocated. Existing credential passwords are never rotated (`[info] credential X exists; password not changed`); a generated one is printed once on stdout (JSON `credentialPasswords`). TTY asks to confirm; without a terminal only scale-in and `deletionProtection` true->false need `-y` (exit 4). `spec.wait.timeout|enabled` drive waiting (exit 5). Import uses the SDK over TLS with a database credential; a connect failure hints at `spec.allowedCidrs`. `--dry-run` plans against Capella without writes.
+- A file with no `kind` (capella.yaml style) exits 3 with a hint to use `cbctl capella apply -c`; `capella` commands reject a file with `kind` with a hint to use `cbctl apply -f`.
+
 ### `import <file> <bucket.scope.collection>`
 Import JSON Lines into a keyspace.
 
@@ -248,19 +265,20 @@ Import JSON Lines into a keyspace.
 
 ### capellactl settings
 - Legacy env vars are honored with a one-time stderr warning when the cbctl one is unset: `BEARER_TOKEN`→`CAPELLA_API_KEY`, `ORG_ID`→`CAPELLA_ORG_ID`, `API_BASE_URL`→`CAPELLA_API_BASE_URL`, `CAPELLACTL_CONFIG|PROFILE|QUIET|HOME`→`CBCTL_*`. Both set and different: the cbctl one wins (warning).
-- With the default cbctl home (or `CAPELLACTL_HOME` set), a profile or keychain key cbctl lacks is read from capellactl's `profiles.yaml` / keychain service `capellactl` (warning). `configure migrate` copies them; keys are never printed.
+- With the default cbctl home (or `CAPELLACTL_HOME` set), a profile or keychain key cbctl lacks is read from capellactl's `profiles.yaml` / keychain service `capellactl` (warning). `configure migrate` copies them; keys are never printed. `--remove-legacy` edits capellactl's `profiles.yaml` in place (comments, key order and unknown keys stay); an unknown key in cbctl's own `profiles.yaml` is a warning, not an error.
 - Credentials dir: without `credentialsOutput`, `./.capellactl/credentials` is used while `./.cbctl/credentials` does not exist. Generating a password into a dir inside a git work tree that does not ignore it exits 4 before any write unless `--force-overwrite-secret`. `init`/`sync` append `.cbctl/` to `.gitignore` in a git work tree.
 - `sync` keeps `apiVersion: capellactl/v1`; new files are `cbctl/v1` unless `--api-version`.
 
 ## Agent usage rules
 
 1. Prefer `cbctl` for Server cluster bootstrap, keyspace create/exists, connectivity test, and JSONL import.
-2. Treat `exists` output as boolean text (`true`/`false`), not JSON.
-3. Treat “already configured” / “Collection not empty” as success (exit 0), not errors. Provisioner create/join still reconcile quotas, the external address, and the server group before that message; if reconciliation fails, the command exits 1.
+2. Treat `exists` output as boolean text (`true`/`false`), not JSON. Decide success by exit code; do not match `[info]` or `[ok]` label text.
+3. Treat “already configured” / “Collection not empty” (`[info]`) and success lines (`[ok]`) as success (exit 0), not errors. Provisioner create/join still reconcile quotas, the external address, and the server group before that message; if reconciliation fails, the command exits 1.
 4. For MDS or alternate networking, use node-spec syntax; do not invent Capella flags for Server commands.
 5. Do not assume index or Server destroy commands exist on `cbctl`, or Capella commands beyond those documented here.
 6. After provisioning, verify with `cluster test` (and `exists` where useful) before declaring success.
 7. Keep examples and scripts language-agnostic: show shell invocations of `cbctl`, not library internals.
 8. Prefer `keyspace create` when provisioning bucket+scope+collection together; use individual create commands only when one resource is needed.
-9. For Terraform-style multi-node bootstrap, use provisioner `cluster create` → `cluster join`/`add` per extra node → `cluster rebalance`. Prefer REST-targeted IPs (`--ip-address` / `--rally-ip-address`) so the same commands work remotely or on-node.
+9. For Terraform-style multi-node bootstrap, use provisioner `cluster create` → `cluster join`/`add` per extra node → `cluster rebalance`. Prefer REST-targeted IPs (`--ip-address` / `--rally-ip-address`) so the same commands work remotely or on-node. Alternatively write one `CouchbaseServer` manifest and run `cbctl apply -f` (password as `${base64:...}`, see `docs/manifests.md`).
 10. Never use the deprecated Capella commands; use their replacements.
+11. Use `cbctl apply -f` for a self-contained `kind:` manifest (one cluster per document); use `cbctl capella apply -c capella.yaml` for a Capella estate. Run `apply -f --dry-run` first; it exits 0 with or without changes. `apply` never rotates a credential password and never deletes; use `capella credential update --rotate-password` to rotate.

@@ -16,7 +16,7 @@ func TestClusterScale(t *testing.T) {
 		f := newFake(t)
 		pid, id := seedCluster(f, "alpha", "c1")
 		out := runCap(t, "cluster", "scale", "c1", "--nodes", "5").mustOK(t)
-		out.wantStdout(t, "scaled data,index,query: 3 → 5")
+		out.wantStdout(t, "scaled data,index,query: 3 -> 5")
 		c := clusterOf(t, f, pid, id)
 		if nodesOf(t, c) != 5 || c.CurrentState != "healthy" {
 			t.Fatalf("cluster = %d nodes, state %s", nodesOf(t, c), c.CurrentState)

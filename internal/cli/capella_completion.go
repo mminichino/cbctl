@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+
+	"github.com/mminichino/cbctl/internal/yamlio"
 )
 
 // writeCompletionToCmdOut rebinds the bash, zsh, fish and powershell completion commands to write
@@ -97,15 +98,15 @@ func completeClusterNames(cmd *cobra.Command, args []string, toComplete string) 
 // form (projects[].clusters[] or the single-project clusters[]). Unparsable text yields none.
 func declaredClusterNames(text []byte) []string {
 	type cluster struct {
-		Name string `yaml:"name"`
+		Name string `json:"name"`
 	}
 	var doc struct {
-		Clusters []cluster `yaml:"clusters"`
+		Clusters []cluster `json:"clusters"`
 		Projects []struct {
-			Clusters []cluster `yaml:"clusters"`
-		} `yaml:"projects"`
+			Clusters []cluster `json:"clusters"`
+		} `json:"projects"`
 	}
-	if err := yaml.Unmarshal(text, &doc); err != nil {
+	if err := yamlio.Unmarshal(text, &doc); err != nil {
 		return nil
 	}
 	seen := map[string]bool{}

@@ -1,0 +1,4 @@
+stdout:
+<ESC>[1;32m[ok]<ESC>[0m - Cluster rebalanced
+stderr:
+exit: 0

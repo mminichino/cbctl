@@ -94,13 +94,13 @@ func putGroups(t *testing.T, body map[string]any) []map[string]any {
 func TestStep_CAP018_AC2_StepDownRunsGuards(t *testing.T) {
 	s, cid := nodeScenario(t, scaledDoc("4", "data, index, query"))
 	r := mustScenario(t, s.Run("capella", "--yes", "cluster", "scale", "envclu", "--step", "-1", "--min", "3"), "step -1")
-	wantContains(t, r.Stdout, "checks: memory ok", "scaled data,index,query: 4 → 3")
+	wantContains(t, r.Stdout, "checks: memory ok", "scaled data,index,query: 4 -> 3")
 	if got := groupNodes(t, s, cid); !sameInts(got, []int{3}) {
 		t.Fatalf("nodes = %v, want [3]", got)
 	}
 }
 
-// TestStep_CAP018_AC2_StepDownGuardBlocks: a bucket with 3 replicas blocks 4 → 3; -o json
+// TestStep_CAP018_AC2_StepDownGuardBlocks: a bucket with 3 replicas blocks 4 -> 3; -o json
 // reports status blocked and nothing is written.
 func TestStep_CAP018_AC2_StepDownGuardBlocks(t *testing.T) {
 	s, cid := nodeScenario(t, scaledDoc("4", "data, index, query"))
@@ -128,7 +128,7 @@ func TestStep_CAP018_AC3_AtMaxNoop(t *testing.T) {
 func TestStep_CAP018_AC4_AllGroupsIndividual(t *testing.T) {
 	s, cid := nodeScenario(t, withSearch(scenarioDoc))
 	r := mustScenario(t, s.Run("capella", "--yes", "cluster", "scale", "envclu", "--step", "+1", "--all-groups"), "step all groups")
-	wantContains(t, r.Stdout, "scaled data,index,query: 3 → 4", "scaled search: 2 → 3")
+	wantContains(t, r.Stdout, "scaled data,index,query: 3 -> 4", "scaled search: 2 -> 3")
 	puts := clusterPutBodies(s)
 	if len(puts) != 1 {
 		t.Fatalf("cluster PUTs = %d, want 1", len(puts))
@@ -154,7 +154,7 @@ func TestStep_CAP018_AC5_WaitsWhenBusy(t *testing.T) {
 	s.Fake.SetTransition(cid, []string{"scaling", "healthy"}, 0)
 	r := mustScenario(t, s.Run("capella", "--yes", "cluster", "scale", "envclu", "--step", "+1"), "step while scaling")
 	out := r.Stdout + r.Stderr
-	wait, scaled := strings.Index(out, "cluster envclu is scaling; waiting"), strings.Index(out, "scaled data,index,query: 4 → 5")
+	wait, scaled := strings.Index(out, "cluster envclu is scaling; waiting"), strings.Index(out, "scaled data,index,query: 4 -> 5")
 	if wait < 0 || scaled < 0 || r.Stderr == "" {
 		t.Fatalf("missing wait or scaled line:\nstdout: %s\nstderr: %s", r.Stdout, r.Stderr)
 	}

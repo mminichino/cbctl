@@ -168,7 +168,7 @@ func promptBucketUpdate(cmd *cobra.Command, args []string) ([]string, error) {
 		return nil, err
 	}
 	w := promptOf(cmd)
-	fmt.Fprintf(w.out, "Press Enter to keep the current value of %s.\n", args[1])
+	writeProse(w.out, "Press Enter to keep the current value of %s.", args[1])
 	whole := func(min, max int) func(string) error {
 		return func(v string) error {
 			if n, err := strconv.Atoi(v); err != nil || n < min || (max >= 0 && n > max) {
@@ -208,7 +208,7 @@ func promptClusterUpdate(cmd *cobra.Command, args []string) ([]string, error) {
 		return args, nil
 	}
 	w := promptOf(cmd)
-	fmt.Fprintf(w.out, "Change %s (Press Enter to keep the current value)\n", args[0])
+	writeProse(w.out, "Change %s (Press Enter to keep the current value)", args[0])
 	keepOr := func(check func(string) error) func(string) error {
 		return func(v string) error {
 			if v == "" {
@@ -319,7 +319,7 @@ func promptClone(cmd *cobra.Command, args []string) ([]string, error) {
 		}
 		args = []string{cl.Name}
 		if !cmd.Flags().Changed("region") && cl.CloudProvider != nil {
-			fmt.Fprintf(w.out, "%s is on %s in %s.\n", cl.Name, cl.CloudProvider.Type, cl.CloudProvider.Region)
+			writeProse(w.out, "%s is on %s in %s.", cl.Name, cl.CloudProvider.Type, cl.CloudProvider.Region)
 		}
 		if full && !cmd.Flags().Changed("to-project") {
 			to, err := w.ask("Project of the clone", proj.Name, nonEmpty("a project is required"))
@@ -385,13 +385,13 @@ func pickCloneSource(rt *runtime, w *clusterWizard, project string) (capellaapi.
 		return capellaapi.Project{}, capellaapi.Cluster{}, Errorf(ExitError, "create a cluster first with 'cbctl capella cluster create NAME'",
 			"this organization has no clusters to clone")
 	}
-	fmt.Fprintln(w.out, "Clusters:")
+	writeProse(w.out, "Clusters:")
 	for i, ch := range choices {
 		where := ""
 		if ch.c.CloudProvider != nil {
 			where = fmt.Sprintf("  %s %s", ch.c.CloudProvider.Type, ch.c.CloudProvider.Region)
 		}
-		fmt.Fprintf(w.out, "  %d. %s / %s%s  %s\n", i+1, ch.p.Name, ch.c.Name, where, ch.c.CurrentState)
+		writeProse(w.out, "  %d. %s / %s%s  %s", i+1, ch.p.Name, ch.c.Name, where, ch.c.CurrentState)
 	}
 	v, err := w.ask("Source cluster", "", func(v string) error {
 		n, err := strconv.Atoi(v)
@@ -410,9 +410,9 @@ func pickCloneSource(rt *runtime, w *clusterWizard, project string) (capellaapi.
 // askProject lists the projects of capella.yaml and asks which one a new cluster goes in; the
 // answer is a number from the list or a project name.
 func askProject(w *clusterWizard, names []string) (string, error) {
-	fmt.Fprintln(w.out, "Projects in capella.yaml:")
+	writeProse(w.out, "Projects in capella.yaml:")
 	for i, n := range names {
-		fmt.Fprintf(w.out, "  %d. %s\n", i+1, n)
+		writeProse(w.out, "  %d. %s", i+1, n)
 	}
 	pick := func(v string) (string, bool) {
 		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= len(names) {

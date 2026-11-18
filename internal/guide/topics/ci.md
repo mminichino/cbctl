@@ -10,9 +10,17 @@ cbctl never waits for input without a terminal, so a pipeline cannot hang on a p
   always visible in the pipeline file and its logs, and a variable left set in a shell can never delete data.
 - Without a terminal and without the flag, every command that changes Capella or capella.yaml stops with
   exit code 4 and changes nothing: `[error] - confirmation required but no terminal is attached`,
-  then `→ re-run with --yes`. When `CI` is set the action reads `→ add --yes to this pipeline step`.
+  then `-> re-run with --yes`. When `CI` is set the action reads `-> add --yes to this pipeline step`.
+  (Pipelines have no color terminal, so the arrow is ASCII there; on a color terminal it is `→`.)
   No environment variable approves a change; only the flag does.
 - A question that has a default uses it. A question that needs an answer stops with exit code 3.
+
+## Reading the output
+
+- Parse results by exit code or `-o json`, not by label text. Success lines read `[ok] - ...` (they were
+  `[info] - ...` before 0.7.0), no-ops and progress read `[info] - ...`.
+- Captured output is plain ASCII with no color. To get color in a CI log, pass `--color always` or set
+  `FORCE_COLOR=1`; `NO_COLOR=1` or `--color never` always turns it off.
 
 ## Credentials
 
@@ -34,6 +42,14 @@ Download the `cbctl` binary from the GitHub Release (see the README) or build it
 `cbctl capella plan --detailed-exitcode` exits 0 when Capella matches capella.yaml, 2 when there are changes,
 3 when the file is invalid and 4 when a change is blocked. `cbctl capella drift --detailed-exitcode` works the
 same way for changes made outside cbctl. See `cbctl capella guide exit-codes`.
+
+## Manifests
+
+`cbctl apply -f manifest.yaml` (kind `CouchbaseServer` or `CouchbaseCapella`) validates the whole file, then
+applies it; it exits 3 on a problem before anything changes. `--dry-run` checks a manifest in a pull request and
+exits 0 with or without changes, so gate on the exit code and read the plan from the output or `-o json`.
+Without a terminal, a Capella manifest applies creates, updates and scale-out unprompted; scale-in and turning
+`deletionProtection` off need `--yes` (exit 4 otherwise). `apply` never rotates a credential password.
 
 ## GitHub Actions
 

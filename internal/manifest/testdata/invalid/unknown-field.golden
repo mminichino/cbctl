@@ -1,0 +1,2 @@
+unknown-field.yaml has 1 problem:
+  unknown-field.yaml:9:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[0].ipadress: unknown field (did you mean ipAddress?)

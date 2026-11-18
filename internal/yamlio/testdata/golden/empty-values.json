@@ -1,0 +1,11 @@
+{
+  "empty-string": "",
+  "empty-list": [],
+  "empty-map": {},
+  "null-value": null,
+  "list-with-null": [
+    null,
+    null,
+    ""
+  ]
+}

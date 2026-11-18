@@ -1,0 +1,2 @@
+bad-yaml.yaml has 1 problem:
+  bad-yaml.yaml:6 (document 1): did not find expected node content

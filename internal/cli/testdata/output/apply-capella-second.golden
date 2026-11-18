@@ -1,0 +1,7 @@
+# stdout
+[info] - credential app exists; password not changed
+[info] - credential gen exists; password not changed
+[info] - Connection string: <host>
+[info] - CouchbaseCapella/demo-cap: no changes, already matches the manifest
+# stderr
+[warning] - Collection orders.billing.invoices not empty; import skipped

@@ -1,0 +1,6 @@
+apiVersion: cbctl/v1
+projects:
+  - name: demo
+    clusters:
+      - name: dev
+        description: line

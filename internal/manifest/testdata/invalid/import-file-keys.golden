@@ -1,0 +1,9 @@
+import-file-keys.yaml has 8 problems:
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:4: id duplicates line 1 (key "a")
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:5: id is missing
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:6: id must not be an empty string
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:7: id must be a non-empty string or an integer (got 1.5)
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:8: id must be a non-empty string or an integer (got null)
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:9: not a JSON object
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:11: id duplicates line 10 (key "1000")
+  import-file-keys.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0].file: data/badkeys.jsonl:12: not a JSON object

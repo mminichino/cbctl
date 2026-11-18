@@ -9,7 +9,8 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
-	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/manifest"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/secrets"
 )
 
@@ -141,7 +142,7 @@ func HandleError(err error) ExitCode {
 			printAction(cliErr.Action)
 			return ExitInterrupted
 		}
-		fmt.Fprintln(errorOut())
+		_, _ = io.WriteString(errorOut(), "\n") // end the line the terminal echoed ^C on
 		return ExitInterrupted
 	}
 
@@ -161,6 +162,13 @@ func HandleError(err error) ExitCode {
 	if errors.As(err, &cfgErr) {
 		printError(capellafile.RenderIssues(cfgErr.Heading(), cfgErr.Issues))
 		printAction(capellafile.FixProblemsFor(cfgErr.Issues))
+		return ExitConfigInvalid
+	}
+
+	var manErr *manifest.ValidationError
+	if errors.As(err, &manErr) {
+		printError(manErr.Error())
+		printAction("Fix the problems above, then run the command again.")
 		return ExitConfigInvalid
 	}
 
@@ -232,12 +240,9 @@ const settingsAction = "Fix the setting named above (its flag, environment varia
 const errStoppedWaiting = "stopped waiting: %v; the operation continues in Capella"
 
 func printError(msg string) {
-	fmt.Fprintf(errorOut(), "[error] - %s\n", redact.String(msg))
+	writeLabeled(errorOut(), output.KindError, "%s", msg)
 }
 
 func printAction(action string) {
-	if action == "" {
-		return
-	}
-	fmt.Fprintf(errorOut(), "  → %s\n", redact.String(action))
+	writeAction(errorOut(), action)
 }

@@ -1,0 +1,5 @@
+stdout:
+stderr:
+[error] - unknown command "bogus-verb" for "cbctl"
+  -> run 'cbctl --help' for the list of commands
+exit: 3

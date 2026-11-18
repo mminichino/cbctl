@@ -5,6 +5,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/output"
 )
 
 // Prompter asks the user to confirm destructive steps during apply --prune. A nil Prompter
@@ -25,6 +26,9 @@ type RunContext struct {
 	Timeout time.Duration
 	NoWait  bool
 
+	// Glyphs spells the symbols of progress lines. The zero value means Unicode.
+	Glyphs output.Glyphs
+
 	// Progress receives one line of progress text. Nil discards it.
 	Progress func(string)
 	// ProgressInline writes without ending the line (a state line plus a dot per 30 s of waiting).
@@ -38,6 +42,16 @@ type RunContext struct {
 	AllowServiceGroupRemoval bool
 	SkipCapacityCheck        bool
 
+	// Ephemeral marks a run whose configuration exists only in memory (cbctl apply -f). Nothing
+	// in the engine may depend on a file: reconcilers never rotate a credential password, and
+	// callers skip id pinning and backup files.
+	Ephemeral bool
+
+	// OnGeneratedPassword, when set, receives the cluster name, credential name and password of
+	// each credential Capella generated a password for, once the password is saved. The manifest
+	// apply prints it once from here.
+	OnGeneratedPassword func(cluster, name, password string)
+
 	Env    func(string) string
 	Prompt Prompter
 }
@@ -48,6 +62,14 @@ const DefaultTimeout = 60 * time.Minute
 // NewRunContext returns a context with the real clock and the default timeout.
 func NewRunContext(client *capellaapi.Client, cfg any) *RunContext {
 	return &RunContext{Client: client, Config: cfg, Clock: engine.RealClock{}, Timeout: DefaultTimeout}
+}
+
+// glyphs is rc.Glyphs, or the Unicode set when none was given.
+func (rc *RunContext) glyphs() output.Glyphs {
+	if rc.Glyphs.Arrow == "" {
+		return output.UnicodeGlyphs
+	}
+	return rc.Glyphs
 }
 
 // Say sends one progress line.

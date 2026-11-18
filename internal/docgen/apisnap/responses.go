@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // DefaultSpecURL is the published Capella Management API OpenAPI document.

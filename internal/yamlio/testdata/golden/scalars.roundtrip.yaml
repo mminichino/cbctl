@@ -1,0 +1,17 @@
+weekend: "off"
+weekday: "on"
+yes-word: "yes"
+no-word: "no"
+"y": "y"
+real-true: true
+real-false: false
+nothing: null
+tilde: null
+empty: null
+version: 8
+version-string: "8.0"
+multiline: |
+  first
+  second
+folded: |
+  one two

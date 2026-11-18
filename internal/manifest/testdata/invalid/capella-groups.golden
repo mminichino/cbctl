@@ -1,0 +1,22 @@
+capella-groups.yaml has 19 problems:
+  capella-groups.yaml:8:3 (document 1, CouchbaseCapella/groups): spec.cidr: 10.0.0.5/24 has host bits set (did you mean 10.0.0.0/24?)
+  capella-groups.yaml:9:3 (document 1, CouchbaseCapella/groups): spec.serviceGroups: the group that runs data must come first (it is serviceGroups[1])
+  capella-groups.yaml:9:3 (document 1, CouchbaseCapella/groups): spec.serviceGroups: a cluster can have at most 27 nodes (declared 35)
+  capella-groups.yaml:11:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[0].nodes: the first group needs 3–27 nodes (got 2)
+  capella-groups.yaml:13:24 (document 1, CouchbaseCapella/groups): spec.serviceGroups[1].services[1]: "fts" is an alias that only CouchbaseServer accepts; use search
+  capella-groups.yaml:14:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[1].nodes: the other group needs 2–24 nodes (got 30)
+  capella-groups.yaml:15:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[1].compute: 3/7 is not a node size aws offers (cpu/ramGb: 4/16, 4/32, 8/16, 8/32, 8/64, 16/32, 16/64, 16/128, 32/64, 32/128, 32/256, 48/96, 48/192, 48/384, 64/128, 64/256, 64/512)
+  capella-groups.yaml:16:15 (document 1, CouchbaseCapella/groups): spec.serviceGroups[1].disk.type: disk type "pd-ssd" is not valid for aws (use: gp3, io2)
+  capella-groups.yaml:17:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[2].services: serviceGroups[1] already runs data,search; each group needs a different set of services
+  capella-groups.yaml:18:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[2].nodes: the other group needs 2–24 nodes (got 1)
+  capella-groups.yaml:20:26 (document 1, CouchbaseCapella/groups): spec.serviceGroups[2].disk.sizeGb: gp3 disks are at most 16000 GB (got 20000)
+  capella-groups.yaml:20:41 (document 1, CouchbaseCapella/groups): spec.serviceGroups[2].disk.iops: gp3 disks take 3000–16000 IOPS (got 100)
+  capella-groups.yaml:21:18 (document 1, CouchbaseCapella/groups): spec.serviceGroups[3].services[0]: the backup service exists only on CouchbaseServer
+    action: use one of: data, index, query, search, analytics, eventing
+  capella-groups.yaml:23:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[3].compute: compute needs cpu and ramGb
+    action: see 'cbctl capella cluster options'
+  capella-groups.yaml:25:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[0].cidr: 0.0.0.0/0 allows every address; confirm with allowAnyIp: true
+  capella-groups.yaml:26:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[1].cidr: 1.2.3.4/24 has host bits set (did you mean 1.2.3.0/24?)
+  capella-groups.yaml:28:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[2].expiresAt: expiresAt "tomorrow" is not an RFC 3339 time, for example 2027-01-31T00:00:00Z
+  capella-groups.yaml:29:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[3].cidr: 203.0.113.0/24 is already listed at allowedCidrs[2]
+  capella-groups.yaml:31:5 (document 1, CouchbaseCapella/groups): spec.wait.timeout: must be at most 24h (got "25h")

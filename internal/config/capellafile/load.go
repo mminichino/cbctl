@@ -74,7 +74,10 @@ func LoadText(text, source, baseDir string, env func(string) string) (*Config, e
 	data, _ := toObj(root).(Obj)
 	lines := indexLines(root)
 
-	// 2. apiVersion.
+	// 2. kind (a cbctl/v1 manifest, not a capella.yaml) and apiVersion.
+	if issues = checkNoKind(data, lines); len(issues) > 0 {
+		return nil, fail(issues, data)
+	}
 	if issues = checkAPIVersion(data, lines); len(issues) > 0 {
 		return nil, fail(issues, data)
 	}
@@ -113,6 +116,22 @@ func LoadText(text, source, baseDir string, env func(string) string) (*Config, e
 		return nil, fail(issues, data)
 	}
 	return cfg, nil
+}
+
+// checkNoKind rejects a file that has a kind: that is a cbctl/v1 manifest for 'cbctl apply -f',
+// which capella.yaml commands do not read. The schema forbids the key too, but a pointer to the
+// right command is more useful than "unknown field".
+func checkNoKind(data Obj, lines lineIndex) []Issue {
+	if _, ok := data["kind"]; !ok {
+		return nil
+	}
+	return []Issue{{
+		Path:    "kind",
+		Message: "this file has a kind, so it is a cbctl/v1 manifest, not a capella.yaml",
+		Line:    lines.of(Path{"kind"}),
+		Topic:   "config",
+		Fix:     "apply it with 'cbctl apply -f FILE'; capella.yaml commands read files without a kind",
+	}}
 }
 
 func checkAPIVersion(data Obj, lines lineIndex) []Issue {

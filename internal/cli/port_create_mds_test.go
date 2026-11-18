@@ -53,11 +53,11 @@ func TestClusterCreate_CAP051_AC1_PlanLinesPerGroup(t *testing.T) {
 	s := importedScenario(t)
 	r := mustScenario(t, createCluster(s, "nova-prod-01", append(mdsGroups, "--no-apply")...), "create")
 	wantContains(t, r.Stdout,
-		"+ cluster nova-prod-01  aws us-east-1 · multi-AZ · 3 service groups · 7 nodes · developer pro",
+		"+ cluster nova-prod-01  aws us-east-1 - multi-AZ - 3 service groups - 7 nodes - developer pro",
 		"+ serviceGroups[data]         3 × 8 vCPU/32 GB gp3 50 GB",
 		"+ serviceGroups[index,query]  2 × 8 vCPU/32 GB gp3 50 GB",
 		"+ serviceGroups[search]       2 × 4 vCPU/16 GB gp3 50 GB",
-		"3 groups · 7 nodes (data 3 × 8/32 · index,query 2 × 8/32 · search 2 × 4/16)")
+		"3 groups - 7 nodes (data 3 × 8/32 - index,query 2 × 8/32 - search 2 × 4/16)")
 }
 
 func TestClusterCreate_CAP051_AC3_ConflictingFlags(t *testing.T) {

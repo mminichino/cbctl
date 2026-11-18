@@ -1,0 +1,11 @@
+defaults: &defaults
+  cpu: 4
+  ram: 16
+  tier: base
+small:
+  <<: *defaults
+  ram: 8
+sizes:
+  - *defaults
+  - <<: [*defaults, {cpu: 2, extra: yes-please}]
+    tier: custom

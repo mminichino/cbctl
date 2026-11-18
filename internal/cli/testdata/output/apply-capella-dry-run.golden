@@ -1,0 +1,5 @@
+# stdout
+[info] - credential app exists; password not changed
+[info] - credential gen exists; password not changed
+[info] - CouchbaseCapella/demo-cap: dry run, nothing was changed
+# stderr

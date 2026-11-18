@@ -1,0 +1,13 @@
+{
+  "source": "unknown-field.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/0/ipadress",
+      "line": 9,
+      "column": 7,
+      "message": "unknown field (did you mean ipAddress?)"
+    }
+  ]
+}

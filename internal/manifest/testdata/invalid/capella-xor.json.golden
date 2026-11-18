@@ -1,0 +1,47 @@
+{
+  "source": "capella-xor.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/both",
+      "pointer": "/spec/size",
+      "line": 7,
+      "column": 3,
+      "message": "size and serviceGroups are mutually exclusive",
+      "fix": "keep size, or keep serviceGroups"
+    },
+    {
+      "document": 2,
+      "ref": "CouchbaseCapella/neither",
+      "pointer": "/spec",
+      "line": 17,
+      "column": 1,
+      "message": "set size or serviceGroups",
+      "fix": "size: dev | large | medium | small, or list serviceGroups"
+    },
+    {
+      "document": 3,
+      "ref": "CouchbaseCapella/dev-multi",
+      "pointer": "/spec/availability",
+      "line": 27,
+      "column": 3,
+      "message": "size: dev is a single-node cluster; availability must be single (or omitted)"
+    },
+    {
+      "document": 3,
+      "ref": "CouchbaseCapella/dev-multi",
+      "pointer": "/spec/buckets/0/replicas",
+      "line": 30,
+      "column": 7,
+      "message": "a single-node cluster (size: dev) only supports replicas: 0; there is no second node for a copy"
+    },
+    {
+      "document": 4,
+      "ref": "CouchbaseCapella/bad-size",
+      "pointer": "/spec/size",
+      "line": 38,
+      "column": 3,
+      "message": "size \"smal\" is not valid (did you mean small?); use one of: dev, large, medium, small"
+    }
+  ]
+}
