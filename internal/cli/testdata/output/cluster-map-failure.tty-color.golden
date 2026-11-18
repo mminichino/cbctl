@@ -1,0 +1,5 @@
+stdout:
+stderr:
+<ESC>[1;31m[error]<ESC>[0m - Failed to read cluster map: HTTP 401: 
+  → Fix the problem named above, then run the command again.
+exit: 1

@@ -426,7 +426,7 @@ func (c *Cluster) Delete() error {
 	if err := c.wait(id, name, engine.OpDelete); err != nil {
 		return fmt.Errorf("cluster deletion failed: %w", err)
 	}
-	logging.Info("Capella cluster %s destroyed", name)
+	logging.Success("Capella cluster %s destroyed", name)
 	c.Data = nil
 	return nil
 }

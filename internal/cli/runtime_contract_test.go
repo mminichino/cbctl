@@ -97,7 +97,7 @@ func TestUnknownSubcommand(t *testing.T) {
 			if code != int(ExitConfigInvalid) {
 				t.Fatalf("%s bogus-verb: exit %d, want 3\n%s", name, code, errOut)
 			}
-			wantContains(t, errOut, `unknown command "bogus-verb"`, "→")
+			wantContains(t, errOut, `unknown command "bogus-verb"`, "->")
 		})
 	}
 	for _, path := range self {
@@ -216,7 +216,7 @@ func TestFailureKeepsExitCodes(t *testing.T) {
 		got := HandleError(failure("Failed to create cluster", tc.err))
 		SetErrorWriter(io.Discard)
 		if got != tc.want {
-			t.Errorf("failure(%v) → exit %d, want %d (%s)", tc.err, got, tc.want, buf.String())
+			t.Errorf("failure(%v) -> exit %d, want %d (%s)", tc.err, got, tc.want, buf.String())
 		}
 	}
 }

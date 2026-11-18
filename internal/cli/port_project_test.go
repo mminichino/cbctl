@@ -162,7 +162,7 @@ func TestProject_CAP009_AC2_UpdateDescriptionWithIfMatch(t *testing.T) {
 	writeCapellaYAML(t, s, portProjectOnly)
 	r := s.Run("capella", "apply", "-y")
 	portWantExit(t, r, 0)
-	wantContains(t, r.Stdout, "~ project nova-dev", `description:  "old" → "Nova development environment"`)
+	wantContains(t, r.Stdout, "~ project nova-dev", `description:  "old" -> "Nova development environment"`)
 	w := portWantWritePaths(t, s.Fake, "PUT /v4/organizations/org-1/projects/*")
 	body := portBody(t, w[0])
 	if body["name"] != "nova-dev" || body["description"] != "Nova development environment" {
@@ -202,7 +202,7 @@ func TestProject_CAP009_AC5_PinnedIDRename(t *testing.T) {
 	writeCapellaYAML(t, s, strings.Replace(portProjectOnly, "  name: nova-dev\n", "  name: nova-dev\n  id: "+pid+"\n", 1))
 	r := s.Run("capella", "apply", "-y")
 	portWantExit(t, r, 0)
-	wantContains(t, r.Stdout, `name:  "nova-old" → "nova-dev"`)
+	wantContains(t, r.Stdout, `name:  "nova-old" -> "nova-dev"`)
 	if got := portProjectNames(t, s); len(got) != 1 || got[0] != "nova-dev" {
 		t.Errorf("projects after rename = %v, want [nova-dev]", got)
 	}
@@ -535,8 +535,8 @@ func TestConfigure_CAP037_AC7_RejectionShowsHintAndChecklist(t *testing.T) {
 	portWantExit(t, r, 1)
 	out := portOut(r)
 	wantContains(t, out, "rejected by Capella (401); nothing was saved",
-		"note: removed a leading 'Bearer ' from the pasted key",
-		"has 14 characters and ends in …abcd", "allowed IP list", "not the API Key ID or name",
+		"[info] - removed a leading 'Bearer ' from the pasted key",
+		"has 14 characters and ends in ...abcd", "allowed IP list", "not the API Key ID or name",
 		"curl -s -o /dev/null", "--api-key-stdin")
 	clitest.AssertNoSecret(t, r, "wrong-key-abcd")
 	if _, err := os.Stat(filepath.Join(s.Dir, "profiles.yaml")); err == nil {
@@ -838,8 +838,8 @@ func TestAllowedCIDR_CAP022_AC1_CreateMissing(t *testing.T) {
 	r := s.Run("capella", "plan")
 	portWantExit(t, r, 0)
 	wantContains(t, r.Stdout,
-		`+ allowed-cidr nova-dev-01/203.0.113.10/32  "Office VPN egress" · permanent`,
-		`+ allowed-cidr nova-dev-01/198.51.100.0/24  "CI runners" · expires 2026-12-31T23:59:59Z`)
+		`+ allowed-cidr nova-dev-01/203.0.113.10/32  "Office VPN egress" - permanent`,
+		`+ allowed-cidr nova-dev-01/198.51.100.0/24  "CI runners" - expires 2026-12-31T23:59:59Z`)
 	portWantExit(t, s.Run("capella", "apply", "-y"), 0)
 	w := portWantWritePaths(t, s.Fake, "POST "+portCIDRPath, "POST "+portCIDRPath)
 	if b := portBody(t, w[0]); len(b) != 2 || b["cidr"] != "203.0.113.10/32" || b["comment"] != "Office VPN egress" {
@@ -891,8 +891,8 @@ func TestAllowedCIDR_CAP022_AC3_ReplaceDeletesFirst(t *testing.T) {
 	s := portReplaceSetup(t, true)
 	r := s.Run("capella", "plan")
 	portWantExit(t, r, 0)
-	wantContains(t, r.Stdout, "± allowed-cidr nova-dev-01/203.0.113.10/32  (replace: API has no update)",
-		`comment:  "a" → "b"`, "Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.")
+	wantContains(t, r.Stdout, "+/- allowed-cidr nova-dev-01/203.0.113.10/32  (replace: API has no update)",
+		`comment:  "a" -> "b"`, "Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.")
 	r = s.Run("capella", "apply", "-y")
 	portWantExit(t, r, 0)
 	wantContains(t, portOut(r), "access from 203.0.113.10/32 is briefly interrupted")

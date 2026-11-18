@@ -133,7 +133,7 @@ func newClusterCreateCmd() *cobra.Command {
 					logging.Info("Cluster already configured")
 					return nil
 				}
-				logging.Info("Cluster created on %s", ip)
+				logging.Success("Cluster created on %s", ip)
 				return nil
 			}
 
@@ -208,7 +208,7 @@ func newClusterCreateCmd() *cobra.Command {
 			for _, s := range specs {
 				hosts = append(hosts, s.Host)
 			}
-			logging.Info("Cluster created on %s", strings.Join(hosts, ", "))
+			logging.Success("Cluster created on %s", strings.Join(hosts, ", "))
 			return nil
 		},
 	}
@@ -276,10 +276,10 @@ func runClusterJoin(cmd *cobra.Command, cf connFlags, pf provisionFlags, service
 		return nil
 	}
 	if arbiter {
-		logging.Info("Arbiter node %s added to cluster at %s", ip, rally)
+		logging.Success("Arbiter node %s added to cluster at %s", ip, rally)
 		return nil
 	}
-	logging.Info("Node %s added to cluster at %s", ip, rally)
+	logging.Success("Node %s added to cluster at %s", ip, rally)
 	return nil
 }
 
@@ -359,7 +359,7 @@ func newClusterRebalanceCmd() *cobra.Command {
 			if err := server.RebalanceCluster(opts); err != nil {
 				return failure("Failed to rebalance cluster", err)
 			}
-			logging.Info("Cluster rebalanced")
+			logging.Success("Cluster rebalanced")
 			return nil
 		},
 	}
@@ -453,7 +453,7 @@ func newClusterTestCmd() *cobra.Command {
 			if err := s.ClusterTest(bucket); err != nil {
 				return failure("Cluster test failed", err)
 			}
-			logging.Info("Cluster test passed")
+			logging.Success("Cluster test passed")
 			return nil
 		},
 	}

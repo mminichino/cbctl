@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
 )
 
@@ -23,7 +24,7 @@ func runBackupWait(t *testing.T, statuses []struct {
 	clk := engine.NewFakeClock(time.Time{})
 	start := clk.Monotonic()
 	var buf bytes.Buffer
-	pw := &progressWriter{w: &buf, tty: true}
+	pw := output.NewProgress(&buf, false, true)
 	done := map[string]bool{"complete": true, "ready": true}
 	failed := map[string]bool{"failed": true}
 	hooks := statusProgress(pw, "backup of orders", func(s string) bool { return done[s] || failed[s] })
@@ -44,7 +45,7 @@ func runBackupWait(t *testing.T, statuses []struct {
 		return state, nil
 	}
 	_, err := engine.WaitForStatus(context.Background(), read, done, failed, time.Hour, clk, "backup of orders", hooks)
-	pw.close()
+	pw.Close()
 	return buf.String(), ticks, err
 }
 
@@ -106,8 +107,8 @@ func TestBackupProgress_CAP059_AC8_FailedEndsTheLine(t *testing.T) {
 func TestWaiter_CAP007_AC9_EachStateOnItsOwnLine(t *testing.T) {
 	render := func(tty bool) []string {
 		var buf bytes.Buffer
-		pw := &progressWriter{w: &buf, tty: tty}
-		rc := &plan.RunContext{Progress: pw.line, ProgressInline: pw.inline}
+		pw := output.NewProgress(&buf, false, tty)
+		rc := &plan.RunContext{Progress: pw.Line, ProgressInline: pw.Inline}
 		state := func(s string, d time.Duration, final bool) {
 			line := "  cluster nova-dev-01: " + s + " (" + plan.FormatDuration(d) + ")"
 			if final {

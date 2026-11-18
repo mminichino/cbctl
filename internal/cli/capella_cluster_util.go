@@ -16,6 +16,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +153,7 @@ func (rt *runtime) waitHooks(name string) engine.WaitHooks {
 func (rt *runtime) waitCluster(projectID, clusterID, name string, op engine.Op, free bool) (string, error) {
 	state, err := engine.WaitForCluster(rt.Ctx, rt.clusterGetter(free), projectID, clusterID, op, rt.Timeout, rt.Clock, name, rt.waitHooks(name))
 	if errors.Is(err, context.Canceled) {
-		fmt.Fprintln(rt.errOut(), "the operation continues in Capella")
+		writeLabeled(rt.errOut(), output.KindInfo, "the operation continues in Capella")
 	}
 	return state, err
 }
@@ -597,7 +598,7 @@ func confirmTyped(rt *runtime, question, want string) (bool, error) {
 	if p := prompterFor(rt); p != nil {
 		return p.Typed(fmt.Sprintf("%s (%s)", question, want), want)
 	}
-	fmt.Fprintf(errOut, "%s (%s): ", question, want)
+	writePrompt(errOut, "%s (%s): ", question, want)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {
 		return false, nil

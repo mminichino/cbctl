@@ -80,7 +80,7 @@ func TestCluster_CAP011_AC1_PlanLineSummary(t *testing.T) {
 	novaDev(s)
 	writeCapellaYAML(t, s, minimalDoc)
 	r := mustScenario(t, s.Run("capella", "plan"), "plan")
-	wantContains(t, r.Stdout, "+ cluster nova-dev-01  aws us-east-1 · multi-AZ · 3 × 4 vCPU/16 GB · data,index,query · developer pro")
+	wantContains(t, r.Stdout, "+ cluster nova-dev-01  aws us-east-1 - multi-AZ - 3 × 4 vCPU/16 GB - data,index,query - developer pro")
 }
 
 func TestCluster_CAP011_AC2_ChildrenAfterHealthy(t *testing.T) {

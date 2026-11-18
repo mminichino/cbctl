@@ -135,7 +135,7 @@ func TestPlanApplyIdempotent(t *testing.T) {
 	t.Setenv("CBCTL_CONFIG", "")
 
 	res := mustRun(t, "plan")
-	wantContains(t, res.Stdout, "Project envproj · organization "+f.OrgID, "+ project envproj", "+ cluster envclu", "Plan: ")
+	wantContains(t, res.Stdout, "Project envproj - organization "+f.OrgID, "+ project envproj", "+ cluster envclu", "Plan: ")
 	noWrites(t, f)
 
 	res = runResource(t, "plan", "--detailed-exitcode")

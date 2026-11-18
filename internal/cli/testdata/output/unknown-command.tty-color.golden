@@ -1,0 +1,5 @@
+stdout:
+stderr:
+<ESC>[1;31m[error]<ESC>[0m - unknown command "bogus-verb" for "cbctl"
+  → run 'cbctl --help' for the list of commands
+exit: 3

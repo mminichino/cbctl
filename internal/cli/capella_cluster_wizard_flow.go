@@ -16,7 +16,7 @@ import (
 func (w *clusterWizard) run(cmd *cobra.Command, name, cidr string) (ClusterSpec, error) {
 	spec := ClusterSpec{Name: name}
 	var err error
-	fmt.Fprintln(w.out, "New Capella cluster (press Enter to accept a default; Ctrl-D cancels)")
+	writeProse(w.out, "New Capella cluster (press Enter to accept a default; Ctrl-D cancels)")
 	if spec.Name == "" {
 		spec.Name, err = w.ask("Cluster name", "", func(v string) error {
 			if !clusterNamePattern.MatchString(v) {
@@ -31,7 +31,7 @@ func (w *clusterWizard) run(cmd *cobra.Command, name, cidr string) (ClusterSpec,
 	sized := sizedByFlags(cmd)
 	free := flagBool(cmd, "free-tier")
 	if !free && !sized && !w.noFree {
-		fmt.Fprintf(w.out, "Cluster types: free (%s) or provisioned (you choose size and support plan)\n", freeTierNote)
+		writeProse(w.out, "Cluster types: free (%s) or provisioned (you choose size and support plan)", freeTierNote)
 		kind, err := w.choose("Cluster type", "provisioned", []string{"free", "provisioned"})
 		if err != nil {
 			return spec, err

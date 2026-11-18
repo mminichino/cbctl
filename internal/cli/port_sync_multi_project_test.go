@@ -296,7 +296,7 @@ func TestMultiProject_CAP040_AC3_ApplyTargetOneProject(t *testing.T) {
 	}
 	r := s.Run("capella", "plan", "--detailed-exitcode")
 	wantExit(t, r, cli.ExitChanges)
-	wantContains(t, r.Stdout, "~ cluster main", "3 → 4")
+	wantContains(t, r.Stdout, "~ cluster main", "3 -> 4")
 	if strings.Count(r.Stdout, "~ cluster main") != 1 {
 		t.Errorf("want only demo's main pending:\n%s", r.Stdout)
 	}

@@ -132,6 +132,8 @@ Most commands accept:
 | `-p` / `--password` | `password` | Admin password |
 | `--ssl` / `--no-ssl` | `--no-ssl` | TLS for management/SDK |
 
+Every command also accepts the global `--color auto|always|never` (default `auto`; invalid value exits 3). Status labels (`[ok]`, `[info]`, `[warning]`, `[error]`) are colored per stream by `--color`, `NO_COLOR`, `TERM=dumb`, `CLICOLOR_FORCE`/`FORCE_COLOR`, `CLICOLOR` and the terminal check; stdout data (`true`/`false`, `-o json`, `cluster map`, one-time passwords) is never colored. Parse stdout by exit code or `-o json`, not by label text. Success lines are `[ok] - ...` (before 0.7.0 they were `[info] - ...`); no-ops such as `Cluster already configured` stay `[info]`. Off a color terminal output is ASCII (`->` for hint lines).
+
 Always pass explicit `--host`, credentials, and `--ssl`/`--no-ssl` in automation unless local defaults are intentional.
 
 ## Node spec (`cluster create`)
@@ -255,7 +257,7 @@ Import JSON Lines into a keyspace.
 ## Agent usage rules
 
 1. Prefer `cbctl` for Server cluster bootstrap, keyspace create/exists, connectivity test, and JSONL import.
-2. Treat `exists` output as boolean text (`true`/`false`), not JSON.
+2. Treat `exists` output as boolean text (`true`/`false`), not JSON. Decide success by exit code; do not match `[info]` or `[ok]` label text.
 3. Treat “already configured” / “Collection not empty” as success (exit 0), not errors. Provisioner create/join still reconcile quotas, the external address, and the server group before that message; if reconciliation fails, the command exits 1.
 4. For MDS or alternate networking, use node-spec syntax; do not invent Capella flags for Server commands.
 5. Do not assume index or Server destroy commands exist on `cbctl`, or Capella commands beyond those documented here.

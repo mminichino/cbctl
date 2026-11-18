@@ -151,7 +151,7 @@ func runLegacyClusterCreate(cmd *cobra.Command, args []string, cf *capellaFlags)
 		logging.Info("Cluster already configured")
 		return nil
 	}
-	logging.Info("Cluster created on %s", name)
+	logging.Success("Cluster created on %s", name)
 	return nil
 }
 
@@ -253,7 +253,7 @@ func newCapellaClusterTestCmd() *cobra.Command {
 			if err := s.ClusterTest(bucket); err != nil {
 				return failure("Cluster test failed", err)
 			}
-			logging.Info("Cluster test passed")
+			logging.Success("Cluster test passed")
 			return nil
 		},
 	}
@@ -314,7 +314,7 @@ func newCapellaBucketCreateCmd() *cobra.Command {
 			if err := backend.CreateBucket(name, quota, replicas); err != nil {
 				return failure("Failed to create bucket", err)
 			}
-			logging.Info("Bucket %q created", name)
+			logging.Success("Bucket %q created", name)
 			return nil
 		},
 	}
