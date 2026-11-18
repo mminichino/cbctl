@@ -89,6 +89,7 @@ func buildRootCmd() *cobra.Command {
 	root.AddCommand(newCollectionCmd())
 	root.AddCommand(newKeyspaceCmd())
 	root.AddCommand(newImportCmd())
+	root.AddCommand(newApplyCmd())
 	root.AddCommand(newCapellaCmd())
 	root.AddCommand(newConfigureCmd())
 	root.SetFlagErrorFunc(flagError)
