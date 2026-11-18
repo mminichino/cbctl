@@ -43,6 +43,10 @@ func (f *applyFakeProv) JoinNode(o rest.ProvisionOptions) (bool, error) {
 	return !had, nil
 }
 
+func (f *applyFakeProv) ClusterName(rest.Endpoint, string, string) (string, bool, error) {
+	return "", false, nil
+}
+
 func (f *applyFakeProv) ClusterNodes(rest.Endpoint, string, string) ([]rest.NodeInfo, error) {
 	nodes := []rest.NodeInfo{{Host: "10.0.0.1"}}
 	for ip := range f.joined {

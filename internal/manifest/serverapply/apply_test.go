@@ -226,6 +226,7 @@ func TestApplyFailures(t *testing.T) {
 		notRun   string
 	}{
 		{"join fails", &fakeProv{failJoin: "10.0.0.2"}, newFakeData(), "join 10.0.0.2", "bucket orders"},
+		{"primary belongs to another cluster", &fakeProv{initialized: true, clusterName: "other"}, newFakeData(), "bootstrap 10.0.0.1", "join 10.0.0.2"},
 		{"sdk connect fails", &fakeProv{}, &fakeData{failConn: true}, "connect 10.0.0.1", "bucket orders"},
 	}
 	for _, tc := range tests {
@@ -250,6 +251,31 @@ func TestApplyFailures(t *testing.T) {
 				t.Errorf("error leaks the password")
 			}
 		})
+	}
+}
+
+func TestApplyOtherClusterChangesNothing(t *testing.T) {
+	dir := writeItems(t)
+	d := doc(t, dir, twoNodeYAML)
+	prov := &fakeProv{initialized: true, clusterName: "other"}
+	_, _, err := run(t, context.Background(), dir, d, prov, newFakeData(), false)
+	if err == nil || !strings.Contains(err.Error(), `already belongs to another cluster ("other", the manifest is "demo")`) {
+		t.Fatalf("error = %v, want the other-cluster refusal", err)
+	}
+	for _, c := range prov.calls {
+		if strings.HasPrefix(c, "bootstrap") || strings.HasPrefix(c, "join") || c == "rebalance" {
+			t.Errorf("a call changed the foreign cluster: %v", prov.calls)
+		}
+	}
+}
+
+func TestApplySameNameAndUnnamedClusterPass(t *testing.T) {
+	for _, name := range []string{"demo", ""} {
+		dir := writeItems(t)
+		d := doc(t, dir, twoNodeYAML)
+		if _, _, err := run(t, context.Background(), dir, d, &fakeProv{initialized: true, clusterName: name}, newFakeData(), false); err != nil {
+			t.Errorf("cluster name %q: %v", name, err)
+		}
 	}
 }
 

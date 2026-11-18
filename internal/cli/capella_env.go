@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -120,7 +121,10 @@ func displayPathWith(p string, cmd *cobra.Command) string {
 	if err != nil {
 		return p
 	}
-	if rel := strings.TrimPrefix(p, wd+string(os.PathSeparator)); rel != p {
+	// Clean both sides: a working directory spelled with ".." (for example from a TMPDIR set
+	// through a relative path) would otherwise never match the cleaned file path.
+	wd = filepath.Clean(wd)
+	if rel := strings.TrimPrefix(filepath.Clean(p), wd+string(os.PathSeparator)); rel != filepath.Clean(p) {
 		return rel
 	}
 	return p

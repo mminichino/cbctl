@@ -24,6 +24,12 @@ type fakeProv struct {
 	members     []rest.NodeInfo
 	pending     []string
 	failJoin    string
+	clusterName string
+}
+
+func (f *fakeProv) ClusterName(_ rest.Endpoint, _, _ string) (string, bool, error) {
+	f.calls = append(f.calls, "clustername")
+	return f.clusterName, f.initialized, nil
 }
 
 func (f *fakeProv) BootstrapPrimary(o rest.ProvisionOptions) (bool, error) {

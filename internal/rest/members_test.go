@@ -59,3 +59,38 @@ func TestClusterNodesServicesAndError(t *testing.T) {
 		t.Fatalf("error = %v, want wrapped read failure", err)
 	}
 }
+
+func TestClusterName(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		initialized bool
+		clusterName string
+		fail        bool
+		want        string
+		wantInit    bool
+		wantErr     bool
+	}{
+		{"named cluster", true, "prod", false, "prod", true, false},
+		{"cluster without a name", true, "", false, "", true, false},
+		{"node not initialized", false, "", false, "", false, false},
+		{"management API refuses the read", true, "prod", true, "", false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFakeCB(t)
+			if tt.initialized {
+				f.seed(fakeNode{Host: "10.0.0.1"})
+			}
+			f.clusterName = tt.clusterName
+			if tt.fail {
+				f.setFail("GET /pools/default", 500)
+			}
+			got, init, err := NewClient().ClusterName(f.endpoint(), "Administrator", "pw")
+			if (err != nil) != tt.wantErr || got != tt.want || init != tt.wantInit {
+				t.Errorf("ClusterName = %q, %v, %v; want %q, %v, err=%v", got, init, err, tt.want, tt.wantInit, tt.wantErr)
+			}
+		})
+	}
+}
