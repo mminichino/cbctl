@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -339,7 +340,8 @@ func assertSaved0600(t *testing.T, dir, secret string) {
 		b, rerr := os.ReadFile(p)
 		if rerr == nil && strings.Contains(string(b), secret) {
 			found = true
-			if info.Mode().Perm() != 0o600 {
+			// Windows has no permission bits: Go reports 0666 for every writable file.
+			if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 				t.Errorf("%s has mode %v, want 0600", p, info.Mode().Perm())
 			}
 		}

@@ -165,8 +165,10 @@ func TestLoadFile(t *testing.T) {
 	if got := ImportPath("/base", "a/b.jsonl"); got != filepath.Join("/base", "a", "b.jsonl") {
 		t.Errorf("ImportPath relative = %s", got)
 	}
-	if got := ImportPath("/base", "/abs/b.jsonl"); got != "/abs/b.jsonl" {
-		t.Errorf("ImportPath absolute = %s", got)
+	// An absolute path is OS-specific: "/abs/b.jsonl" has no drive letter on Windows.
+	abs := filepath.Join(t.TempDir(), "abs", "b.jsonl")
+	if got := ImportPath("/base", abs); got != abs {
+		t.Errorf("ImportPath absolute = %s, want %s", got, abs)
 	}
 }
 
