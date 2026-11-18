@@ -31,6 +31,9 @@ type recordedRequest struct {
 type fakeNode struct {
 	Host     string
 	Services []string // REST names (kv, n1ql, index, fts, ...)
+	// Membership is clusterMembership; empty means "active". addNode sets "inactiveAdded" and a
+	// rebalance turns every node "active".
+	Membership string
 }
 
 // fakeCB emulates the subset of the Couchbase Server management REST API the
@@ -192,7 +195,12 @@ func (f *fakeCB) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		nodes := make([]any, 0, len(f.nodes))
 		for _, n := range f.nodes {
+			membership := n.Membership
+			if membership == "" {
+				membership = "active"
+			}
 			nodes = append(nodes, map[string]any{
+				"clusterMembership":  membership,
 				"otpNode":            "ns_1@" + n.Host,
 				"configuredHostname": n.Host + ":8091",
 				"hostname":           n.Host + ":8091",
@@ -292,7 +300,7 @@ func (f *fakeCB) serve(w http.ResponseWriter, r *http.Request) {
 		if s := rec.Form.Get("services"); s != "" {
 			services = strings.Split(s, ",")
 		}
-		f.nodes = append(f.nodes, fakeNode{Host: host, Services: services})
+		f.nodes = append(f.nodes, fakeNode{Host: host, Services: services, Membership: "inactiveAdded"})
 		if len(f.groups) > 0 {
 			f.groups[0].Nodes = append(f.groups[0].Nodes, ServerGroupNode{OTPNode: "ns_1@" + host})
 		}
@@ -302,6 +310,9 @@ func (f *fakeCB) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		f.writeJSON(w, map[string]any{"otpNode": "ns_1@" + host})
 	case "POST /controller/rebalance":
+		for i := range f.nodes {
+			f.nodes[i].Membership = "active"
+		}
 		w.WriteHeader(http.StatusOK)
 	case "GET /pools/default/rebalanceProgress":
 		f.writeJSON(w, map[string]any{"status": f.rebalanceStatus})

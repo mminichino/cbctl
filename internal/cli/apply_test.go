@@ -119,8 +119,8 @@ func TestApplyDirectoryReadsYAMLFilesInNameOrder(t *testing.T) {
 	writeFile(t, dir, "a.yml", applyServerYAML)
 	writeFile(t, dir, "notes.txt", "not a manifest")
 	r := runApplyCmd(t, dir, "", map[string]string{"APPLY_TEST_PASSWORD": "pw-value"}, "apply", "-f", ".", "--dry-run")
-	// a.yml (Server) sorts before b.yaml (Capella), so the Server stub fails first.
-	if r.code != 3 || !strings.Contains(r.stderr, "CouchbaseServer") {
+	// a.yml (Server) sorts before b.yaml (Capella): the Server plan prints, then the Capella stub fails.
+	if r.code != 3 || !strings.Contains(r.stdout, "Would initialize the cluster") || !strings.Contains(r.stderr, "CouchbaseCapella") {
 		t.Fatalf("exit %d\nstdout: %s\nstderr: %s", r.code, r.stdout, r.stderr)
 	}
 }

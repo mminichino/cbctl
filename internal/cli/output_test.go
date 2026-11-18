@@ -27,6 +27,7 @@ type outcase struct {
 	env            map[string]string
 	outTTY, errTTY bool
 	args           []string
+	stdin          string
 }
 
 // run executes the case and returns stdout, stderr and the exit code.
@@ -49,7 +50,7 @@ func (c outcase) run(t *testing.T) (stdout, stderr string, code int) {
 		return v, ok
 	}
 	d.Stdout, d.Stderr = &out, &errBuf
-	d.Stdin = strings.NewReader("")
+	d.Stdin = strings.NewReader(c.stdin)
 	d.Home = home
 	d.Cwd = func() (string, error) { return home, nil }
 	d.IsTTY = func(io.Reader) bool { return false }

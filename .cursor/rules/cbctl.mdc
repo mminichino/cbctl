@@ -116,6 +116,9 @@ cbctl capella janitor --prefix P [--older-than-hours H] [--max-total-minutes M] 
 # Keyspace
 cbctl keyspace create <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
+# Manifests (cbctl/v1 YAML; kind CouchbaseServer)
+cbctl apply -f FILE|-|DIR [--dry-run] [-o json] [-y]
+
 # Import
 cbctl import <jsonl-file> <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
@@ -216,6 +219,16 @@ Ensure a full keyspace exists.
 - Creates the scope unless it is `_default` (skipped).
 - Creates the collection unless it is `_default` (skipped).
 - Success: `Keyspace "<bucket.scope.collection>" created`. Failure: stderr + exit 1.
+
+### `apply -f FILE|-|DIR`
+Apply `cbctl/v1` manifest documents. `kind: CouchbaseServer` runs primary init, sequential joins, a membership report, rebalance, buckets/scopes/collections, then imports. `kind: CouchbaseCapella` is not applied yet (exit 3, use `cbctl capella apply -c`).
+
+- `-f` is required (exit 3), repeatable; `-` is stdin (max 10 MiB, not a terminal); a directory reads its `*.yaml`/`*.yml` in name order. Relative `file:` paths resolve from the manifest's directory (cwd for stdin).
+- Everything is validated and `${VAR}` / `${file:PATH}` / `${base64:VALUE}` secrets are resolved before any network call; a problem exits 3 and nothing is applied. Passwords are never literals.
+- Idempotent: a second apply prints `[info]` lines and exits 0. Existing buckets are kept (a quota difference is a `[warning]`); a non-empty collection skips its import (`[warning]`); cluster nodes not in the manifest are warned about and left in place; rebalance runs only with `rebalance` not false and a node waiting to be rebalanced in.
+- `--dry-run` lists the steps and contacts nothing (exit 0). `-o json` prints one report on stdout (schema `internal/manifest/testdata/apply.manifest.schema.json`).
+- The first failing document stops the run (exit 1; later ones are `not-run`); Ctrl-C exits 130 between steps. Rerun to finish.
+- A file with no `kind` (capella.yaml style) exits 3 with a hint to use `cbctl capella apply -c`; `capella` commands reject a file with `kind` with a hint to use `cbctl apply -f`.
 
 ### `import <file> <bucket.scope.collection>`
 Import JSON Lines into a keyspace.

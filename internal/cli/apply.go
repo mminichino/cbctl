@@ -292,7 +292,7 @@ func applySets(ctx context.Context, d Deps, sets []*manifest.Set, dryRun, yes bo
 			if err := ctx.Err(); err != nil {
 				failed = interrupted(name, err)
 				out.Documents = append(out.Documents, &manifest.Report{Kind: doc.Envelope.Kind, Name: doc.Envelope.Metadata.Name,
-					Source: set.Name, Status: manifest.ReportNotRun, Steps: []manifest.Step{}})
+					Source: set.Name, Status: manifest.ReportInterrupted, Steps: []manifest.Step{}})
 				continue
 			}
 			handler, ok := applyHandlers[doc.Envelope.Kind]
@@ -314,6 +314,7 @@ func applySets(ctx context.Context, d Deps, sets []*manifest.Set, dryRun, yes bo
 				failed = err
 				if errors.Is(err, context.Canceled) {
 					failed = interrupted(name, err)
+					rep.Status = manifest.ReportInterrupted
 				}
 			}
 			rep.Finish()
@@ -337,6 +338,9 @@ func finishApplyReport(r *manifest.ApplyReport) {
 		case manifest.ReportFailed, manifest.ReportNotRun:
 			r.Status = manifest.ReportFailed
 			return
+		case manifest.ReportInterrupted:
+			r.Status = manifest.ReportInterrupted
+			return
 		case manifest.ReportPlanned:
 			status = manifest.ReportPlanned
 		case manifest.ReportApplied:
@@ -355,7 +359,11 @@ func summarizeApply(r *manifest.ApplyReport) {
 		name := d.Kind + "/" + d.Name
 		switch d.Status {
 		case manifest.ReportApplied:
-			p.OK("%s applied", name)
+			if d.Summary != "" {
+				p.OK("%s applied (%s)", name, d.Summary)
+			} else {
+				p.OK("%s applied", name)
+			}
 		case manifest.ReportPlanned:
 			p.Info("%s: dry run, nothing was changed", name)
 		default:

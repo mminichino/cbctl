@@ -18,7 +18,7 @@ import (
 const schemaBase = "https://cbctl.test/schemas/"
 
 // outputSchemas are the cbctl -o json output schemas kept in internal/plan/testdata.
-var outputSchemas = []string{"plan", "apply", "scale"}
+var outputSchemas = []string{"plan", "apply", "scale", "apply.manifest"}
 
 var (
 	schemaOnce sync.Once
@@ -26,25 +26,30 @@ var (
 	schemaErr  error
 )
 
-// schemaDir is internal/plan/testdata, found from this source file so that tests in any package
-// can use it.
-func schemaDir() (string, error) {
+// schemaDir is the testdata directory holding the schema called name: internal/manifest/testdata
+// for the manifest apply report, internal/plan/testdata for the others. It is found from this
+// source file so that tests in any package can use it.
+func schemaDir(name string) (string, error) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		return "", fmt.Errorf("locating the clitest sources")
 	}
-	return filepath.Join(filepath.Dir(file), "..", "plan", "testdata"), nil
+	pkg := "plan"
+	if name == "apply.manifest" {
+		pkg = "manifest"
+	}
+	return filepath.Join(filepath.Dir(file), "..", pkg, "testdata"), nil
 }
 
 func loadOutputSchemas() (map[string]any, error) {
 	schemaOnce.Do(func() {
-		dir, err := schemaDir()
-		if err != nil {
-			schemaErr = err
-			return
-		}
 		schemaDocs = map[string]any{}
 		for _, n := range outputSchemas {
+			dir, err := schemaDir(n)
+			if err != nil {
+				schemaErr = err
+				return
+			}
 			raw, err := os.ReadFile(filepath.Join(dir, n+".schema.json"))
 			if err != nil {
 				schemaErr = fmt.Errorf("reading %s schema: %w", n, err)
@@ -62,8 +67,8 @@ func loadOutputSchemas() (map[string]any, error) {
 }
 
 // AssertJSONSchema fails the test unless doc is one JSON document valid against schema. schema is
-// either the name of a cbctl output schema in internal/plan/testdata ("plan", "apply" or "scale",
-// with or without ".schema.json") or the text of a JSON Schema (draft 2020-12 by default). The
+// either the name of a cbctl output schema ("plan", "apply" or "scale" from internal/plan/testdata,
+// "apply.manifest" from internal/manifest/testdata, with or without ".schema.json") or the text of a JSON Schema (draft 2020-12 by default). The
 // output schemas are always registered, so an inline schema may reference them by file name.
 func AssertJSONSchema(t testing.TB, schema string, doc []byte) {
 	t.Helper()

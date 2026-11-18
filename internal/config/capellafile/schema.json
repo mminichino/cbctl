@@ -17,6 +17,12 @@
         "capellactl/v1"
       ]
     },
+    "kind": {
+      "not": {},
+      "description": "Forbidden: a file with a kind is a cbctl/v1 manifest for 'cbctl apply -f', not a capella.yaml.",
+      "x-mutability": "tool",
+      "x-api": "none (manifests only)"
+    },
     "organizationId": {
       "type": "string",
       "description": "Capella organization ID. Usually ${CAPELLA_ORG_ID}; may come from a profile instead.",
