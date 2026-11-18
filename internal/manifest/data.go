@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 )
 
@@ -107,6 +108,15 @@ func readLine(br *bufio.Reader) (line []byte, tooLong bool, err error) {
 
 // errText is err without the path the OS error repeats.
 func errText(err error) string {
+	// The wording of the common causes is the same on every OS: the text is user-facing and
+	// pinned by goldens, and Windows words them differently ("The system cannot find the file
+	// specified.").
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "no such file or directory"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission denied"
+	}
 	var pe *os.PathError
 	if errors.As(err, &pe) {
 		return pe.Err.Error()
