@@ -10,9 +10,17 @@ cbctl never waits for input without a terminal, so a pipeline cannot hang on a p
   always visible in the pipeline file and its logs, and a variable left set in a shell can never delete data.
 - Without a terminal and without the flag, every command that changes Capella or capella.yaml stops with
   exit code 4 and changes nothing: `[error] - confirmation required but no terminal is attached`,
-  then `→ re-run with --yes`. When `CI` is set the action reads `→ add --yes to this pipeline step`.
+  then `-> re-run with --yes`. When `CI` is set the action reads `-> add --yes to this pipeline step`.
+  (Pipelines have no color terminal, so the arrow is ASCII there; on a color terminal it is `→`.)
   No environment variable approves a change; only the flag does.
 - A question that has a default uses it. A question that needs an answer stops with exit code 3.
+
+## Reading the output
+
+- Parse results by exit code or `-o json`, not by label text. Success lines read `[ok] - ...` (they were
+  `[info] - ...` before 0.7.0), no-ops and progress read `[info] - ...`.
+- Captured output is plain ASCII with no color. To get color in a CI log, pass `--color always` or set
+  `FORCE_COLOR=1`; `NO_COLOR=1` or `--color never` always turns it off.
 
 ## Credentials
 
