@@ -435,3 +435,39 @@ func TestKeysAt(t *testing.T) {
 		})
 	}
 }
+
+// TestTypeErrorPointsAtTheValue pins the position of a lenient-decode type error, which must not
+// depend on how much of the path encoding/json reports in UnmarshalTypeError.Field (map keys and
+// slice indexes are missing before Go 1.27).
+func TestTypeErrorPointsAtTheValue(t *testing.T) {
+	type item struct {
+		Name string `json:"name"`
+	}
+	type doc struct {
+		Profiles map[string]item `json:"profiles"`
+		Items    []item          `json:"items"`
+	}
+	tests := []struct {
+		name     string
+		text     string
+		wantPtr  string
+		wantLine int
+	}{
+		{"map value", "profiles:\n  dev:\n    name: [a]\n", "/profiles/dev/name", 3},
+		{"slice item", "items:\n  - name: a\n  - name: {x: 1}\n", "/items/1/name", 3},
+		{"top level", "profiles: 3\n", "/profiles", 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var d doc
+			err := Unmarshal([]byte(tt.text), &d, WithSource("t.yaml"))
+			var fe *FieldError
+			if !errors.As(err, &fe) {
+				t.Fatalf("err = %v, want *FieldError", err)
+			}
+			if fe.Pointer != tt.wantPtr || fe.Line != tt.wantLine {
+				t.Errorf("pointer %q line %d, want %q line %d (%v)", fe.Pointer, fe.Line, tt.wantPtr, tt.wantLine, err)
+			}
+		})
+	}
+}

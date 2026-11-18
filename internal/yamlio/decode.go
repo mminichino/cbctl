@@ -81,23 +81,93 @@ func decodeInto(js []byte, lines LineIndex, v any, o *options, strict bool) erro
 		dec.DisallowUnknownFields()
 	}
 	if err := dec.Decode(v); err != nil {
-		return jsonError(err, lines, o)
+		return jsonError(err, js, lines, o)
 	}
 	return nil
 }
 
-func jsonError(err error, lines LineIndex, o *options) error {
+func jsonError(err error, js []byte, lines LineIndex, o *options) error {
 	var te *json.UnmarshalTypeError
 	if errors.As(err, &te) {
-		ptr := ""
-		if te.Field != "" {
-			ptr = "/" + strings.ReplaceAll(te.Field, ".", "/")
-		}
+		ptr := typeErrorPointer(te, js, lines)
 		pos := lines.Of(ptr)
 		return &FieldError{Source: o.source, Pointer: ptr, Line: pos.Line, Column: pos.Column,
 			Msg: fmt.Sprintf("cannot use a %s as %s", te.Value, te.Type)}
 	}
 	return fmt.Errorf("decoding %s: %w", sourceName(o), err)
+}
+
+// typeErrorPointer finds the JSON pointer of the value that te rejected. The offset is
+// authoritative: UnmarshalTypeError.Field leaves out map keys and slice indexes before Go 1.27,
+// so a path built from it names the wrong value (or none) and the error would point at the
+// start of the document. Field is the fallback when the offset cannot be resolved.
+func typeErrorPointer(te *json.UnmarshalTypeError, js []byte, lines LineIndex) string {
+	if ptr, ok := pointerAtOffset(js, te.Offset); ok {
+		if _, known := lines[ptr]; known {
+			return ptr
+		}
+	}
+	if te.Field == "" {
+		return ""
+	}
+	return "/" + strings.ReplaceAll(te.Field, ".", "/")
+}
+
+// pointerAtOffset returns the pointer of the last JSON value that starts at or before offset:
+// encoding/json reports the offset just after the scalar, or just after the opening bracket of
+// an array or object, that it could not decode.
+func pointerAtOffset(js []byte, offset int64) (string, bool) {
+	if offset <= 0 || offset > int64(len(js)) {
+		return "", false
+	}
+	type frame struct {
+		object  bool
+		key     string
+		index   int
+		keyNext bool
+	}
+	var stack []frame
+	cur := func() string {
+		var b strings.Builder
+		for _, f := range stack {
+			switch {
+			case f.object:
+				b.WriteString("/" + escapePointer(f.key))
+			default:
+				b.WriteString("/" + strconv.Itoa(f.index-1))
+			}
+		}
+		return b.String()
+	}
+	dec := json.NewDecoder(bytes.NewReader(js[:offset]))
+	last, found := "", false
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return last, found
+		}
+		if d, ok := tok.(json.Delim); ok && (d == '}' || d == ']') {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		if n := len(stack); n > 0 {
+			f := &stack[n-1]
+			if f.object && f.keyNext {
+				f.key, _ = tok.(string)
+				f.keyNext = false
+				continue
+			}
+			if f.object {
+				f.keyNext = true
+			} else {
+				f.index++
+			}
+		}
+		last, found = cur(), true
+		if d, ok := tok.(json.Delim); ok {
+			stack = append(stack, frame{object: d == '{', keyNext: d == '{'})
+		}
+	}
 }
 
 func sourceName(o *options) string {
