@@ -1,0 +1,4 @@
+stdout:
+false
+stderr:
+exit: 0
