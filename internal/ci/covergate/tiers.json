@@ -1,7 +1,7 @@
 {
   "root": "github.com/mminichino/cbctl/internal",
   "tiers": [
-    {"name": "core", "min": 90, "packages": ["plan", "engine", "resources", "config/capellafile", "capellaapi", "presets", "yamlio"]},
+    {"name": "core", "min": 90, "packages": ["plan", "engine", "resources", "config/capellafile", "capellaapi", "presets", "yamlio", "manifest"]},
     {"name": "security", "min": 90, "packages": ["redact", "secrets", "settings"]},
     {"name": "cli", "min": 85, "packages": ["cli"]},
     {"name": "importer", "min": 80, "packages": ["importer"]},

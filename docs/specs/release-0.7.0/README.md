@@ -5,7 +5,7 @@ Status: plan, not started. Base: `main` at `7394ed2` (v0.6.1). Author branch: `m
 0.7.0 delivers three features:
 
 1. **YAML through JSON** (the Kubernetes pattern): YAML on disk, JSON-tagged structs in code. See [01-yaml-json.md](01-yaml-json.md).
-2. **`cbctl apply -f`** manifests (`CouchbaseServer`, `CouchbaseCapella`) from `cbctl-apply-manifest-spec.md`. See [02-manifest-apply.md](02-manifest-apply.md) (model, reuse, spec conflicts) and [02b-manifest-execution.md](02b-manifest-execution.md) (execution, errors, edge cases, acceptance).
+2. **`cbctl apply -f`** manifests (`CouchbaseServer`, `CouchbaseCapella`) from `cbctl-apply-manifest-spec.md` (amended copy: [manifest-spec-cbctl-v1.md](manifest-spec-cbctl-v1.md)). See [02-manifest-apply.md](02-manifest-apply.md) (model, reuse, spec conflicts) and [02b-manifest-execution.md](02b-manifest-execution.md) (execution, errors, edge cases, acceptance).
 3. **Consistent output and color** for every command, from `cbctl-output-color-design.md`. See [03-output.md](03-output.md).
 
 The test plan, release gate, risks, decisions and open questions are in [04-test-and-release.md](04-test-and-release.md).
