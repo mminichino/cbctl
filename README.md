@@ -542,6 +542,7 @@ make test-unit          # with -race (./internal/...)
 make test-integration-fake   # Capella integration suite against the in-memory fake
 make test-server-it     # Couchbase Server Docker flow (-tags=integration,server; needs Docker)
                         # CBCTL_IT_SERVER_MULTI=1 adds the two-node manifest test (Linux Docker host)
+make test-server-multi-it  # the two-node test on macOS/Windows Docker Desktop: runs the test binary in a Linux container (scripts/server-it-linux.sh)
 make cover-gate         # tiered coverage gate over the unit suite + Server flow (needs Docker)
 make test-integration   # Capella integration suite against a sandbox org (CAPELLA_API_KEY, CAPELLA_ORG_ID; CBCTL_IT_CLUSTERS=1 adds billable clusters)
 make janitor PREFIX=cbctl-ci-   # delete leftover test projects (prefix of at least 4 characters, ending in -)

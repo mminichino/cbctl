@@ -43,7 +43,9 @@ func startServerOnNetwork(ctx context.Context, t *testing.T, nw, alias string) (
 // Docker network: the primary is initialized, the second node joins, the cluster rebalances,
 // and a bucket with a replica is created. A second apply changes nothing. It runs only with
 // CBCTL_IT_SERVER_MULTI=1 (the nightly job) and needs a Linux Docker host, where container
-// addresses are reachable from the test process; Docker Desktop does not route to them.
+// addresses are reachable from the test process; Docker Desktop does not route to them, so
+// there `make test-server-multi-it` runs this same test binary in a Linux container on the VM's
+// network (scripts/server-it-linux.sh).
 func TestServerManifestMulti(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -55,7 +57,7 @@ func TestServerManifestMulti(t *testing.T) {
 		t.Skip("CBCTL_IT_TARGET=fake: Server Docker flow is separate from Capella integration")
 	}
 	if runtime.GOOS != "linux" {
-		t.Skip("container network addresses are reachable from the host only on Linux")
+		t.Skip("container network addresses are reachable from the host only on Linux; on Docker Desktop run make test-server-multi-it")
 	}
 	if !dockerAvailable() {
 		if os.Getenv("CBCTL_IT_REQUIRE_DOCKER") == "1" {

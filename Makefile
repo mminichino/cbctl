@@ -1,7 +1,7 @@
 # cbctl — Couchbase Server / Capella CLI
 
 .PHONY: build test test-unit test-race test-integration test-integration-fake test-capella-live
-.PHONY: janitor vet fmt-check tidy-check tidy cover-engine cover-profile cover-server cover-gate test-server-it docs docs-check index index-check
+.PHONY: janitor vet fmt-check tidy-check tidy cover-engine cover-profile cover-server cover-gate test-server-it test-server-multi-it docs docs-check index index-check
 .PHONY: coverage coverage-check ac-coverage port-table port-footer port-gaps links-check lint check release-snapshot
 
 build:
@@ -81,6 +81,12 @@ cover-gate: cover-profile cover-server
 # Server Docker integration on its own (no coverage).
 test-server-it:
 	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run 'TestServerCLIFlow|TestServerManifestApply|TestServerManifestMulti' -timeout 20m -v ./internal/integration/
+
+# Two-node Server test from inside a Linux container, for macOS/Windows Docker Desktop hosts
+# where container network addresses are not routable. On a Linux host use
+# CBCTL_IT_SERVER_MULTI=1 make test-server-it instead. See scripts/server-it-linux.sh.
+test-server-multi-it:
+	scripts/server-it-linux.sh TestServerManifestMulti
 
 docs:
 	go run ./cmd/cbdev docs index
