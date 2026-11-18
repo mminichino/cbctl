@@ -28,6 +28,8 @@ const (
 	ReportFailed = "failed"
 	// ReportNotRun means an earlier document failed, so this one was not attempted.
 	ReportNotRun = "not-run"
+	// ReportInterrupted means Ctrl-C stopped the document; its completed steps stay in place.
+	ReportInterrupted = "interrupted"
 )
 
 // Step is one unit of work of an apply: for Server a node, the rebalance, a bucket, scope,
@@ -63,6 +65,8 @@ type Report struct {
 	Status string `json:"status"`
 	// Steps lists what ran, in order. A failed document ends with its failed step.
 	Steps []Step `json:"steps"`
+	// Summary says what the document holds ("3 nodes, 1 bucket, 2 collections").
+	Summary string `json:"summary,omitempty"`
 	// Warnings are the non-fatal problems found (cluster nodes not in the manifest, a bucket
 	// quota that differs from the manifest).
 	Warnings []string `json:"warnings,omitempty"`
@@ -84,7 +88,7 @@ func (r *Report) Warn(msg string) { r.Warnings = append(r.Warnings, msg) }
 // Finish sets Status from the steps: failed if any step failed, planned if any is planned,
 // unchanged if every step is unchanged or skipped, and applied otherwise.
 func (r *Report) Finish() {
-	if r.Status == ReportFailed {
+	if r.Status == ReportFailed || r.Status == ReportInterrupted {
 		return
 	}
 	status := ReportUnchanged

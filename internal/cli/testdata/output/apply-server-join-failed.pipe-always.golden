@@ -1,0 +1,6 @@
+stdout:
+<ESC>[1;32m[ok]<ESC>[0m - Cluster created on 10.0.0.1
+stderr:
+<ESC>[1;31m[error]<ESC>[0m - joining node 10.0.0.2: management API not reachable
+  → Fix the problem named above, then run the command again.
+exit: 1

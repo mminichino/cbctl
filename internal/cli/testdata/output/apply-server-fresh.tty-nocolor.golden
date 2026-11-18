@@ -1,0 +1,11 @@
+stdout:
+[ok] - Cluster created on 10.0.0.1
+[ok] - Node 10.0.0.2 added to cluster at 10.0.0.1
+[ok] - Cluster rebalanced
+[ok] - Bucket "orders" created
+[ok] - Scope "orders.sales" created
+[ok] - Collection "orders.sales.items" created
+[ok] - Imported 2 documents into orders.sales.items
+[ok] - CouchbaseServer/demo applied (2 nodes, 1 bucket, 1 collection, 1 import)
+stderr:
+exit: 0

@@ -1,0 +1,11 @@
+stdout:
+[info] - Cluster already configured
+[info] - Node 10.0.0.2 already configured
+[info] - Rebalance not needed
+[info] - Bucket "orders" exists
+[info] - Scope "orders.sales" exists
+[info] - Collection "orders.sales.items" exists
+[info] - CouchbaseServer/demo: no changes, already matches the manifest
+stderr:
+<ESC>[1;33m[warning]<ESC>[0m - Collection orders.sales.items not empty; import skipped
+exit: 0
