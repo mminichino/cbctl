@@ -95,7 +95,7 @@ func TestApplySkeletonExitCodes(t *testing.T) {
 		{"empty dir", "", env, []string{"apply", "-f", "empty"}, 3, "holds no"},
 		{"bad output", "", env, []string{"apply", "-f", "server.yaml", "-o", "yaml"}, 3, "invalid output format"},
 		{"stdin twice", "", env, []string{"apply", "-f", "-", "-f", "-"}, 3, "twice"},
-		{"capella stub", applyCapellaYAML, env, []string{"apply", "-f", "-"}, 3, "not implemented"},
+		{"capella without api key", applyCapellaYAML, env, []string{"apply", "-f", "-"}, 3, "API key"},
 		{"duplicate across files", "", env, []string{"apply", "-f", "server.yaml", "-f", "server.yaml"}, 3, "already declares"},
 	}
 	for _, tt := range tests {
@@ -119,8 +119,8 @@ func TestApplyDirectoryReadsYAMLFilesInNameOrder(t *testing.T) {
 	writeFile(t, dir, "a.yml", applyServerYAML)
 	writeFile(t, dir, "notes.txt", "not a manifest")
 	r := runApplyCmd(t, dir, "", map[string]string{"APPLY_TEST_PASSWORD": "pw-value"}, "apply", "-f", ".", "--dry-run")
-	// a.yml (Server) sorts before b.yaml (Capella): the Server plan prints, then the Capella stub fails.
-	if r.code != 3 || !strings.Contains(r.stdout, "Would initialize the cluster") || !strings.Contains(r.stderr, "CouchbaseCapella") {
+	// a.yml (Server) sorts before b.yaml (Capella): the Server plan prints, then the Capella document fails for lack of an API key.
+	if r.code != 3 || !strings.Contains(r.stdout, "Would initialize the cluster") || !strings.Contains(r.stderr, "API key") {
 		t.Fatalf("exit %d\nstdout: %s\nstderr: %s", r.code, r.stdout, r.stderr)
 	}
 }

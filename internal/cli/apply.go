@@ -31,6 +31,8 @@ type applyEnv struct {
 	DryRun bool
 	// Yes is true when confirmation prompts are skipped (-y).
 	Yes bool
+	// Cmd is the apply command, for handlers that resolve settings from its flags (Capella).
+	Cmd *cobra.Command
 }
 
 // kindHandler applies one manifest document. It returns the report of what it did even when it
@@ -104,7 +106,7 @@ func runApply(cmd *cobra.Command, files []string, dryRun bool) error {
 	}
 
 	report := &manifest.ApplyReport{APIVersion: manifest.APIVersion, DryRun: dryRun}
-	runErr := applySets(ctx, d, sets, dryRun, g.Yes, report)
+	runErr := applySets(ctx, cmd, d, sets, dryRun, g.Yes, report)
 	finishApplyReport(report)
 	if g.Output == "json" {
 		logging.Current().Renderer().Object(report)
@@ -277,10 +279,10 @@ func resolveManifests(sets []*manifest.Set) error {
 
 // applySets runs the handlers of all documents in order and stops at the first failure; the
 // documents after it are reported as not run. Cancellation is checked before every document.
-func applySets(ctx context.Context, d Deps, sets []*manifest.Set, dryRun, yes bool, out *manifest.ApplyReport) error {
+func applySets(ctx context.Context, cmd *cobra.Command, d Deps, sets []*manifest.Set, dryRun, yes bool, out *manifest.ApplyReport) error {
 	var failed error
 	for _, set := range sets {
-		env := &applyEnv{Deps: d, Set: set, DryRun: dryRun, Yes: yes}
+		env := &applyEnv{Deps: d, Set: set, DryRun: dryRun, Yes: yes, Cmd: cmd}
 		for i := range set.Docs {
 			doc := &set.Docs[i]
 			name := doc.Envelope.Kind + "/" + doc.Envelope.Metadata.Name
