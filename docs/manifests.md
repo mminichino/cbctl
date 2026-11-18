@@ -121,7 +121,7 @@ spec:
   project: airline-demo
   provider: aws
   region: us-east-1
-  cidr: 10.0.10.0/24            # leave out to get a free 10.x.y.0/24
+  cidr: 10.0.10.0/24            # leave out to get a 10.x.y.0/24 no cluster in the organization uses
   availability: multi
   deletionProtection: false
   serviceGroups:

@@ -41,16 +41,25 @@ Legend: **pass** = ran here and succeeded; **not-run** = needs something this ru
 | `apply -f` unknown field exits 3 with `did you mean nodes?` | pass |
 | `apply -f` `CouchbaseCapella` with a missing size/serviceGroups exits 3 offline | pass |
 | `capella validate -c` on a file with `kind:` exits 3 with a pointer to `cbctl apply -f` | pass |
-| `apply -f` `CouchbaseCapella` dry run against Capella | not-run: needs a Capella API key |
+| `apply -f` `CouchbaseCapella` dry run against Capella | pass (2026-11-18): `--dry-run` with a `cbctl-ci-rg07-` project and cluster read the real org, planned 7 additions (project, cluster, allowed CIDR, bucket, scope, collection, credential), exit 0, nothing created; `-o json` printed one document with status `planned` |
 
 ## Tests that need an environment this run did not have
 
-| Item | Result | Reason / how to run |
+Run on 2026-11-18 on the same host (macOS arm64, Docker Desktop, Go 1.26.5 from `go.mod`), after fast-forwarding to `origin/mm--release-0-7-0`.
+
+| Item | Result | How it was run / caveats |
 |---|---|---|
-| `TestServerManifestMulti` (two-node Server) | not-run | skips unless `CBCTL_IT_SERVER_MULTI=1` and Linux (container IPs are not reachable from a macOS host). Run on a Linux Docker host: `CBCTL_IT_SERVER_MULTI=1 make test-server-it` |
+| `TestServerManifestMulti` (two-node Server) | **pass** (49 s) | `make test-server-multi-it` (`scripts/server-it-linux.sh`). The test skips on macOS because Docker Desktop keeps containers in a VM whose network addresses the host cannot route to. The script compiles the unchanged test binary with `go test -c` for `linux/arm64`, then runs it in a `docker:cli` container with `--network host` (the VM's network namespace, which routes to every container network) and the Docker socket mounted. The test is not weakened and CI's Linux path is unchanged. It created two `couchbase/server:enterprise-8.0.3` containers and a network; first apply built the cluster, joined the second node, rebalanced and created a bucket with one replica; the second apply changed nothing; the document read back. `docker ps -a`, `docker network ls` and `docker volume ls` were identical before and after (apart from the testcontainers reaper, which exits by itself seconds later). It found no bug in the Server apply |
 | `make test-server-it` (`TestServerCLIFlow`, `TestServerManifestApply`) | pass | ran inside `make cover-gate` with `CBCTL_IT_REQUIRE_DOCKER=1` |
-| `TestCapellaManifestApply_Live` and the rest of `make test-integration` | not-run | need live Capella credentials (`CAPELLA_API_KEY`, `CAPELLA_ORG_ID`); the billable parts also need `CBCTL_IT_CLUSTERS=1`. Then run the janitor with `--dry-run` for `cbctl-ci-` leftovers older than 24 h |
-| CI matrix on Windows and Linux | not-run | only the cross-compile ran locally; CI on the PR covers the OS matrix |
+| `TestCapellaManifestApply_Live` | **pass** (293 s) | `CBCTL_IT_CLUSTERS=1 go test -tags=integration -run TestCapellaManifestApply_Live ./internal/integration` with `CAPELLA_API_KEY` / `CAPELLA_ORG_ID` loaded from the untracked `.env` into the process environment only. A `dev` cluster, bucket, scope, collection, credential, allowed CIDR and inline import in a `cbctl-ci-<hex>-mproj` project: dry run, first apply, unchanged second apply, and no `capella.yaml` written. **The first run failed and found a real bug** (below); it passes after the fix |
+| `TestCapellaLive` (project, read-only, sync/plan round trip) | pass | same run settings; its billable `cluster` subtest skips unless `CBCTL_IT_CLUSTERS=1` and was not run (the manifest live test covers the cluster lifecycle for this release) |
+| `CouchbaseCapella` real apply, second apply, cleanup by hand | covered by the live test | the live test already does create, no-op re-apply and cleanup, so no separate hand-made cluster was created. Only the dry run above was done by hand |
+| Cleanup | pass | the live test's own janitor removed its project after both runs; `cbctl capella janitor --prefix <run prefix> --yes --fail-on-leftovers` for the run prefixes (`cbctl-ci-3eac8271-`, `cbctl-ci-rg07-`) found nothing left. The organization's 18 projects before and after are the same, including four `cbctl-ci-` projects from 2026-11-14 that this run did not create and did not touch |
+| CI matrix on Windows and Linux | see the PR checks | only cross-compile ran locally |
+
+### Bug found by the live run
+
+`cbctl apply` for `CouchbaseCapella` with no `spec.cidr` suggested the first free `10.x.y.0/24` among the clusters of the **same project** only. Capella requires the network to be unique in the whole **organization**, so the first apply failed with `422 ... The provided CIDR of 10.0.0.0/24 is not unique within this organization` whenever another project already used `10.0.0.0/24`. The capellafake already enforced the organization-wide rule, but no test had a cluster in another project. Fix: `observe` collects the networks of every cluster in every project (`internal/manifest/capellaapply/observe.go`); regression test `TestApplyPicksNetworkUnusedInOrganization` fails without the fix. Documented in README, `docs/manifests.md` and the CHANGELOG.
 
 ## Checklist items from section 2
 

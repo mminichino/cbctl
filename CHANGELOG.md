@@ -72,6 +72,9 @@ YAML-through-JSON codec. **Breaking:** success lines are labelled `[ok]` instead
 - `cbctl configure migrate --remove-legacy` keeps the comments, key order and unknown keys of capellactl's
   `profiles.yaml` when it removes the migrated profiles.
 - An unknown key in cbctl's `profiles.yaml` is reported as one warning instead of being ignored silently.
+- `cbctl apply` for `CouchbaseCapella` picks an automatic cluster network (`cidr` omitted) that no cluster in the
+  whole organization uses. It only avoided the networks of the same project, so a first apply failed with
+  `422 ... CIDR of 10.0.0.0/24 is not unique within this organization` when another project had that range.
 - Tests: the printer settings of one test (`-o json`, a color decision) no longer leak into the next one, which
   made `TestInitNonInteractive`, `TestInitInteractive`, `TestProjectDeleteCascade` and others fail under
   `go test -count=2`; `TestBinarySmoke` no longer finds a developer's `.env` when its temp dir is inside a

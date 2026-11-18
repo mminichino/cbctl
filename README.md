@@ -195,7 +195,7 @@ is deleted. Details:
 - Immutable fields (`provider`, `region`, `cidr`, `availability`, `serverVersion` release line, bucket
   `storageBackend`) that differ from the existing cluster exit 3. Removing a service group exits 4.
 - Fields left out of the manifest (`deletionProtection`, `description`, disk auto-expansion) keep the value
-  Capella has. `cidr` omitted allocates a free `10.x.y.0/24`.
+  Capella has. `cidr` omitted allocates a `10.x.y.0/24` that no cluster in the organization uses (Capella requires a unique network).
 - `apply` never changes the password of an existing database credential; a generated password for a new
   one is printed once (saved to `credentialsOutput` with mode 0600).
 - On a terminal `apply` asks before changing anything. Without one, creating, updating and scaling out run
