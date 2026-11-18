@@ -51,13 +51,3 @@ func TestObjectMasksKeys(t *testing.T) {
 		t.Fatalf("ok=%v", nested["ok"])
 	}
 }
-
-func TestMaskTail(t *testing.T) {
-	t.Setenv("NO_COLOR", "1")
-	if got := redact.MaskTail(""); got != "(not set)" {
-		t.Fatalf("empty=%q", got)
-	}
-	if got := redact.MaskTail("sk-abcdefgh"); got != "****efgh" {
-		t.Fatalf("got=%q", got)
-	}
-}

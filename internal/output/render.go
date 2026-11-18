@@ -48,6 +48,9 @@ type RenderOptions struct {
 	Env func(string) string
 	// IsTerm reports whether the progress stream is a terminal. Nil means never.
 	IsTerm func(w any) bool
+	// Glyphs is the glyph set of stdout. Table, Object and Line rewrite the Unicode glyphs in
+	// their text to it. The zero value keeps the text as written (Unicode).
+	Glyphs Glyphs
 }
 
 // NewRenderer returns the JSON Renderer when jsonMode is set, otherwise the text Renderer.
@@ -84,7 +87,7 @@ func (r *textRenderer) Table(cols []string, rows [][]string) {
 	writeRow := func(cells []string) {
 		clean := make([]string, len(cells))
 		for i, c := range cells {
-			clean[i] = cell(c)
+			clean[i] = r.opts.Glyphs.Localize(cell(c))
 		}
 		_, _ = fmt.Fprintln(w, strings.Join(clean, "\t"))
 	}
@@ -109,17 +112,17 @@ func (r *textRenderer) Object(v any) {
 	}
 	for _, p := range pairs {
 		if p.key == "" {
-			_, _ = fmt.Fprintln(r.out, p.val)
+			_, _ = fmt.Fprintln(r.out, r.opts.Glyphs.Localize(p.val))
 			continue
 		}
-		_, _ = fmt.Fprintf(r.out, "%s: %s\n", p.key, p.val)
+		_, _ = fmt.Fprintf(r.out, "%s: %s\n", p.key, r.opts.Glyphs.Localize(p.val))
 	}
 }
 
 func (r *textRenderer) List(any) {}
 
 func (r *textRenderer) Line(format string, a ...any) {
-	_, _ = fmt.Fprintln(r.out, redact.String(fmt.Sprintf(format, a...)))
+	_, _ = fmt.Fprintln(r.out, r.opts.Glyphs.Localize(redact.String(fmt.Sprintf(format, a...))))
 }
 
 func (r *textRenderer) Secret(doc any, name, value string) {

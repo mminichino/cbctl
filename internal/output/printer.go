@@ -131,6 +131,13 @@ func (p *Printer) Glyphs() Glyphs {
 	return p.glyphs.glyphsFor(p.d, p.err)
 }
 
+// GlyphsFor returns the glyph set for text written to w under the printer's policy.
+func (p *Printer) GlyphsFor(w io.Writer) Glyphs {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.glyphs.glyphsFor(p.d, w)
+}
+
 // Line formats one labeled line, "LABEL - text\n". text is redacted before the label is added, so
 // a secret can never be split by escape codes.
 func Line(d Decider, w io.Writer, kind, text string) string {
@@ -142,7 +149,8 @@ func ActionLine(d Decider, policy GlyphPolicy, w io.Writer, text string) string 
 	if text == "" {
 		return ""
 	}
-	return "  " + policy.glyphsFor(d, w).Arrow + " " + redact.String(text) + "\n"
+	g := policy.glyphsFor(d, w)
+	return "  " + g.Arrow + " " + redact.String(g.Localize(text)) + "\n"
 }
 
 // WriteLine writes one labeled line to w. A write error is ignored: there is nowhere to report
@@ -166,7 +174,7 @@ func (p *Printer) write(toErr bool, kind, text, action string) {
 		w = p.err
 	}
 	if kind != "" {
-		s := Line(p.d, w, kind, text)
+		s := Line(p.d, w, kind, p.glyphs.glyphsFor(p.d, w).Localize(text))
 		if action != "" {
 			s += ActionLine(p.d, p.glyphs, w, action)
 		}
@@ -248,14 +256,16 @@ func (p *Printer) Data(format string, a ...any) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	// Redact the formatted text, not the format: a secret usually arrives as an argument.
-	p.emit(false, p.out, redact.String(fmt.Sprintf(format, a...))+"\n")
+	p.emit(false, p.out, p.glyphs.glyphsFor(p.d, p.out).Localize(redact.String(fmt.Sprintf(format, a...)))+"\n")
 }
 
 // Renderer returns a Renderer that writes to the printer's streams.
 func (p *Printer) Renderer() Renderer {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return NewRenderer(p.out, p.err, p.json, p.quiet, RenderOptions{Env: p.d.Env, IsTerm: p.d.IsTerm})
+	return NewRenderer(p.out, p.err, p.json, p.quiet, RenderOptions{
+		Env: p.d.Env, IsTerm: p.d.IsTerm, Glyphs: p.glyphs.glyphsFor(p.d, p.out),
+	})
 }
 
 // Progress returns the printer's progress writer for stderr. The same Progress is returned on
