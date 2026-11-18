@@ -513,6 +513,9 @@ func (r *credentialRec) create(ctx context.Context, rc *plan.RunContext, a *plan
 		return fmt.Errorf("credential %s was created but its password could not be saved: %w", a.Key, err)
 	}
 	rc.Say(secrets.SavedMessage(path))
+	if rc.OnGeneratedPassword != nil {
+		rc.OnGeneratedPassword(cluster, name, generated)
+	}
 	if !r.gitWarned {
 		if what, action, ok := secrets.GitWarning(dir); ok {
 			r.gitWarned = true

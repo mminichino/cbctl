@@ -47,6 +47,11 @@ type RunContext struct {
 	// callers skip id pinning and backup files.
 	Ephemeral bool
 
+	// OnGeneratedPassword, when set, receives the cluster name, credential name and password of
+	// each credential Capella generated a password for, once the password is saved. The manifest
+	// apply prints it once from here.
+	OnGeneratedPassword func(cluster, name, password string)
+
 	Env    func(string) string
 	Prompt Prompter
 }
