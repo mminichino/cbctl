@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
+	"github.com/mminichino/cbctl/internal/capellafake"
 	"github.com/mminichino/cbctl/internal/manifest"
 	"github.com/mminichino/cbctl/internal/manifest/capellaapply"
 )
@@ -594,5 +595,43 @@ func TestApplyYesSkipsConfirm(t *testing.T) {
 	})
 	if r.err != nil {
 		t.Fatalf("apply: %v", r.err)
+	}
+}
+
+// TestApplyPicksNetworkUnusedInOrganization: Capella rejects a cluster network that any cluster
+// of the organization already uses, so the automatic range must skip the ones in other projects
+// (found by the live release-gate run, which failed with "CIDR of 10.0.0.0/24 is not unique").
+func TestApplyPicksNetworkUnusedInOrganization(t *testing.T) {
+	h := newHarness(t)
+	other := h.f.SeedProject("other-project")
+	h.f.SeedCluster(other, "elsewhere", "healthy",
+		capellafake.WithField("cloudProvider", capellafake.Obj{"type": "aws", "region": "us-east-1", "cidr": "10.0.0.0/24"}))
+
+	res := h.run(manifestYAML("fresh", "  provider: aws\n  region: us-east-1\n  size: dev\n"))
+	if res.err != nil {
+		t.Fatalf("apply: %v\n%s", res.err, res.out.text())
+	}
+	ctx := context.Background()
+	projects, err := h.f.Client().ListProjects(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got string
+	for _, p := range projects {
+		if p.Name != "ci-project" {
+			continue
+		}
+		clusters, err := h.f.Client().ListClusters(ctx, p.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range clusters {
+			if c.Name == "fresh" && c.CloudProvider != nil {
+				got = c.CloudProvider.CIDR
+			}
+		}
+	}
+	if got == "" || got == "10.0.0.0/24" {
+		t.Errorf("cluster network = %q, want a range no other project's cluster uses", got)
 	}
 }

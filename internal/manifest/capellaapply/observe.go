@@ -17,7 +17,8 @@ type remote struct {
 	Cluster *capellaapi.Cluster
 	// Buckets are the cluster's buckets, empty until the cluster is healthy.
 	Buckets []capellaapi.Bucket
-	// UsedCIDRs are the networks of the clusters in the project.
+	// UsedCIDRs are the networks of every cluster in the organization: Capella rejects a cluster
+	// whose network is not unique across the organization, not just across the project.
 	UsedCIDRs []string
 }
 
@@ -30,26 +31,25 @@ func observe(ctx context.Context, c *capellaapi.Client, project, cluster string)
 		return nil, fmt.Errorf("listing projects: %w", err)
 	}
 	for i := range projects {
-		if projects[i].Name == project {
+		clusters, err := c.ListClusters(ctx, projects[i].ID)
+		if err != nil {
+			return nil, fmt.Errorf("listing clusters in project %s: %w", projects[i].Name, err)
+		}
+		for _, cl := range clusters {
+			if cl.CloudProvider != nil && cl.CloudProvider.CIDR != "" {
+				out.UsedCIDRs = append(out.UsedCIDRs, cl.CloudProvider.CIDR)
+			}
+			if projects[i].Name == project && cl.Name == cluster && out.Cluster == nil {
+				cl := cl
+				out.Cluster = &cl
+			}
+		}
+		if projects[i].Name == project && out.Project == nil {
 			out.Project = &projects[i]
-			break
 		}
 	}
 	if out.Project == nil {
 		return out, nil
-	}
-	clusters, err := c.ListClusters(ctx, out.Project.ID)
-	if err != nil {
-		return nil, fmt.Errorf("listing clusters in project %s: %w", project, err)
-	}
-	for _, cl := range clusters {
-		if cl.CloudProvider != nil && cl.CloudProvider.CIDR != "" {
-			out.UsedCIDRs = append(out.UsedCIDRs, cl.CloudProvider.CIDR)
-		}
-		if cl.Name == cluster && out.Cluster == nil {
-			cl := cl
-			out.Cluster = &cl
-		}
 	}
 	if out.Cluster == nil {
 		return out, nil
@@ -72,7 +72,7 @@ func observe(ctx context.Context, c *capellaapi.Client, project, cluster string)
 func (r *remote) observed() Observed { return Observed{Cluster: r.Cluster, Buckets: r.Buckets} }
 
 // resolveCIDR is the network of the cluster: spec.cidr, else the existing cluster's, else the
-// first free 10.x.y.0/24 not used by a cluster of the project.
+// first free 10.x.y.0/24 not used by any cluster of the organization.
 func resolveCIDR(doc *manifest.Document, r *remote) string {
 	if doc.Capella.CIDR != "" {
 		return doc.Capella.CIDR
