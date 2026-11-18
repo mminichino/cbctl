@@ -401,7 +401,9 @@ func (r *credentialRec) Diff(_ context.Context, rc *plan.RunContext, desiredAny 
 		return a, nil
 	}
 	a.Changes = AccessChanges(desired["access"], observed.Body["access"])
-	if rc.RotatePasswords {
+	// An in-memory run keeps no state, so a changed ${VAR} cannot be told from an unchanged one:
+	// it never rotates (D3).
+	if rc.RotatePasswords && !rc.Ephemeral {
 		a.Set("rotate", true)
 		a.Label = "rotate password"
 	}

@@ -131,3 +131,14 @@ func ptr(base string, segs ...any) string {
 	}
 	return base
 }
+
+// NewIssue returns a problem found after loading (while applying) at pointer of d. The line and
+// column are those of the nearest known ancestor of pointer, so a problem found in the
+// translated form still names a line of the manifest the user wrote.
+func (d *Document) NewIssue(pointer, msg, fix string) Issue {
+	pos := d.Lines.Of(pointer)
+	return Issue{Doc: d.Index + 1, Ref: d.ref(), Pointer: pointer, Line: pos.Line, Col: pos.Column, Msg: msg, Fix: fix, source: d.source}
+}
+
+// Source returns the display name of the manifest the document came from.
+func (d *Document) Source() string { return d.source }

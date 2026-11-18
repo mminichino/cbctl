@@ -42,6 +42,11 @@ type RunContext struct {
 	AllowServiceGroupRemoval bool
 	SkipCapacityCheck        bool
 
+	// Ephemeral marks a run whose configuration exists only in memory (cbctl apply -f). Nothing
+	// in the engine may depend on a file: reconcilers never rotate a credential password, and
+	// callers skip id pinning and backup files.
+	Ephemeral bool
+
 	Env    func(string) string
 	Prompt Prompter
 }
