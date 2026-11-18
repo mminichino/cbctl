@@ -22,6 +22,7 @@ import (
 type Provisioner interface {
 	BootstrapPrimary(opts rest.ProvisionOptions) (bool, error)
 	JoinNode(opts rest.ProvisionOptions) (bool, error)
+	ClusterName(endpoint rest.Endpoint, username, password string) (name string, initialized bool, err error)
 	ClusterNodes(endpoint rest.Endpoint, username, password string) ([]rest.NodeInfo, error)
 	PendingNodes(endpoint rest.Endpoint, username, password string) ([]string, error)
 	RebalanceCluster(opts rest.ProvisionOptions) error

@@ -47,6 +47,21 @@ func (c *Client) PendingNodes(endpoint Endpoint, username, password string) ([]s
 	return out, nil
 }
 
+// ClusterName returns the clusterName of the cluster that endpoint belongs to. initialized is
+// false for a node that is not part of any cluster (or whose admin credentials are refused);
+// name is empty for a cluster that was created without one.
+func (c *Client) ClusterName(endpoint Endpoint, username, password string) (name string, initialized bool, err error) {
+	if !c.IsClusterInitialized(endpoint, username, password) {
+		return "", false, nil
+	}
+	payload, err := c.GetPoolsDefault(endpoint, username, password)
+	if err != nil {
+		return "", true, fmt.Errorf("reading the cluster name: %w", err)
+	}
+	name, _ = payload["clusterName"].(string)
+	return strings.TrimSpace(name), true, nil
+}
+
 // nodeInfos reads the nodes of a /pools/default payload.
 func nodeInfos(payload map[string]any) []NodeInfo {
 	list, _ := payload["nodes"].([]any)

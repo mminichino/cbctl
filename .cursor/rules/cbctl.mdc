@@ -221,7 +221,7 @@ Ensure a full keyspace exists.
 - Success: `Keyspace "<bucket.scope.collection>" created`. Failure: stderr + exit 1.
 
 ### `apply -f FILE|-|DIR`
-Apply `cbctl/v1` manifest documents. `kind: CouchbaseServer` runs primary init, sequential joins, a membership report, rebalance, buckets/scopes/collections, then imports. `kind: CouchbaseCapella` is not applied yet (exit 3, use `cbctl capella apply -c`).
+Apply `cbctl/v1` manifest documents. `kind: CouchbaseServer` runs primary init (a primary that already belongs to a differently named cluster exits 1 and changes nothing), sequential joins, a membership report, rebalance, buckets/scopes/collections, then imports. `kind: CouchbaseCapella` is not applied yet (exit 3, use `cbctl capella apply -c`).
 
 - `-f` is required (exit 3), repeatable; `-` is stdin (max 10 MiB, not a terminal); a directory reads its `*.yaml`/`*.yml` in name order. Relative `file:` paths resolve from the manifest's directory (cwd for stdin).
 - Everything is validated and `${VAR}` / `${file:PATH}` / `${base64:VALUE}` secrets are resolved before any network call; a problem exits 3 and nothing is applied. Passwords are never literals.

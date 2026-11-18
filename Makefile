@@ -72,7 +72,7 @@ cover-profile:
 
 cover-server:
 	@mkdir -p $(COVER_DIR)
-	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run TestServerCLIFlow -timeout 20m \
+	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run 'TestServerCLIFlow|TestServerManifestApply|TestServerManifestMulti' -timeout 20m \
 		-coverpkg=./internal/... -coverprofile=$(COVER_DIR)/server.out ./internal/integration/
 
 cover-gate: cover-profile cover-server
@@ -80,7 +80,7 @@ cover-gate: cover-profile cover-server
 
 # Server Docker integration on its own (no coverage).
 test-server-it:
-	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run TestServerCLIFlow -timeout 20m -v ./internal/integration/
+	CBCTL_IT_REQUIRE_DOCKER=1 go test -count=1 -tags=integration,server -run 'TestServerCLIFlow|TestServerManifestApply|TestServerManifestMulti' -timeout 20m -v ./internal/integration/
 
 docs:
 	go run ./cmd/cbdev docs index

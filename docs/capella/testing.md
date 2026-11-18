@@ -9,6 +9,7 @@ run offline in seconds; the sandbox suite runs nightly in CI against a real Cape
 | Full local gate | `make check` | nothing | before every push |
 | Integration, fake | `make test-integration-fake` | the fake, through the built commands | every push (CI) |
 | Integration, Server | `make test-server-it` | a Couchbase Server container (Docker) | every push (CI `cover` job) |
+| Integration, Server, two nodes | `CBCTL_IT_SERVER_MULTI=1 go test -tags=integration,server -run TestServerManifestMulti ./internal/integration/` | two Server containers on a Docker network (Linux host) | nightly |
 | Integration, sandbox | `make test-integration` | a Capella sandbox organization | nightly (CI) |
 
 ## The fake

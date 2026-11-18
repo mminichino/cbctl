@@ -38,6 +38,9 @@ func (a *applier) provisionOptions(n manifest.ServerNode) rest.ProvisionOptions 
 func (a *applier) bootstrap(_ context.Context) error {
 	ip := a.primary.IPAddress
 	err := a.timed("bootstrap", ip, func() (manifest.Step, error) {
+		if err := a.checkClusterIdentity(); err != nil {
+			return manifest.Step{}, err
+		}
 		created, err := a.env.Provisioner.BootstrapPrimary(a.provisionOptions(a.primary))
 		if err != nil {
 			return manifest.Step{}, fmt.Errorf("initializing the primary node %s: %w", ip, err)
@@ -50,6 +53,21 @@ func (a *applier) bootstrap(_ context.Context) error {
 		return manifest.Step{Status: manifest.StepDone}, nil
 	})
 	return err
+}
+
+// checkClusterIdentity refuses to reconcile a primary that already belongs to a differently
+// named cluster. Bootstrap would otherwise change quotas and the server group of someone
+// else's cluster. A cluster without a name, or a node that is not initialized, passes.
+func (a *applier) checkClusterIdentity() error {
+	name, initialized, err := a.env.Provisioner.ClusterName(a.endpoint(), a.spec.Credentials.Username, a.pw)
+	if err != nil {
+		return fmt.Errorf("reading the cluster name of %s: %w", a.primary.IPAddress, err)
+	}
+	if initialized && name != "" && name != a.name {
+		return fmt.Errorf("node %s already belongs to another cluster (%q, the manifest is %q); nothing was changed",
+			a.primary.IPAddress, name, a.name)
+	}
+	return nil
 }
 
 // joins adds every other node to the primary's cluster, in manifest order (step 2). Joins stay

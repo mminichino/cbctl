@@ -39,8 +39,10 @@ type fakeNode struct {
 // fakeCB emulates the subset of the Couchbase Server management REST API the
 // rest package uses. All state is guarded by mu so tests pass under -race.
 type fakeCB struct {
-	t   *testing.T
-	srv *httptest.Server
+	// clusterName is the clusterName /pools/default reports; empty reports none.
+	clusterName string
+	t           *testing.T
+	srv         *httptest.Server
 
 	mu              sync.Mutex
 	reqs            []recordedRequest
@@ -210,6 +212,9 @@ func (f *fakeCB) serve(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		payload := map[string]any{"nodes": nodes, "rebalanceStatus": f.rebalanceStatus}
+		if f.clusterName != "" {
+			payload["clusterName"] = f.clusterName
+		}
 		for field, v := range f.quotas {
 			payload[field] = v
 		}
