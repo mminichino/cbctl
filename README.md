@@ -175,6 +175,56 @@ cbctl import <jsonl-file> <bucket.scope.collection> --host 127.0.0.1 -u Administ
 - Refuses non-empty collections: prints `Collection not empty` and exits 0 without importing.
 - Success: `Imported N documents`.
 
+## Manifests (`cbctl apply`)
+
+```bash
+cbctl apply -f couchbase.yaml [--dry-run] [-o json] [-y]
+cbctl apply -f manifests/        # every *.yaml / *.yml in the directory, in name order
+cat couchbase.yaml | cbctl apply -f -
+```
+
+A manifest is one or more YAML documents with `apiVersion: cbctl/v1`, a `kind` and a `metadata.name`.
+`kind: CouchbaseServer` builds a Server cluster: it initializes the primary node, joins the other
+nodes one by one, rebalances, creates buckets, scopes and collections, and imports documents.
+`kind: CouchbaseCapella` documents are not applied yet; use `cbctl capella apply -c capella.yaml`.
+
+```yaml
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: airline-ops
+spec:
+  credentials:
+    password: ${CB_PASSWORD}        # ${VAR}, ${file:PATH} or ${base64:VALUE}; never a literal
+  nodes:
+    - ipAddress: 10.0.1.10
+    - ipAddress: 10.0.2.10
+  buckets:
+    - name: flights
+      quotaMiB: 1024
+      scopes:
+        - name: ops
+          collections: [schedules, gates]
+      import:
+        - scope: ops
+          collection: schedules
+          file: data/schedules.jsonl   # relative to the manifest
+          keyField: flightId           # document key; without it a UUID is used
+        - scope: ops
+          collection: gates
+          keyField: gateId
+          data:
+            - gateId: E10
+```
+
+- The whole manifest is validated and every `${...}` reference is resolved before any node is contacted. A problem exits 3 and applies nothing.
+- Applying again changes nothing that already matches (`[info] - ... no changes`). Existing buckets are left as they are; a different quota is a `[warning]`. An import into a collection that is not empty is skipped with a `[warning]`.
+- Nodes in the cluster that the manifest does not list are reported with a `[warning]` and left in place.
+- `--dry-run` validates and lists the steps without contacting any node.
+- `-o json` prints one document (`apiVersion`, `dryRun`, `status`, `documents[]` with `steps[]`) on stdout; status lines go to stderr.
+- Documents run in order; the first failure stops the run, earlier documents stay applied, and the report lists the rest as `not-run`. Ctrl-C stops between steps (exit 130); run the command again to finish.
+- A `capella.yaml` is not a manifest: `apply` rejects a file without `kind`, and the `capella` commands reject a file that has one.
+
 ## Multi-node / MDS (`cluster create`)
 
 Repeat `--node` / `-n` with:
