@@ -329,7 +329,7 @@ func (c *collector) allowedCIDRs(s *CapellaSpec) {
 			continue
 		}
 		if anyIPCIDRs[n] && !a.AllowAnyIP {
-			c.addf(ptr(ap, "cidr"), "%s allows every address; set allowAnyIp: true to confirm", n)
+			c.addf(ptr(ap, "cidr"), "%s allows every address; confirm with allowAnyIp: true", n)
 		}
 		if first, dup := seen[n]; dup {
 			c.addf(ptr(ap, "cidr"), "%s is already listed at allowedCidrs[%d]", n, first)

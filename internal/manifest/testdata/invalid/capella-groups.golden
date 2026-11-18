@@ -15,7 +15,7 @@ capella-groups.yaml has 19 problems:
     action: use one of: data, index, query, search, analytics, eventing
   capella-groups.yaml:23:7 (document 1, CouchbaseCapella/groups): spec.serviceGroups[3].compute: compute needs cpu and ramGb
     action: see 'cbctl capella cluster options'
-  capella-groups.yaml:25:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[0].cidr: 0.0.0.0/0 allows every address; set allowAnyIp: true to confirm
+  capella-groups.yaml:25:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[0].cidr: 0.0.0.0/0 allows every address; confirm with allowAnyIp: true
   capella-groups.yaml:26:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[1].cidr: 1.2.3.4/24 has host bits set (did you mean 1.2.3.0/24?)
   capella-groups.yaml:28:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[2].expiresAt: expiresAt "tomorrow" is not an RFC 3339 time, for example 2027-01-31T00:00:00Z
   capella-groups.yaml:29:7 (document 1, CouchbaseCapella/groups): spec.allowedCidrs[3].cidr: 203.0.113.0/24 is already listed at allowedCidrs[2]

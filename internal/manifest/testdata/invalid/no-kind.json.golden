@@ -7,7 +7,7 @@
       "line": 1,
       "column": 1,
       "message": "kind is missing; this looks like a capella.yaml, not a manifest",
-      "fix": "use 'cbctl capella apply -c FILE' for capella.yaml, or add kind: CouchbaseServer or CouchbaseCapella"
+      "fix": "use 'cbctl capella apply -c FILE' for capella.yaml, or give the document a kind: CouchbaseServer or CouchbaseCapella"
     }
   ]
 }

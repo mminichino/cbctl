@@ -90,8 +90,8 @@ func (c *collector) serverNodes(s *ServerSpec) {
 	hasData := false
 	for i, n := range s.Nodes {
 		np := ptr("/spec/nodes", i)
-		switch {
-		case n.IPAddress == "":
+		switch n.IPAddress {
+		case "":
 			c.add(ptr(np, "ipAddress"), "ipAddress is required")
 		default:
 			if msg := hostIssue(n.IPAddress); msg != "" {
@@ -112,10 +112,10 @@ func (c *collector) serverNodes(s *ServerSpec) {
 		}
 		if n.Arbiter {
 			if n.Services != nil {
-				c.add(ptr(np, "services"), "arbiter cannot be combined with services", "remove services, or set arbiter: false")
+				c.add(ptr(np, "services"), "arbiter cannot be combined with services", "remove services, or use arbiter: false")
 			}
 			if n.Primary {
-				c.add(ptr(np, "primary"), "the primary node cannot be an arbiter", "set primary: true on a node that runs services")
+				c.add(ptr(np, "primary"), "the primary node cannot be an arbiter", "mark a node that runs services with primary: true")
 			}
 		} else {
 			c.checkServices(ptr(np, "services"), n.Services, true)
@@ -135,7 +135,7 @@ func (c *collector) serverNodes(s *ServerSpec) {
 	}
 	if len(primaries) == 0 && s.Nodes[0].Arbiter {
 		c.add("/spec/nodes/0", "no node is marked primary, so the first node would be the primary, but it is an arbiter",
-			"set primary: true on a node that runs services")
+			"mark a node that runs services with primary: true")
 	}
 	if !hasData {
 		c.add("/spec/nodes", "at least one node must run the data service")

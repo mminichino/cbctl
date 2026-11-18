@@ -121,7 +121,7 @@
       "pointer": "/spec/allowedCidrs/0/cidr",
       "line": 25,
       "column": 7,
-      "message": "0.0.0.0/0 allows every address; set allowAnyIp: true to confirm"
+      "message": "0.0.0.0/0 allows every address; confirm with allowAnyIp: true"
     },
     {
       "document": 1,

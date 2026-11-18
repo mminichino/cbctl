@@ -3,10 +3,10 @@ server-rules.yaml has 18 problems:
   server-rules.yaml:10:3 (document 1, CouchbaseServer/airline-ops): spec.nodes: at least one node must run the data service
   server-rules.yaml:14:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].ipAddress: 10.0.0.1 is already used by nodes[0]; ipAddress values must be unique
   server-rules.yaml:15:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].primary: the primary node cannot be an arbiter
-    action: set primary: true on a node that runs services
+    action: mark a node that runs services with primary: true
   server-rules.yaml:15:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].primary: only one node can be primary (nodes[0] is also primary)
   server-rules.yaml:17:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].services: arbiter cannot be combined with services
-    action: remove services, or set arbiter: false
+    action: remove services, or use arbiter: false
   server-rules.yaml:18:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[2].ipAddress: "not a host" is not an IP address or host name
   server-rules.yaml:19:18 (document 1, CouchbaseServer/airline-ops): spec.nodes[2].services[0]: unknown service "dta" (did you mean data?)
     action: use one of: data, index, query, search, analytics, eventing, backup

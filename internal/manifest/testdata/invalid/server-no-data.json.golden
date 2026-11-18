@@ -16,7 +16,7 @@
       "line": 9,
       "column": 7,
       "message": "no node is marked primary, so the first node would be the primary, but it is an arbiter",
-      "fix": "set primary: true on a node that runs services"
+      "fix": "mark a node that runs services with primary: true"
     }
   ]
 }

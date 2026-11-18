@@ -32,7 +32,7 @@
       "line": 15,
       "column": 7,
       "message": "the primary node cannot be an arbiter",
-      "fix": "set primary: true on a node that runs services"
+      "fix": "mark a node that runs services with primary: true"
     },
     {
       "document": 1,
@@ -49,7 +49,7 @@
       "line": 17,
       "column": 7,
       "message": "arbiter cannot be combined with services",
-      "fix": "remove services, or set arbiter: false"
+      "fix": "remove services, or use arbiter: false"
     },
     {
       "document": 1,

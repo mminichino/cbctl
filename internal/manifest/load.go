@@ -85,7 +85,7 @@ func Load(ctx context.Context, src Source) (*Set, error) {
 		if err != nil {
 			return nil, fmt.Errorf("opening manifest: %w", err)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }() // read-only handle
 		r, name, baseDir = f, src.Path, filepath.Dir(p)
 	}
 	set, err := Parse(ctx, r, name, baseDir)
@@ -273,7 +273,7 @@ func (c *collector) header(h header) bool {
 	switch {
 	case h.Kind == "" && h.APIVersion == APIVersion:
 		c.add("/kind", "kind is missing; this looks like a capella.yaml, not a manifest",
-			"use 'cbctl capella apply -c FILE' for capella.yaml, or add kind: CouchbaseServer or CouchbaseCapella")
+			"use 'cbctl capella apply -c FILE' for capella.yaml, or give the document a kind: CouchbaseServer or CouchbaseCapella")
 		return false
 	case h.APIVersion == "":
 		c.add("/apiVersion", "apiVersion is required", "use apiVersion: "+APIVersion)

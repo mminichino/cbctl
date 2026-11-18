@@ -32,7 +32,7 @@ func (c *collector) checkImportFile(ctx context.Context, pointer, shown, abs, ke
 		c.add(ptr(pointer, "file"), fmt.Sprintf("cannot read %s: %s", shown, errText(err)))
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only handle
 
 	br := bufio.NewReaderSize(f, 64*1024)
 	seen := map[string]int{}
