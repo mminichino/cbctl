@@ -43,6 +43,14 @@ Download the `cbctl` binary from the GitHub Release (see the README) or build it
 3 when the file is invalid and 4 when a change is blocked. `cbctl capella drift --detailed-exitcode` works the
 same way for changes made outside cbctl. See `cbctl capella guide exit-codes`.
 
+## Manifests
+
+`cbctl apply -f manifest.yaml` (kind `CouchbaseServer` or `CouchbaseCapella`) validates the whole file, then
+applies it; it exits 3 on a problem before anything changes. `--dry-run` checks a manifest in a pull request and
+exits 0 with or without changes, so gate on the exit code and read the plan from the output or `-o json`.
+Without a terminal, a Capella manifest applies creates, updates and scale-out unprompted; scale-in and turning
+`deletionProtection` off need `--yes` (exit 4 otherwise). `apply` never rotates a credential password.
+
 ## GitHub Actions
 
 ```yaml

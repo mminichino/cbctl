@@ -18,8 +18,8 @@ curl -sL "https://github.com/mminichino/cbctl/releases/download/latest/cbctl_Dar
 sudo mv cbctl /usr/local/bin/
 cbctl --version            # cbctl capella --version prints the same
 
-# Pin a version (replace v0.6.1)
-# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.6.1/cbctl_Darwin_arm64.tar.gz" | tar xz
+# Pin a version (replace v0.7.0)
+# curl -sL "https://github.com/mminichino/cbctl/releases/download/v0.7.0/cbctl_Darwin_arm64.tar.gz" | tar xz
 ```
 
 See [Releases](https://github.com/mminichino/cbctl/releases) for Linux, Windows, and other architectures. Asset URLs use `/releases/download/<tag>/...` (tag before the filename).
@@ -237,10 +237,87 @@ spec:
 - The whole manifest is validated and every `${...}` reference is resolved before any node is contacted. A problem exits 3 and applies nothing.
 - Applying again changes nothing that already matches (`[info] - ... no changes`). Existing buckets are left as they are; a different quota is a `[warning]`. An import into a collection that is not empty is skipped with a `[warning]`.
 - Nodes in the cluster that the manifest does not list are reported with a `[warning]` and left in place.
-- `--dry-run` validates and lists the steps without contacting any node.
+- `--dry-run` validates and lists the steps without contacting any node (a Capella document is planned against Capella, read-only). It exits 0 whether or not there are changes.
 - `-o json` prints one document (`apiVersion`, `dryRun`, `status`, `documents[]` with `steps[]`) on stdout; status lines go to stderr.
 - Documents run in order; the first failure stops the run, earlier documents stay applied, and the report lists the rest as `not-run`. Ctrl-C stops between steps (exit 130); run the command again to finish.
 - A `capella.yaml` is not a manifest: `apply` rejects a file without `kind`, and the `capella` commands reject a file that has one.
+
+A `CouchbaseCapella` manifest names the project, provider, region and either a `size` preset
+(`dev|small|medium|large`) or `serviceGroups`:
+
+```yaml
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: airline-ops-prod
+spec:
+  project: airline-demo
+  provider: aws
+  region: us-east-1
+  availability: multi
+  serviceGroups:
+    - services: [data]
+      nodes: 3
+      compute: { cpu: 8, ramGb: 32 }
+      disk: { type: gp3, sizeGb: 100, iops: 3000 }
+    - services: [index, query]
+      nodes: 2
+      compute: { cpu: 8, ramGb: 32 }
+  allowedCidrs:
+    - { cidr: 203.0.113.7, comment: build runner }
+  buckets:
+    - name: flights
+      memoryMb: 1024
+      scopes:
+        - name: ops
+          collections: [{ name: schedules }]
+      import:
+        - credential: loader          # needs write access and a password reference
+          scope: ops
+          collection: schedules
+          file: data/schedules.jsonl
+          keyField: flightId
+  credentials:
+    - name: loader
+      password: ${LOADER_PASSWORD}
+      access: { privileges: read+write, bucket: flights }
+```
+
+Units follow each product's API: Server uses `ramGiB` (GiB) and `quotaMiB` (MiB); Capella uses `ramGb`, `sizeGb` and `memoryMb`.
+
+| Field | Server | Capella |
+|---|---|---|
+| RAM | `ramGiB` (GiB) | `compute.ramGb` (GB) |
+| Disk | OS default | `disk.sizeGb` (GB), `disk.iops` |
+| Bucket memory | `quotaMiB` (MiB) | `memoryMb` (MB) |
+
+From Terraform, write the manifest with `yamlencode` and apply it from a `remote-exec` provisioner. Pass the
+password as `${base64:...}` so characters in it cannot break the YAML:
+
+```hcl
+locals {
+  couchbase_manifest = yamlencode({
+    apiVersion = "cbctl/v1"
+    kind       = "CouchbaseServer"
+    metadata   = { name = var.cluster_name }
+    spec = {
+      credentials = { password = "$${base64:${base64encode(local.password)}}" }
+      nodes       = [for ip in local.node_ips : { ipAddress = ip, primary = ip == local.primary_ip }]
+    }
+  })
+}
+
+provisioner "file" {
+  content     = local.couchbase_manifest
+  destination = "/tmp/couchbase.yaml"
+}
+
+provisioner "remote-exec" {
+  inline = ["chmod 600 /tmp/couchbase.yaml", "sudo /usr/local/bin/cbctl apply -f /tmp/couchbase.yaml", "rm -f /tmp/couchbase.yaml"]
+}
+```
+
+The full guide, with exit codes, secrets and dry-run, is [docs/manifests.md](docs/manifests.md).
 
 ## Multi-node / MDS (`cluster create`)
 
@@ -271,6 +348,22 @@ Rules:
 - Single-node without `--node`: use `--host` and optional `--alternate-address` / `-a` (`HOST` or `HOST;PORTMAP`).
 - With `--node`, do not use `--alternate-address`; put `#ALTERNATE` in each node spec.
 - `--ext-api`: management REST via alternate address; requires an alternate on at least one node. Primary connect host becomes the first node's alternate when set.
+
+## Output and color
+
+`--color auto|always|never` (all commands; default `auto`) controls ANSI color on the `[ok]`, `[warning]`, `[error]` and `[debug]` labels. Only the label word is styled, never the message. Each stream is decided on its own, in this order: `--color`, then `NO_COLOR` (non-empty: off), `TERM=dumb` (off), `CLICOLOR_FORCE` or `FORCE_COLOR` (set and not `0`: on; `FORCE_COLOR=0`: off), `CLICOLOR=0` (off), and otherwise on only when the stream is a terminal. Tables, `-o json` documents, `true`/`false`, `cluster map` and one-time passwords on stdout never carry color. `[ok]` and `[info]` lines go to stdout in text mode (stderr with `-o json`); warnings and errors go to stderr.
+
+| Label | Meaning | Color (SGR) | Stream |
+|---|---|---|---|
+| `[ok]` | A change was made or a check passed (`Cluster created on ...`, `Imported N documents`, `Apply complete in ...`) | bold green | stdout |
+| `[info]` | Status, progress and no-ops (`Cluster already configured`, `... accepted for cluster ...`) | none | stdout |
+| `[warning]` | Something to look at; the command went on | bold yellow | stderr |
+| `[error]` | The command failed; an action line follows (`  -> what to do`) | bold red | stderr |
+| `[debug]` | Shown with `--log-level debug` | dim | stderr |
+
+Off a color terminal (pipes, logs, `NO_COLOR`) output is plain ASCII: hint lines read `  -> action`, plan headers use `-`, changes that re-create read `+/-`, deferred ones `...`, and masked values `****`. On a color terminal they read `→`, `·`, `±`, `…` and `••••`.
+
+**Upgrading to 0.7.0.** Success lines that read `[info] - Cluster created on ...` now read `[ok] - Cluster created on ...` (same for `Bucket`, `Scope`, `Collection`, `Keyspace`, `Imported N documents`, `Node ... added`, `Cluster rebalanced`, `Cluster test passed`, `Apply complete`, `Wrote capella.yaml` and `Saved profile`). A script that greps for `[info] - Cluster created` should match on the exit code or `-o json` instead; `true`/`false` from `exists`, `Cluster already configured`, `Node already configured`, `Collection not empty` and generated passwords are unchanged.
 
 ## Capella
 
@@ -313,22 +406,6 @@ cbctl capella doctor            # offline: list what is left from capellactl (--
 `cbctl configure migrate` copies the profiles and keys for good (a profile that differs in cbctl is a conflict, exit 4, unless `--force`); keys are never printed. capellactl settings are only consulted when cbctl uses its default home (no `CBCTL_HOME`) or `CAPELLACTL_HOME` is set.
 
 **Saved passwords and git.** Generated passwords are written under the credentials directory (mode 0600). When that directory is inside a git work tree and not ignored, generating a password exits 4 before anything is created; add `.cbctl/` to `.gitignore` or pass `--force-overwrite-secret`. `init` and `sync` add `.cbctl/` to the `.gitignore` next to `capella.yaml` when it is in a git work tree.
-
-### Color
-
-`--color auto|always|never` (all commands; default `auto`) controls ANSI color on the `[ok]`, `[warning]`, `[error]` and `[debug]` labels. Only the label word is styled, never the message. Each stream is decided on its own, in this order: `--color`, then `NO_COLOR` (non-empty: off), `TERM=dumb` (off), `CLICOLOR_FORCE` or `FORCE_COLOR` (set and not `0`: on; `FORCE_COLOR=0`: off), `CLICOLOR=0` (off), and otherwise on only when the stream is a terminal. Tables, `-o json` documents, `true`/`false`, `cluster map` and one-time passwords on stdout never carry color. `[ok]` and `[info]` lines go to stdout in text mode (stderr with `-o json`); warnings and errors go to stderr.
-
-| Label | Meaning | Color (SGR) | Stream |
-|---|---|---|---|
-| `[ok]` | A change was made or a check passed (`Cluster created on ...`, `Imported N documents`, `Apply complete in ...`) | bold green | stdout |
-| `[info]` | Status, progress and no-ops (`Cluster already configured`, `... accepted for cluster ...`) | none | stdout |
-| `[warning]` | Something to look at; the command went on | bold yellow | stderr |
-| `[error]` | The command failed; an action line follows (`  -> what to do`) | bold red | stderr |
-| `[debug]` | Shown with `--log-level debug` | dim | stderr |
-
-Off a color terminal (pipes, logs, `NO_COLOR`) output is plain ASCII: hint lines read `  -> action`, plan headers use `-`, changes that re-create read `+/-`, deferred ones `...`, and masked values `****`. On a color terminal they read `→`, `·`, `±`, `…` and `••••`.
-
-**Upgrading to 0.7.0.** Success lines that read `[info] - Cluster created on ...` now read `[ok] - Cluster created on ...` (same for `Bucket`, `Scope`, `Collection`, `Keyspace`, `Imported N documents`, `Node ... added`, `Cluster rebalanced`, `Cluster test passed`, `Apply complete`, `Wrote capella.yaml` and `Saved profile`). A script that greps for `[info] - Cluster created` should match on the exit code or `-o json` instead; `true`/`false` from `exists`, `Cluster already configured`, `Node already configured`, `Collection not empty` and generated passwords are unchanged.
 
 ### Exit codes
 

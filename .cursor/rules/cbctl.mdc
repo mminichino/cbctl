@@ -13,6 +13,7 @@ Scope: Couchbase Server management (top-level commands) and Capella cloud manage
 cbctl cluster create --host 127.0.0.1 -u Administrator -p password --no-ssl
 cbctl cluster create --name my-cluster --ip-address 10.0.0.1 --external-ip-address 203.0.113.10 --services data,index,query,fts --server-group us-east-1a --data-path /data/couchbase -p password --no-ssl
 cbctl cluster join --rally-ip-address 10.0.0.1 --ip-address 10.0.0.2 --external-ip-address 203.0.113.11 --services data,index,query,fts --server-group us-east-1b --data-path /data/couchbase -p password --no-ssl
+cbctl cluster join --rally-ip-address 10.0.0.1 --ip-address 10.0.0.3 --arbiter --server-group us-east-1c -p password --no-ssl # arbiter: no services, Server 7.6+
 cbctl cluster add --rally-ip-address 10.0.0.1 --ip-address 10.0.0.2 -p password --no-ssl
 cbctl cluster rebalance --rally-ip-address 10.0.0.1 -p password --no-ssl
 cbctl cluster exists --host 127.0.0.1 -u Administrator -p password --no-ssl
@@ -116,7 +117,7 @@ cbctl capella janitor --prefix P [--older-than-hours H] [--max-total-minutes M] 
 # Keyspace
 cbctl keyspace create <bucket.scope.collection> --host 127.0.0.1 -u Administrator -p password --no-ssl
 
-# Manifests (cbctl/v1 YAML; kind CouchbaseServer)
+# Manifests (cbctl/v1 YAML; kind CouchbaseServer or CouchbaseCapella; guide: docs/manifests.md)
 cbctl apply -f FILE|-|DIR [--dry-run] [-o json] [-y]
 
 # Import
@@ -174,7 +175,7 @@ Two modes:
 Add one node to an existing cluster without rebalancing. `add` is an alias of `join`.
 
 Required: `--rally-ip-address`, `--ip-address` (or `--host`), `-p` / `--password`.
-Optional: `--external-ip-address`, `--services`, `--server-group`, `--data-path`, `--ram`, `-u`, `--ssl`/`--no-ssl`. `--ram` overrides the joining node's reported memory for quota sizing.
+Optional: `--arbiter` (no services, Server 7.6+; not with `--services`), `--external-ip-address`, `--services`, `--server-group`, `--data-path`, `--ram`, `-u`, `--ssl`/`--no-ssl`. `--ram` overrides the joining node's reported memory for quota sizing.
 
 Success: `Node <ip> added to cluster at <rally>`. Already a member: reconciles external address and server group, prints `Node already configured`, exits 0. Failure: stderr + exit 1.
 
@@ -272,11 +273,12 @@ Import JSON Lines into a keyspace.
 
 1. Prefer `cbctl` for Server cluster bootstrap, keyspace create/exists, connectivity test, and JSONL import.
 2. Treat `exists` output as boolean text (`true`/`false`), not JSON. Decide success by exit code; do not match `[info]` or `[ok]` label text.
-3. Treat “already configured” / “Collection not empty” as success (exit 0), not errors. Provisioner create/join still reconcile quotas, the external address, and the server group before that message; if reconciliation fails, the command exits 1.
+3. Treat “already configured” / “Collection not empty” (`[info]`) and success lines (`[ok]`) as success (exit 0), not errors. Provisioner create/join still reconcile quotas, the external address, and the server group before that message; if reconciliation fails, the command exits 1.
 4. For MDS or alternate networking, use node-spec syntax; do not invent Capella flags for Server commands.
 5. Do not assume index or Server destroy commands exist on `cbctl`, or Capella commands beyond those documented here.
 6. After provisioning, verify with `cluster test` (and `exists` where useful) before declaring success.
 7. Keep examples and scripts language-agnostic: show shell invocations of `cbctl`, not library internals.
 8. Prefer `keyspace create` when provisioning bucket+scope+collection together; use individual create commands only when one resource is needed.
-9. For Terraform-style multi-node bootstrap, use provisioner `cluster create` → `cluster join`/`add` per extra node → `cluster rebalance`. Prefer REST-targeted IPs (`--ip-address` / `--rally-ip-address`) so the same commands work remotely or on-node.
+9. For Terraform-style multi-node bootstrap, use provisioner `cluster create` → `cluster join`/`add` per extra node → `cluster rebalance`. Prefer REST-targeted IPs (`--ip-address` / `--rally-ip-address`) so the same commands work remotely or on-node. Alternatively write one `CouchbaseServer` manifest and run `cbctl apply -f` (password as `${base64:...}`, see `docs/manifests.md`).
 10. Never use the deprecated Capella commands; use their replacements.
+11. Use `cbctl apply -f` for a self-contained `kind:` manifest (one cluster per document); use `cbctl capella apply -c capella.yaml` for a Capella estate. Run `apply -f --dry-run` first; it exits 0 with or without changes. `apply` never rotates a credential password and never deletes; use `capella credential update --rotate-password` to rotate.

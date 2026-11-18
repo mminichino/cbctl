@@ -470,7 +470,7 @@ These are the decisions that differ from, or complete, the original text. The nu
 | C14 | The global output and confirmation flags are accepted next to `-f`. |
 | C15 | `spec.wait.timeout` is the only timeout; `apply` has no `--timeout`. |
 | C16 | `${base64:…}` is accepted in manifests only, not in `capella.yaml`. |
-| C17 | `--dry-run` validates, and for Capella plans (exit 2 when there are changes), if the flag is adopted for 0.7.0. |
+| C17 | `--dry-run` is adopted in 0.7.0. It validates; `CouchbaseServer` lists its steps without contacting a node, and `CouchbaseCapella` plans against Capella (reads only). It exits 0 when the manifest is valid, with or without changes (it does not use the `plan --detailed-exitcode` code 2); a blocked plan exits 4. |
 | C18 | Presence semantics: a field that is absent from the manifest leaves the value of an existing cluster alone. Defaults (including `deletionProtection: false` and an empty `description`) apply on create only. This deliberately differs from the original defaults column. |
 | C19 | Imports without `keyField` use generated keys, as `cbctl import` does; after a partial failure, empty the collection to reload. |
 | C20 | `spec.tls.caFile` is an optional additive field; without it the system trust store is used. |

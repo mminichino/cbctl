@@ -38,3 +38,11 @@ project: if both manage the same project, each sees the other's changes as drift
   never delete them.
 
 <!-- ported-from: capellactl@6389d5a docs/terraform.md · rules v1 -->
+
+## Manifests and Terraform
+
+For a single cluster that Terraform already creates (Couchbase Server on EC2 instances, for example) you do not
+need `capella.yaml`: write a `kind: CouchbaseServer` manifest with `yamlencode`, and run `cbctl apply -f` from a
+`remote-exec` provisioner. A `kind: CouchbaseCapella` manifest does the same for one Capella cluster, in memory
+and without a state file. See [../manifests.md](../manifests.md) for both kinds, secrets (`${base64:...}` for
+generated passwords), dry run and exit codes. `capella.yaml` stays the tool for a whole estate.
