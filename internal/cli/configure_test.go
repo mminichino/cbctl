@@ -15,6 +15,7 @@ import (
 )
 
 func TestConfigureSaveAndShow(t *testing.T) {
+	isolatePrinter(t)
 	redact.Reset()
 	t.Cleanup(redact.Reset)
 
@@ -102,6 +103,7 @@ func TestConfigureSaveAndShow(t *testing.T) {
 }
 
 func TestConfigureShowJSONRedacts(t *testing.T) {
+	isolatePrinter(t)
 	redact.Reset()
 	t.Cleanup(redact.Reset)
 	t.Setenv("CAPELLA_API_KEY", "env-secret-zzzz")
@@ -128,6 +130,7 @@ func TestConfigureShowJSONRedacts(t *testing.T) {
 }
 
 func TestConfigureShowConfigFileSource(t *testing.T) {
+	isolatePrinter(t)
 	redact.Reset()
 	t.Cleanup(redact.Reset)
 	home := t.TempDir()
