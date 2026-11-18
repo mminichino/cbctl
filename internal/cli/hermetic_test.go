@@ -125,8 +125,6 @@ func TestHermeticGrep(t *testing.T) {
 	allowAll("internal/cli/run.go", "process entry")
 	allowAll("internal/cli/root.go", "process entry")
 	allowAll("internal/settings/osenv.go", "settings.ProcessEnv / ApplyEnv / ProcessGetwd adapter")
-	allow[exception{"internal/redact/tty.go", "os.Getenv"}] = "NO_COLOR decides the mask glyph; injectable via unicodeMask"
-	allow[exception{"internal/redact/tty.go", "os.Stdout"}] = "terminal check decides the mask glyph; injectable via unicodeMask"
 	allow[exception{"internal/capella/random.go", "time.Now()"}] = "seeds the random-name generator; not a wait"
 	allow[exception{"internal/capellaapi/client.go", "time.Now()"}] = "seeds retry jitter and times requests for debug logs; waits use the injected clock"
 

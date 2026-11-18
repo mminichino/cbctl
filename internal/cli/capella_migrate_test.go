@@ -181,7 +181,7 @@ func TestConfigureMigrateCommand(t *testing.T) {
 	// A cbctl profile that differs is a conflict (exit 4) and is left alone.
 	lf.write(filepath.Join(lf.legacy, "profiles.yaml"), "profiles:\n  prod:\n    organizationId: changed\n")
 	stdout, stderr, code = lf.run("configure", "migrate")
-	if code != int(ExitBlocked) || !strings.Contains(stdout, "conflict: profile prod") {
+	if code != int(ExitBlocked) || !strings.Contains(stderr, "[warning] - conflict: profile prod") {
 		t.Fatalf("conflict: exit %d\n%s\n%s", code, stdout, stderr)
 	}
 	if p, _ := settings.LoadProfile("prod", func(string) string { return "" }, lf.home); p.OrganizationID != f.OrgID {
@@ -398,6 +398,8 @@ func TestMigrationEndToEndDoctorClean(t *testing.T) {
 	// The capellactl keychain and profiles may now go away entirely.
 	lf.lkr = settings.NewMemKeyring()
 	lf.legacy = t.TempDir()
+	delete(lf.env, "CAPELLACTL_QUIET")
+	delete(lf.env, "CBCTL_QUIET") // quiet hides the [ok] line this step looks for
 	stdout, stderr, code := lf.run("capella", "doctor", "--detailed-exitcode")
 	if code != 0 || !strings.Contains(stdout, "No capellactl leftovers") {
 		t.Fatalf("doctor after the steps: exit %d\n%s\n%s", code, stdout, stderr)

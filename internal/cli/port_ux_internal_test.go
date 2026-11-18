@@ -77,7 +77,7 @@ func TestMessages_CAP063_AC2_TransportAndUnexpected(t *testing.T) {
 	if code := HandleError(errors.New("something odd happened")); code != ExitError {
 		t.Fatalf("exit = %d", code)
 	}
-	want := "[error] - something odd happened\n  → " + unexpectedErrorAction + "\n"
+	want := "[error] - something odd happened\n  -> " + unexpectedErrorAction + "\n"
 	if buf.String() != want {
 		t.Fatalf("got %q, want %q", buf.String(), want)
 	}

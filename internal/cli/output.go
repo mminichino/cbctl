@@ -3,19 +3,20 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/output"
+	"github.com/mminichino/cbctl/internal/redact"
 	"github.com/spf13/cobra"
 )
 
 // colorFlag is the name of the persistent root flag that picks the color mode.
 const colorFlag = "color"
 
-// glyphPolicy is how cli picks arrows. It stays Unicode until every arrow and symbol in the
-// output goes through internal/output (0.7.0 phase P6), so one stream never mixes "→" and "->".
-// Then it becomes output.GlyphsByColor: Unicode on a color terminal, ASCII elsewhere.
-const glyphPolicy = output.GlyphsUnicode
+// glyphPolicy is how cli picks arrows and symbols: Unicode on a stream that gets color, ASCII
+// elsewhere (pipes, logs), so captured output is plain ASCII.
+const glyphPolicy = output.GlyphsByColor
 
 // newDecider returns the color decider of an invocation: its environment and terminal check,
 // with the mode from --color.
@@ -85,7 +86,8 @@ func outputDecider() output.Decider { return logging.Current().Decider() }
 // writeLabeled writes "[kind] - text" to w, colored when the current invocation colors w. The
 // text is redacted.
 func writeLabeled(w io.Writer, kind, format string, a ...any) {
-	output.WriteLine(outputDecider(), w, kind, fmt.Sprintf(format, a...))
+	text := outGlyphs(w).Localize(fmt.Sprintf(format, a...))
+	output.WriteLine(outputDecider(), w, kind, text)
 }
 
 // writeAction writes the "  → action" hint line to w. An empty action writes nothing.
@@ -96,4 +98,36 @@ func writeAction(w io.Writer, action string) {
 // writeNotice writes "[warning] - what" and its hint line to w.
 func writeNotice(w io.Writer, what, action string) {
 	output.WriteNotice(outputDecider(), glyphPolicy, w, what, action)
+}
+
+// writeProse writes one plain line to w: prompt context, menus, confirmation details and other
+// text that is neither a labeled message nor command data. It is redacted but never styled, so
+// every non-labeled write in cli goes through here and secrets cannot slip past the redactor.
+func writeProse(w io.Writer, format string, a ...any) {
+	text := outGlyphs(w).Localize(fmt.Sprintf(format, a...))
+	_, _ = io.WriteString(w, redact.String(text)+"\n")
+}
+
+// writePrompt writes prompt text to w without a newline, so the answer is typed after it.
+func writePrompt(w io.Writer, format string, a ...any) {
+	text := outGlyphs(w).Localize(fmt.Sprintf(format, a...))
+	_, _ = io.WriteString(w, redact.String(text))
+}
+
+// writeDocument writes a generated document (a capella.yaml, guide text) to w with exactly one
+// trailing newline. It is not redacted: documents only ever carry ${VAR} references, and
+// redacting could change the bytes of a file that is meant to be written back unchanged.
+func writeDocument(w io.Writer, text string) {
+	_, _ = io.WriteString(w, strings.TrimRight(text, "\n")+"\n")
+}
+
+// outGlyphs is the glyph set for text written to w: Unicode where w gets color, ASCII elsewhere.
+func outGlyphs(w io.Writer) output.Glyphs {
+	return logging.Current().GlyphsFor(w)
+}
+
+// stdoutGlyphs is the glyph set for the current invocation's stdout.
+func stdoutGlyphs() output.Glyphs {
+	out, _ := logging.Outputs()
+	return outGlyphs(out)
 }

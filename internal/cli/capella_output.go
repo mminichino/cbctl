@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -35,6 +34,7 @@ func newRenderer(out, errOut io.Writer, jsonMode, quiet bool) Renderer {
 	return output.NewRenderer(out, errOut, jsonMode, quiet, output.RenderOptions{
 		Env:    DefaultDeps().Env,
 		IsTerm: terminalCheck,
+		Glyphs: outGlyphs(out),
 	})
 }
 
@@ -94,7 +94,7 @@ func confirm(rt *runtime, question string) (bool, error) {
 	if p := prompterFor(rt); p != nil {
 		return p.Confirm(question, false)
 	}
-	fmt.Fprintf(errOut, "%s [y/N]: ", question)
+	writePrompt(errOut, "%s [y/N]: ", question)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {
 		return false, nil

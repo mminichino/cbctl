@@ -86,11 +86,11 @@ func TestConfigErrors_CAP062_AC5_ReaskProviderAndSize(t *testing.T) {
 		"Cluster name: Cloud provider (aws, gcp, azure) [aws]: ",
 		"[error] - This change is not valid, so nothing was changed:\n",
 		"singleNode clusters must use availability: single\n",
-		"  → Please try again: choose the cloud provider and size again.\nCloud provider (aws, gcp, azure) [aws]: Size")
+		"  -> Please try again: choose the cloud provider and size again.\nCloud provider (aws, gcp, azure) [aws]: Size")
 	if n := strings.Count(r.Stderr, "Cluster name:"); n != 1 {
 		t.Errorf("name asked %d times, want 1", n)
 	}
-	wantContains(t, r.Stdout, "  + cluster nova-dev-03  aws us-east-1 · multi-AZ · 3 × 4 vCPU/16 GB")
+	wantContains(t, r.Stdout, "  + cluster nova-dev-03  aws us-east-1 - multi-AZ - 3 × 4 vCPU/16 GB")
 	wantContains(t, s.ReadFile("capella.yaml"), "name: nova-dev-03")
 	posts := s.Fake.Calls("POST", "/v4/organizations/*/projects/*/clusters")
 	if len(posts) != 1 {
@@ -113,7 +113,7 @@ func TestCLI_CAP006_AC6_PrintsMessageAndHint(t *testing.T) {
 	r := s.Run("capella", "apply", "--yes")
 	wantExit(t, r, cli.ExitError)
 	wantContains(t, r.Stderr, "[error] - Failed: cluster envclu: ", "422 The requested CIDR is not available.",
-		"\n  → Fix the problem, then run the command again; completed changes are not repeated.")
+		"\n  -> Fix the problem, then run the command again; completed changes are not repeated.")
 }
 
 // TestHelp_CAP034_AC5_ValidationErrorHasTopic: a validation error names the guide topic that
@@ -137,8 +137,8 @@ func TestMessages_CAP063_AC3_Warnings(t *testing.T) {
 	writeCapellaYAML(t, s, base+uxWarnDoc)
 	v := mustScenario(t, s.Run("capella", "validate"))
 	wantContains(t, v.Stderr,
-		"[warning] - project envproj › cluster envclu › allowed IP range 198.51.100.0/24 › expiresAt (line 26): expiresAt is in the past, so Capella will remove this IP range\n  → Run 'cbctl capella cidr delete envclu 198.51.100.0/24' to remove it now, or set a later expiresAt.\n",
-		"[warning] - project envproj › cluster envclu › credential ops_ro › access[0] (line 30): grants access to ALL buckets\n  → If that is not intended, limit the access to one bucket with 'cbctl capella credential update envclu ops_ro --bucket BUCKET'.\n")
+		"[warning] - project envproj › cluster envclu › allowed IP range 198.51.100.0/24 › expiresAt (line 26): expiresAt is in the past, so Capella will remove this IP range\n  -> Run 'cbctl capella cidr delete envclu 198.51.100.0/24' to remove it now, or set a later expiresAt.\n",
+		"[warning] - project envproj › cluster envclu › credential ops_ro › access[0] (line 30): grants access to ALL buckets\n  -> If that is not intended, limit the access to one bucket with 'cbctl capella credential update envclu ops_ro --bucket BUCKET'.\n")
 	p := mustScenario(t, s.Run("capella", "plan"))
 	if strings.TrimSpace(p.Stderr) != "[warning] - 2 warnings; run 'cbctl capella validate' to see them" {
 		t.Errorf("plan stderr = %q", p.Stderr)

@@ -20,7 +20,7 @@ func TestClusterDelete_CAP014_AC3_ListsBucketsInConfirmation(t *testing.T) {
 	s.TTY(true)
 	s.Answers("envclu")
 	r := mustScenario(t, s.Run("capella", "cluster", "delete", "envclu"), "delete")
-	wantContains(t, r.Stdout, "· 2 buckets", "buckets deleted with the cluster: events, orders")
+	wantContains(t, r.Stdout, "- 2 buckets", "buckets deleted with the cluster: events, orders")
 	clitest.AssertWrites(t, s.Fake, "DELETE /v4/organizations/*/projects/*/clusters/"+cid)
 }
 

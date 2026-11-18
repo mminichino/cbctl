@@ -57,7 +57,7 @@ func TestSchedule_CAP020_AC3_CreateWhenMissing(t *testing.T) {
 	s, base := uxApplied(t, "")
 	writeCapellaYAML(t, s, base+hib)
 	r := mustScenario(t, s.Run("capella", "plan"))
-	wantContains(t, r.Stdout, "  + schedule envclu  US/Pacific · Mon–Thu 08:00–18:00 · Fri 08:00–14:30 · Sat–Sun off\n")
+	wantContains(t, r.Stdout, "  + schedule envclu  US/Pacific - Mon–Thu 08:00–18:00 - Fri 08:00–14:30 - Sat–Sun off\n")
 	mustScenario(t, s.Run("capella", "apply", "--yes"))
 	writes := s.Fake.Writes()
 	if len(writes) != 1 || writes[0].Method != "POST" || !strings.HasSuffix(writes[0].Path, "/onOffSchedule") {
@@ -77,7 +77,7 @@ func TestSchedule_CAP020_AC4_UpdateFullBodyMinimalDiff(t *testing.T) {
 	s.Fake.ResetCalls()
 	writeCapellaYAML(t, s, base+hib)
 	r := mustScenario(t, s.Run("capella", "plan"))
-	wantContains(t, r.Stdout, "  ~ schedule envclu\n      friday:  \"08:00–18:00\" → \"08:00–14:30\"\n\nPlan: 0 to add, 1 to change")
+	wantContains(t, r.Stdout, "  ~ schedule envclu\n      friday:  \"08:00–18:00\" -> \"08:00–14:30\"\n\nPlan: 0 to add, 1 to change")
 	mustScenario(t, s.Run("capella", "apply", "--yes"))
 	writes := s.Fake.Writes()
 	if len(writes) != 1 || writes[0].Method != "PUT" {
@@ -145,7 +145,7 @@ func uxSynced(t *testing.T) *clitest.Scenario {
 func TestSchedule_CAP020_AC3_SetRecordsAndCreates(t *testing.T) {
 	s := uxSynced(t)
 	r := mustScenario(t, s.Run(append(uxScheduleSet, "--friday", "08:00-14:30")...))
-	wantContains(t, r.Stdout, "  + schedule envclu  US/Pacific · Mon–Thu 08:00–18:00 · Fri 08:00–14:30 · Sat–Sun off")
+	wantContains(t, r.Stdout, "  + schedule envclu  US/Pacific - Mon–Thu 08:00–18:00 - Fri 08:00–14:30 - Sat–Sun off")
 	wantContains(t, r.Stderr, "capella.yaml updated")
 	wantContains(t, s.ReadFile("capella.yaml"), "        hibernation:\n          timezone: US/Pacific\n          weekdays: 08:00-18:00\n          weekend: \"off\"\n          friday: 08:00-14:30\n")
 	if n := len(s.Fake.Writes()); n != 1 {
@@ -200,7 +200,7 @@ func TestSchedulePause_CAP021_AC6_PausedAfterCreate(t *testing.T) {
 	s, base := uxApplied(t, "")
 	writeCapellaYAML(t, s, base+hib+"      paused: true\n")
 	r := mustScenario(t, s.Run("capella", "plan"))
-	wantContains(t, r.Stdout, "Sat–Sun off · paused")
+	wantContains(t, r.Stdout, "Sat–Sun off - paused")
 	mustScenario(t, s.Run("capella", "apply", "--yes"))
 	var got []string
 	for _, c := range s.Fake.Writes() {

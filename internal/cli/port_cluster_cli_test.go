@@ -56,7 +56,7 @@ func TestClusterCreate_CAP038_AC1_InteractiveDeploys(t *testing.T) {
 	r := ttyRun(t, s, "\n\n\n\n\n\n", "capella", "cluster", "create", "dev-02")
 	mustScenario(t, r, "wizard create")
 	wantContains(t, r.Stderr+r.Stdout, "Cluster type (free, provisioned) [provisioned]", "Cloud provider (aws, gcp, azure) [aws]", "Region [us-east-1]", "Size (",
-		"Network CIDR [10.0.16.0/24]", "+ cluster dev-02  aws us-east-1 · multi-AZ · 3 × 4 vCPU/16 GB", "cluster dev-02: healthy",
+		"Network CIDR [10.0.16.0/24]", "+ cluster dev-02  aws us-east-1 - multi-AZ - 3 × 4 vCPU/16 GB", "cluster dev-02: healthy",
 		"connectionString (dev-02)")
 	if n := len(s.Fake.Calls("POST", "/v4/organizations/*/projects/*/clusters")); n != 1 {
 		t.Errorf("cluster POSTs = %d, want 1", n)

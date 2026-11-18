@@ -155,6 +155,7 @@ func newRunContext(rt *runtime, cfg *capellafile.Config) *plan.RunContext {
 	rc.Timeout = rt.Timeout
 	rc.NoWait = rt.NoWait
 	rc.Env = envFrom(rt.cmd)
+	rc.Glyphs = outGlyphs(rt.errOut())
 	pw := output.NewProgress(rt.errOut(), rt.Quiet, ttyCheck(rt.errOut()) && output.ProgressAllowed(rc.Env))
 	rc.Progress = pw.Line
 	rc.ProgressInline = pw.Inline
@@ -200,7 +201,7 @@ func planHeader(cfg *capellafile.Config, orgID string) string {
 	if len(names) == 1 {
 		label = "Project " + names[0]
 	}
-	return fmt.Sprintf("%s · organization %s", label, orgID)
+	return fmt.Sprintf("%s %s organization %s", label, stdoutGlyphs().Dot, orgID)
 }
 
 func (e *envRuntime) header() string { return planHeader(e.Cfg, e.Client.OrgID()) }
@@ -263,7 +264,7 @@ func confirmTypedFunc(rt *runtime, prompt, notes string, check func(typed string
 	}
 	out := rt.errOut()
 	if notes != "" {
-		fmt.Fprintln(out, notes)
+		writeProse(out, "%s", notes)
 	}
 	if p := prompterFor(rt); p != nil {
 		typed, err := p.Ask(prompt, "")
@@ -272,7 +273,7 @@ func confirmTypedFunc(rt *runtime, prompt, notes string, check func(typed string
 		}
 		return check(strings.TrimSpace(typed)), nil
 	}
-	fmt.Fprintf(out, "%s: ", prompt)
+	writePrompt(out, "%s: ", prompt)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {
 		return false, nil

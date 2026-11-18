@@ -77,7 +77,7 @@ func TestHandleErrorConfigError(t *testing.T) {
 	want := "[error] - capella.yaml has 2 problems:\n" +
 		"  apiVersion (line 1)\n    missing required field 'apiVersion'\n" +
 		"  project p › cluster c › support.plan (line 11)\n    must be one of: basic\n    action: pick one\n" +
-		"  → " + capellafile.FixProblems + "\n"
+		"  -> " + capellafile.FixProblems + "\n"
 	if buf.String() != want {
 		t.Errorf("stderr =\n%q\nwant\n%q", buf.String(), want)
 	}

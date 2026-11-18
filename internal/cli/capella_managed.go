@@ -14,6 +14,7 @@ import (
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -100,7 +101,7 @@ func ChangeAndApply(ctx context.Context, e *envRuntime, ed *capellafile.Editor, 
 		return nil, nil
 	}
 	if !e.JSON {
-		e.Out.Line("%s", plan.RenderPlanText(p, e.header(), e.Quiet))
+		e.Out.Line("%s", plan.RenderPlanText(p, e.header(), e.Quiet, stdoutGlyphs()))
 		for _, l := range m.AfterPlan {
 			e.Out.Line("%s", l)
 		}
@@ -490,10 +491,10 @@ func removeProjectFromFile(cmd *cobra.Command, ed *capellafile.Editor, name stri
 	}
 	g, _ := readGlobals(cmd)
 	if !g.Quiet && backup != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s updated: removed project %s (previous version kept as %s)\n", file, name, filepath.Base(backup))
+		writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "%s updated: removed project %s (previous version kept as %s)", file, name, filepath.Base(backup))
 	}
 	if announce && g.Output != "json" {
-		fmt.Fprintf(cmd.OutOrStdout(), "Removed project %s from %s. Capella still has it; delete it with 'cbctl capella project delete %s --direct'.\n", name, file, name)
+		logging.Success("Removed project %s from %s. Capella still has it; delete it with 'cbctl capella project delete %s --direct'.", name, file, name)
 	}
 	return nil
 }

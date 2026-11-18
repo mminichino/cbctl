@@ -99,7 +99,7 @@ func (e *envRuntime) printPlan(p *plan.Plan) {
 		e.Out.Object(plan.RenderPlanJSON(p))
 		return
 	}
-	e.Out.Line("%s", plan.RenderPlanText(p, e.header(), e.Quiet))
+	e.Out.Line("%s", plan.RenderPlanText(p, e.header(), e.Quiet, stdoutGlyphs()))
 }
 
 // ---- apply -----------------------------------------------------------------------------------
@@ -172,7 +172,7 @@ func applyPlan(e *envRuntime, p *plan.Plan, o applyOptions) error {
 	}
 	if !o.Shown {
 		if !e.JSON {
-			e.Out.Line("%s", plan.RenderPlanText(p, e.header(), e.Quiet))
+			e.Out.Line("%s", plan.RenderPlanText(p, e.header(), e.Quiet, stdoutGlyphs()))
 			e.Out.Line("")
 		}
 		cancelled, err := e.confirmApply(p)
@@ -239,7 +239,7 @@ func (e *envRuntime) printNoChanges(p *plan.Plan) {
 	}
 	if len(deferred) > 0 {
 		for _, a := range deferred {
-			for _, l := range plan.ActionLines(a) {
+			for _, l := range plan.ActionLines(a, stdoutGlyphs()) {
 				e.Out.Line("%s", l)
 			}
 		}
@@ -274,7 +274,7 @@ func (e *envRuntime) confirmApply(p *plan.Plan) (cancelled bool, err error) {
 			n++
 		}
 	}
-	say := func(format string, a ...any) { fmt.Fprintf(e.errOut(), format+"\n", a...) }
+	say := func(format string, a ...any) { writeProse(e.errOut(), format, a...) }
 	if len(destructive) > 0 {
 		say("Destructive changes:")
 		for _, a := range destructive {
@@ -324,7 +324,7 @@ func truthyData(v any) bool {
 func (e *envRuntime) confirmDataDelete(a *plan.Action) (bool, error) {
 	lines := e.dataDeleteLines(a)
 	for _, l := range lines {
-		fmt.Fprintf(e.errOut(), "  %s\n", l)
+		writeProse(e.errOut(), "  %s", l)
 	}
 	name := ""
 	if a.Observed != nil {
@@ -656,7 +656,7 @@ func runDestroy(e *envRuntime, discard bool) error {
 	if e.JSON {
 		e.Out.Object(plan.RenderPlanJSON(deletes))
 	} else {
-		e.Out.Line("%s", plan.RenderPlanText(deletes, e.header(), e.Quiet))
+		e.Out.Line("%s", plan.RenderPlanText(deletes, e.header(), e.Quiet, stdoutGlyphs()))
 		e.Out.Line("")
 		for _, l := range kept {
 			e.Out.Line("%s", l)
@@ -709,7 +709,7 @@ func runDestroy(e *envRuntime, discard bool) error {
 			Action:  "Fix the problem, then run 'cbctl capella destroy' again; what is already deleted is skipped."}
 	}
 	for _, l := range kept {
-		fmt.Fprintln(e.errOut(), l)
+		writeProse(e.errOut(), "%s", l)
 	}
 	unpinDeleted(e, result.Actions)
 	if e.JSON {
@@ -942,7 +942,7 @@ func runDrift(e *envRuntime, detailed bool) error {
 			e.Out.Line("")
 			e.Out.Line("%s", s.title)
 			for _, a := range s.items {
-				for _, l := range plan.ActionLines(a) {
+				for _, l := range plan.ActionLines(a, stdoutGlyphs()) {
 					e.Out.Line("%s", l)
 				}
 			}

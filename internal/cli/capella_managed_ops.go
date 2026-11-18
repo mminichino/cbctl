@@ -13,6 +13,8 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
+	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/mminichino/cbctl/internal/resources"
@@ -242,7 +244,7 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 				return err
 			}
 			if g.Output != "json" {
-				fmt.Fprintf(cmd.OutOrStdout(), "Removed %s from %s. Capella still has it.\n", label, file)
+				logging.Success("Removed %s from %s. Capella still has it.", label, file)
 			}
 			return nil
 		}
@@ -251,7 +253,7 @@ func managedDelete(direct func(*cobra.Command, []string) error, spec deleteSpec)
 			if !errorAsCLI(err, &ce) || ce.Code != ExitConfigInvalid || !strings.Contains(ce.Message, "not found") {
 				return err
 			}
-			fmt.Fprintf(cmd.ErrOrStderr(), "%s is not in Capella; removing it from %s\n", label, file)
+			writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "%s is not in Capella; removing it from %s", label, file)
 		} else if cmd.Annotations[cancelledAnnotation] != "" {
 			return nil
 		}
@@ -275,7 +277,7 @@ func removeFromFile(cmd *cobra.Command, ed *capellafile.Editor, spec deleteSpec,
 	}
 	g, _ := readGlobals(cmd)
 	if !g.Quiet && backup != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s updated: removed %s (previous version kept as %s)\n",
+		writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "%s updated: removed %s (previous version kept as %s)",
 			filepath.Base(ed.Path), spec.label(args), filepath.Base(backup))
 	}
 	return nil
@@ -494,7 +496,7 @@ func managedBucketAdd(cmd *cobra.Command, args []string, env *envRuntime, ed *ca
 	// later update could not set the storage backend or type.
 	finish := recordedButMissingBucket(cmd, args, env, ed)
 	if finish {
-		fmt.Fprintf(cmd.ErrOrStderr(), "bucket %s is in %s but not in Capella yet (an earlier run did not finish); creating it now\n",
+		writeLabeled(cmd.ErrOrStderr(), output.KindInfo, "bucket %s is in %s but not in Capella yet (an earlier run did not finish); creating it now",
 			name, fileName(ed))
 	}
 	return Mutation{

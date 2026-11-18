@@ -144,7 +144,7 @@ func (rt *runtime) waitBackupStatus(label string, done, failed map[string]bool, 
 	state, err := engine.WaitForStatus(rt.Ctx, func(context.Context) (string, error) { return read() }, done, failed, rt.Timeout, rt.Clock, label, hooks)
 	pw.Close()
 	if err != nil && rt.Ctx.Err() != nil {
-		fmt.Fprintln(rt.errOut(), "the operation continues in Capella")
+		writeLabeled(rt.errOut(), output.KindInfo, "the operation continues in Capella")
 	}
 	return state, err
 }

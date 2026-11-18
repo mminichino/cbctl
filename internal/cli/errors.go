@@ -141,7 +141,7 @@ func HandleError(err error) ExitCode {
 			printAction(cliErr.Action)
 			return ExitInterrupted
 		}
-		fmt.Fprintln(errorOut())
+		_, _ = io.WriteString(errorOut(), "\n") // end the line the terminal echoed ^C on
 		return ExitInterrupted
 	}
 

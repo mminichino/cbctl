@@ -109,7 +109,7 @@ func (rt *runtime) runPower(p *capellaapi.Project, cl *capellaapi.Cluster, on, w
 				"cluster %s is %s; it can be turned %s only when it is %s", cl.Name, current, powerWord(on), need)
 		}
 		if !on && ask && attempt == 1 {
-			fmt.Fprintln(rt.errOut(), powerOffNotes)
+			writeProse(rt.errOut(), "%s", powerOffNotes)
 			ok, err := confirm(rt, fmt.Sprintf("Turn off cluster %s?", cl.Name))
 			if err != nil {
 				return err

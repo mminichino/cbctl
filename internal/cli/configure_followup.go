@@ -129,7 +129,7 @@ func askYesNo(cmd *cobra.Command, in *bufio.Reader, question string, def bool) b
 	if def {
 		hint = "[Y/n]"
 	}
-	fmt.Fprintf(stderrFrom(cmd), "%s %s: ", question, hint)
+	writePrompt(stderrFrom(cmd), "%s %s: ", question, hint)
 	line, err := in.ReadString('\n')
 	if err != nil && line == "" {
 		return def

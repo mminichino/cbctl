@@ -133,7 +133,7 @@ func lookupFlag(c *cobra.Command, tok string) *pflag.Flag {
 }
 
 // checkExample reports what is wrong with one example invocation: an unknown subcommand or a flag
-// the command does not have. Positional placeholders (NAME, <cluster>, …) are not checked.
+// the command does not have. Positional placeholders (NAME, <cluster>, ...) are not checked.
 func checkExample(root *cobra.Command, line string) string {
 	toks := quotedArg.FindAllString(line, -1)[1:] // drop "cbctl"
 	cur := root

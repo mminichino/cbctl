@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/mminichino/cbctl/internal/logging"
 	"github.com/mminichino/cbctl/internal/settings"
 )
 
@@ -101,7 +102,7 @@ func runConfigureMigrate(cmd *cobra.Command, f *migrateFlags) error {
 			return err
 		}
 	} else {
-		printMigration(cmd, rep)
+		printMigration(rep)
 	}
 	if len(rep.Conflicts) > 0 {
 		return &CLIError{Code: ExitBlocked, Message: fmt.Sprintf("%d profile(s) conflict with cbctl's; nothing was written for them", len(rep.Conflicts)),
@@ -110,15 +111,16 @@ func runConfigureMigrate(cmd *cobra.Command, f *migrateFlags) error {
 	return nil
 }
 
-func printMigration(cmd *cobra.Command, rep *settings.MigrationReport) {
-	out := cmd.OutOrStdout()
+func printMigration(rep *settings.MigrationReport) {
 	if rep.Nothing() {
-		fmt.Fprintf(out, "nothing to migrate from %s\n", rep.From)
+		logging.Info("nothing to migrate from %s", rep.From)
 		return
 	}
+	imported := logging.Success
 	verb := "imported"
 	if rep.DryRun {
 		verb = "would import"
+		imported = logging.Info // a dry run changes nothing, so it is not a success to report
 	}
 	missing := map[string]bool{}
 	for _, n := range rep.KeyMissing {
@@ -129,10 +131,10 @@ func printMigration(cmd *cobra.Command, rep *settings.MigrationReport) {
 		if missing[n] {
 			note = fmt.Sprintf(" (without its API key; run 'cbctl configure --profile %s --api-key-stdin')", n)
 		}
-		fmt.Fprintf(out, "%s profile %s%s\n", verb, n, note)
+		imported("%s profile %s%s", verb, n, note)
 	}
 	for _, n := range rep.Skipped {
-		fmt.Fprintf(out, "skipped profile %s (already in cbctl)\n", n)
+		logging.Info("skipped profile %s (already in cbctl)", n)
 	}
 	names := make([]string, 0, len(rep.Conflicts))
 	for n := range rep.Conflicts {
@@ -140,9 +142,9 @@ func printMigration(cmd *cobra.Command, rep *settings.MigrationReport) {
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		fmt.Fprintf(out, "conflict: profile %s: %s\n", n, rep.Conflicts[n])
+		logging.Warning("conflict: profile %s: %s", n, rep.Conflicts[n])
 	}
 	if len(rep.Removed) > 0 {
-		fmt.Fprintf(out, "removed from capellactl: %s\n", strings.Join(rep.Removed, ", "))
+		logging.Success("removed from capellactl: %s", strings.Join(rep.Removed, ", "))
 	}
 }

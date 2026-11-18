@@ -250,9 +250,9 @@ func TestPrintHelpersFollowTheStream(t *testing.T) {
 		{"printError", false, func(w io.Writer) { writeLabeled(w, output.KindError, "failed with %s", secret) },
 			ansiErr + " - failed with " + redact.String(secret) + "\n", "[error] - failed with " + redact.String(secret) + "\n"},
 		{"printAction", false, func(w io.Writer) { writeAction(w, "Try again.") },
-			"  → Try again.\n", "  → Try again.\n"}, // Unicode until P6 (glyphPolicy)
+			"  → Try again.\n", "  -> Try again.\n"}, // ASCII off a color terminal (GlyphsByColor)
 		{"printNotice", false, func(w io.Writer) { printNotice(w, "no key", "Run configure.") },
-			ansiWarn + " - no key\n  → Run configure.\n", "[warning] - no key\n  → Run configure.\n"},
+			ansiWarn + " - no key\n  → Run configure.\n", "[warning] - no key\n  -> Run configure.\n"},
 		{"printNotice without action", false, func(w io.Writer) { printNotice(w, "no key", "") },
 			ansiWarn + " - no key\n", "[warning] - no key\n"},
 	}

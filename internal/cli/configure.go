@@ -13,6 +13,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/redact"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
@@ -149,7 +150,7 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	}
 	redact.Register(key)
 	for _, fix := range fixes {
-		fmt.Fprintf(stderrFrom(cmd), "note: %s from the pasted key\n", fix)
+		writeLabeled(stderrFrom(cmd), output.KindInfo, "%s from the pasted key", fix)
 	}
 
 	apiHost := ""
@@ -207,9 +208,9 @@ func runConfigureSave(ctx context.Context, cmd *cobra.Command, f *configureFlags
 	} else if !f.apiKeyStdin && d.IsTTY(stdinFrom(cmd)) {
 		errOut := stderrFrom(cmd)
 		for i, o := range orgs {
-			fmt.Fprintf(errOut, "%d) %s (%s)\n", i+1, o.Name, o.ID)
+			writeProse(errOut, "%d) %s (%s)", i+1, o.Name, o.ID)
 		}
-		fmt.Fprint(errOut, "Select organization number: ")
+		writePrompt(errOut, "Select organization number: ")
 		line, _ := in.ReadString('\n')
 		var n int
 		if _, err := fmt.Sscanf(strings.TrimSpace(line), "%d", &n); err != nil || n < 1 || n > len(orgs) {
@@ -319,10 +320,10 @@ func readAPIKey(cmd *cobra.Command, in *bufio.Reader, fromStdin bool) (string, e
 		return string(raw), nil
 	}
 	if d.IsTTY(src) {
-		fmt.Fprint(errOut, "Capella API key (input hidden): ")
+		writePrompt(errOut, "Capella API key (input hidden): ")
 		if f, ok := src.(*os.File); ok {
 			b, err := term.ReadPassword(int(f.Fd()))
-			fmt.Fprintln(errOut)
+			writeProse(errOut, "")
 			if err != nil {
 				return "", err
 			}
@@ -383,13 +384,13 @@ func runConfigureList(cmd *cobra.Command, f *configureFlags) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(rows)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "PROFILE  ORGANIZATION  API HOST  KEY\n")
+	writeProse(cmd.OutOrStdout(), "PROFILE  ORGANIZATION  API HOST  KEY")
 	for _, r := range rows {
 		org := r.Organization
 		if r.OrganizationName != "" {
 			org = r.OrganizationName + " (" + r.Organization + ")" // as capellactl showed it
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  %s  %s\n", r.Profile, org, r.APIHost, r.Key)
+		writeProse(cmd.OutOrStdout(), "%s  %s  %s  %s", r.Profile, org, r.APIHost, r.Key)
 	}
 	return nil
 }
@@ -415,9 +416,14 @@ func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
 		}
 		return v.Source
 	}
+	// JSON keeps the ASCII mask on every stream; text follows the glyphs of stdout.
+	mask := output.ASCIIGlyphs.Mask
+	if f.output != "json" {
+		mask = outGlyphs(cmd.OutOrStdout()).Mask
+	}
 	rows := []row{
 		{Field: "profile", Value: resolved.Profile, Source: "--profile / CBCTL_PROFILE / default"},
-		{Field: "api key", Value: redact.MaskTail(resolved.APIKey.Value), Source: src(resolved.APIKey)},
+		{Field: "api key", Value: redact.MaskTail(resolved.APIKey.Value, mask), Source: src(resolved.APIKey)},
 		{Field: "organization", Value: orNotSet(resolved.OrgID.Value), Source: src(resolved.OrgID)},
 		{Field: "api base URL", Value: resolved.BaseURL.Value, Source: src(resolved.BaseURL)},
 		{Field: "config file", Value: orNotSet(resolved.ConfigFile.Value), Source: src(resolved.ConfigFile)},
@@ -435,7 +441,7 @@ func runConfigureShow(cmd *cobra.Command, f *configureFlags) error {
 		return enc.Encode(rows)
 	}
 	for _, r := range rows {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s | %s | %s\n", r.Field, r.Value, r.Source)
+		writeProse(cmd.OutOrStdout(), "%s | %s | %s", r.Field, r.Value, r.Source)
 	}
 	return nil
 }
@@ -467,7 +473,7 @@ func runConfigureRemove(cmd *cobra.Command, f *configureFlags) error {
 		if !d.IsTTY(in) {
 			return noApprovalError(cmd)
 		}
-		fmt.Fprintf(stderrFrom(cmd), "Remove profile %q? [y/N] ", profile)
+		writePrompt(stderrFrom(cmd), "Remove profile %q? [y/N] ", profile)
 		line, _ := bufio.NewReader(in).ReadString('\n')
 		if strings.ToLower(strings.TrimSpace(line)) != "y" && strings.ToLower(strings.TrimSpace(line)) != "yes" {
 			return nil
