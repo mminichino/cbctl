@@ -1,19 +1,16 @@
 package capellafile
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/secrets"
 )
 
 var (
-	refRe      = regexp.MustCompile(`\$\{(file:)?([^}]+)\}`)
-	wholeRefRe = regexp.MustCompile(`^\$\{(file:)?([^}]+)\}$`)
+	refRe = regexp.MustCompile(`\$\{(file:)?([^}]+)\}`)
 )
 
 // isPasswordPath reports whether p is …databaseCredentials[i].password.
@@ -100,7 +97,7 @@ func (r *secretResolver) resolveString(value string, p Path) (out string, keep b
 			add("password must not be empty", "omit password to have Capella generate one, or reference a secret: password: ${VAR}")
 			return value, true
 		}
-		if !wholeRefRe.MatchString(value) {
+		if !secrets.IsWholeRef(value) {
 			add("password must be a ${VAR} or ${file:PATH} reference, not a literal",
 				"replace the literal with ${NAME} and export NAME, or use ${file:PATH}; omit password to have one generated")
 			return value, true
@@ -110,35 +107,11 @@ func (r *secretResolver) resolveString(value string, p Path) (out string, keep b
 		return value, true
 	}
 
-	var problems []Issue
-	resolved := refRe.ReplaceAllStringFunc(value, func(match string) string {
-		m := refRe.FindStringSubmatch(match)
-		isFile, ref := m[1] != "", strings.TrimSpace(m[2])
-		if isFile {
-			path := ref
-			if !filepath.IsAbs(path) {
-				path = filepath.Join(r.baseDir, path)
-			}
-			b, err := os.ReadFile(path)
-			if err != nil {
-				problems = append(problems, Issue{Message: fmt.Sprintf("file %s not found or unreadable (resolved to %s)", ref, path),
-					Fix: "create the file or fix the path (relative paths are relative to the config file)"})
-				return ""
-			}
-			text := trimOneNewline(string(b))
-			if text == "" {
-				problems = append(problems, Issue{Message: fmt.Sprintf("file %s is empty (resolved to %s)", ref, path),
-					Fix: "write the value into the file"})
-			}
-			return text
-		}
-		v := r.env(ref)
-		if v == "" {
-			problems = append(problems, Issue{Message: fmt.Sprintf("environment variable %s is not set or empty", ref),
-				Fix: fmt.Sprintf("export %s=…", ref)})
-		}
-		return v
-	})
+	resolved, found := secrets.ExpandRefs(value, secrets.RefOptions{BaseDir: r.baseDir, Env: r.env})
+	problems := make([]Issue, len(found))
+	for i, f := range found {
+		problems[i] = Issue{Message: f.Message, Fix: f.Fix}
+	}
 	if len(problems) > 0 {
 		if len(p) == 1 && p[0] == "organizationId" {
 			return "", false
@@ -152,13 +125,6 @@ func (r *secretResolver) resolveString(value string, p Path) (out string, keep b
 		redact.Register(resolved)
 	}
 	return resolved, true
-}
-
-func trimOneNewline(s string) string {
-	if strings.HasSuffix(s, "\r\n") {
-		return strings.TrimSuffix(s, "\r\n")
-	}
-	return strings.TrimSuffix(s, "\n")
 }
 
 // expandRefs resolves ${VAR} references in value without reporting problems; ok is false when a
