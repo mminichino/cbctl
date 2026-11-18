@@ -1,0 +1,2 @@
+data-conversion.yaml has 1 problem:
+  data-conversion.yaml:14:21 (document 1): !!binary values cannot be converted to JSON

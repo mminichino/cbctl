@@ -1,0 +1,63 @@
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: airline-ops-prod
+spec:
+  project: airline-demo
+  provider: aws
+  region: us-east-1
+  cidr: 10.0.10.0/24
+  availability: multi
+  description: Airline ops demo
+  supportPlan:
+    plan: developer pro
+    timezone: PT
+  deletionProtection: false
+  serviceGroups:
+    - services: [data]
+      nodes: 3
+      compute: { cpu: 8, ramGb: 32 }
+      disk: { type: gp3, sizeGb: 100, iops: 3000, autoExpansion: true }
+    - services: [index, query]
+      nodes: 2
+      compute: { cpu: 8, ramGb: 32 }
+    - services: [search]
+      nodes: 2
+      compute: { cpu: 4, ramGb: 16 }
+  allowedCidrs:
+    - cidr: 203.0.113.0/24
+      comment: office
+      expiresAt: 2027-01-31T00:00:00Z
+    - cidr: 198.51.100.7
+  buckets:
+    - name: flights
+      memoryMb: 1024
+      replicas: 1
+      storageBackend: magma
+      scopes:
+        - name: ops
+          collections:
+            - name: schedules
+            - name: gates
+              maxTtl: 86400
+      import:
+        - scope: ops
+          collection: gates
+          credential: app
+          keyField: gateId
+          data:
+            - gateId: DAL-E10
+              terminal: E
+  credentials:
+    - name: app
+      password: ${APP_DB_PASSWORD}
+      access:
+        privileges: read+write
+        bucket: flights
+        scope: ops
+    - name: reader
+      access:
+        privileges: read
+        allBuckets: true
+  wait:
+    timeout: 45m

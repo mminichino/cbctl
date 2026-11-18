@@ -1,0 +1,14 @@
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: airline-ops
+spec:
+  credentials:
+    password: ${CB_PASSWORD}
+  nodes:
+    - ipAddress: 10.0.0.1
+  buckets:
+    - name: flights
+      import:
+        - file: data/badkeys.jsonl
+          keyField: id

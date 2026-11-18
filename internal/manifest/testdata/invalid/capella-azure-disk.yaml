@@ -1,0 +1,12 @@
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: azure-disk
+spec:
+  project: p
+  provider: azure
+  serviceGroups:
+    - services: [data]
+      nodes: 3
+      compute: { cpu: 8, ramGb: 32 }
+      disk: { type: P30, sizeGb: 512, iops: 5000 }

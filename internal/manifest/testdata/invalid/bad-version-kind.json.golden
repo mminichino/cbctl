@@ -1,0 +1,30 @@
+{
+  "source": "bad-version-kind.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/x",
+      "pointer": "/apiVersion",
+      "line": 1,
+      "column": 1,
+      "message": "apiVersion \"cbctl/v2\" is not supported; use cbctl/v1"
+    },
+    {
+      "document": 2,
+      "ref": "couchbaseserver/y",
+      "pointer": "/kind",
+      "line": 8,
+      "column": 1,
+      "message": "unknown kind \"couchbaseserver\" (did you mean CouchbaseServer?)",
+      "fix": "kind is case-sensitive; use one of: CouchbaseServer, CouchbaseCapella"
+    },
+    {
+      "document": 3,
+      "ref": "CouchbaseServer/Not_Kebab",
+      "line": 13,
+      "column": 1,
+      "message": "spec is required",
+      "fix": "add a spec: section for the CouchbaseServer"
+    }
+  ]
+}

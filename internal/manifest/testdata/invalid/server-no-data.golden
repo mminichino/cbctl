@@ -1,0 +1,4 @@
+server-no-data.yaml has 2 problems:
+  server-no-data.yaml:8:3 (document 1, CouchbaseServer/airline-ops): spec.nodes: at least one node must run the data service
+  server-no-data.yaml:9:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[0]: no node is marked primary, so the first node would be the primary, but it is an arbiter
+    action: set primary: true on a node that runs services

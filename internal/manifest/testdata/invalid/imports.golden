@@ -1,0 +1,16 @@
+imports.yaml has 13 problems:
+  imports.yaml:13:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[0]: set exactly one of file or data, not both
+  imports.yaml:16:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[1]: set exactly one of file or data
+  imports.yaml:16:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[1]: _default._default is already imported by import[0]; each scope and collection pair may appear once
+  imports.yaml:19:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[2].data: data must not be empty
+    action: list the documents to import, or remove the import entry
+  imports.yaml:20:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[3]: ops.gates is already imported by import[2]; each scope and collection pair may appear once
+  imports.yaml:22:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[3].credential: credential applies to CouchbaseCapella only; imports use the admin credentials
+  imports.yaml:25:15 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[3].data[1]: each data item must be a mapping that becomes one document
+  imports.yaml:27:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[4].file: cannot read data/missing.jsonl: no such file or directory
+    action: relative paths resolve from the manifest's directory (from the working directory with -f -)
+  imports.yaml:32:15 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[5].data[1]: keyField id: key "a" duplicates data[0]
+  imports.yaml:33:15 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[5].data[2]: keyField id is missing
+  imports.yaml:34:15 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[5].data[3]: keyField id must be a non-empty string or an integer (got 1.5)
+  imports.yaml:35:15 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[5].data[4]: keyField id must be a non-empty string or an integer (got a boolean)
+  imports.yaml:36:15 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].import[5].data[5]: keyField id must not be an empty string

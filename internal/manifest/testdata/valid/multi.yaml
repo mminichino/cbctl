@@ -1,0 +1,19 @@
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: first
+spec:
+  credentials:
+    password: ${CB_PASSWORD}
+  nodes:
+    - ipAddress: 10.0.0.1
+---
+# a comment-only document is skipped
+---
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: second
+spec:
+  project: p
+  size: small

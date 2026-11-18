@@ -1,0 +1,24 @@
+capella-data.yaml has 18 problems:
+  capella-data.yaml:8:3 (document 1, CouchbaseCapella/data): spec.buckets: the buckets need 50000 MB but the data nodes have 49152 MB of RAM in total
+  capella-data.yaml:12:7 (document 1, CouchbaseCapella/data): spec.buckets[0].storageBackend: not allowed for ephemeral buckets (they keep data in memory only)
+  capella-data.yaml:13:7 (document 1, CouchbaseCapella/data): spec.buckets[0].durability: persistToMajority needs disk persistence; ephemeral buckets allow none or majority
+  capella-data.yaml:14:7 (document 1, CouchbaseCapella/data): spec.buckets[0].replicas: replicas: 0 is only for single-node clusters; use 1, 2 or 3
+  capella-data.yaml:19:15 (document 1, CouchbaseCapella/data): spec.buckets[0].scopes[0].collections[0].maxTtl: maxTtl must not be negative
+  capella-data.yaml:20:15 (document 1, CouchbaseCapella/data): spec.buckets[0].scopes[0].collections[1].name: collection "a" is already defined by collections[0]
+  capella-data.yaml:22:11 (document 1, CouchbaseCapella/data): spec.buckets[0].import[0].credential: credential is required for an import
+    action: name an entry of spec.credentials
+  capella-data.yaml:27:11 (document 1, CouchbaseCapella/data): spec.buckets[0].import[1].credential: credential "missing" is not defined in spec.credentials
+  capella-data.yaml:31:11 (document 1, CouchbaseCapella/data): spec.buckets[0].import[2].credential: credential "reader" does not grant write access to big.ops.b
+    action: use privileges write or read+write on that bucket, scope and collection
+  capella-data.yaml:35:11 (document 1, CouchbaseCapella/data): spec.buckets[0].import[3].credential: credential "generated" has no password reference; an import needs a password apply can read
+  capella-data.yaml:39:11 (document 1, CouchbaseCapella/data): spec.buckets[0].import[4].credential: credential "narrow" does not grant write access to big.ops.d
+    action: use privileges write or read+write on that bucket, scope and collection
+  capella-data.yaml:48:7 (document 1, CouchbaseCapella/data): spec.credentials[2].password: password must be ${VAR}, ${file:PATH} or ${base64:VALUE}, not a literal
+    action: keep the password out of the file: use ${VAR}, ${file:PATH} or ${base64:VALUE}
+  capella-data.yaml:51:17 (document 1, CouchbaseCapella/data): spec.credentials[3].access.privileges: privileges "admin" is not valid; use one of: read, write, read+write
+  capella-data.yaml:51:49 (document 1, CouchbaseCapella/data): spec.credentials[3].access.allBuckets: allBuckets and bucket are mutually exclusive
+  capella-data.yaml:51:67 (document 1, CouchbaseCapella/data): spec.credentials[3].access.collections: collections needs scope
+  capella-data.yaml:52:7 (document 1, CouchbaseCapella/data): spec.credentials[4].name: credential "bad" is already defined by credentials[3]
+  capella-data.yaml:53:7 (document 1, CouchbaseCapella/data): spec.credentials[4].access: set bucket, or allBuckets: true
+  capella-data.yaml:53:7 (document 1, CouchbaseCapella/data): spec.credentials[4].access.privileges: privileges is required
+    action: use read, write or read+write

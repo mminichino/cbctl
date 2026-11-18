@@ -1,0 +1,23 @@
+server-rules.yaml has 18 problems:
+  server-rules.yaml:9:5 (document 1, CouchbaseServer/airline-ops): spec.nodeDefaults.ramGiB: ramGiB must be greater than 0
+  server-rules.yaml:10:3 (document 1, CouchbaseServer/airline-ops): spec.nodes: at least one node must run the data service
+  server-rules.yaml:14:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].ipAddress: 10.0.0.1 is already used by nodes[0]; ipAddress values must be unique
+  server-rules.yaml:15:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].primary: the primary node cannot be an arbiter
+    action: set primary: true on a node that runs services
+  server-rules.yaml:15:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].primary: only one node can be primary (nodes[0] is also primary)
+  server-rules.yaml:17:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[1].services: arbiter cannot be combined with services
+    action: remove services, or set arbiter: false
+  server-rules.yaml:18:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[2].ipAddress: "not a host" is not an IP address or host name
+  server-rules.yaml:19:18 (document 1, CouchbaseServer/airline-ops): spec.nodes[2].services[0]: unknown service "dta" (did you mean data?)
+    action: use one of: data, index, query, search, analytics, eventing, backup
+  server-rules.yaml:20:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[2].ramGiB: ramGiB must be greater than 0
+  server-rules.yaml:21:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[3].ipAddress: "10.0.0.9:99999" has an invalid port
+  server-rules.yaml:22:7 (document 1, CouchbaseServer/airline-ops): spec.nodes[3].services: services must not be empty
+    action: omit it to use nodeDefaults.services
+  server-rules.yaml:25:7 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].quotaMiB: quotaMiB must be at least 100 (got 50)
+  server-rules.yaml:26:7 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].replicas: replicas must be 0–3 (got 4)
+  server-rules.yaml:28:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].scopes[0].name: scope name "_bad" is not valid: use 1–251 characters of A-Z a-z 0-9 _ - %, not starting with _ or %
+  server-rules.yaml:29:29 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].scopes[0].collections[1]: collection "ok" is already listed at collections[0]
+  server-rules.yaml:29:33 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].scopes[0].collections[2]: collection name "bad name" is not valid: use 1–251 characters of A-Z a-z 0-9 _ - %, not starting with _ or %
+  server-rules.yaml:31:11 (document 1, CouchbaseServer/airline-ops): spec.buckets[0].scopes[2].name: scope "ops" is already defined by scopes[1]
+  server-rules.yaml:32:7 (document 1, CouchbaseServer/airline-ops): spec.buckets[1].name: bucket "flights" is already defined by buckets[0]

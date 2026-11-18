@@ -1,0 +1,32 @@
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: airline-ops
+spec:
+  credentials:
+    password: ${CB_PASSWORD}
+  nodeDefaults:
+    ramGiB: 0
+  nodes:
+    - ipAddress: 10.0.0.1
+      primary: true
+      services: [index, query]
+    - ipAddress: 10.0.0.1
+      primary: true
+      arbiter: true
+      services: [data]
+    - ipAddress: not a host
+      services: [dta, backup, fts, search]
+      ramGiB: -4
+    - ipAddress: 10.0.0.9:99999
+      services: []
+  buckets:
+    - name: flights
+      quotaMiB: 50
+      replicas: 4
+      scopes:
+        - name: _bad
+          collections: [ok, ok, "bad name"]
+        - name: ops
+        - name: ops
+    - name: flights

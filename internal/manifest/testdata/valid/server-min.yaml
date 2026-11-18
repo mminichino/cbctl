@@ -1,0 +1,9 @@
+apiVersion: cbctl/v1
+kind: CouchbaseServer
+metadata:
+  name: dev
+spec:
+  credentials:
+    password: ${base64:cGFzc3dvcmQ=}
+  nodes:
+    - ipAddress: 127.0.0.1

@@ -1,0 +1,6 @@
+bad-version-kind.yaml has 3 problems:
+  bad-version-kind.yaml:1:1 (document 1, CouchbaseServer/x): apiVersion: apiVersion "cbctl/v2" is not supported; use cbctl/v1
+  bad-version-kind.yaml:8:1 (document 2, couchbaseserver/y): kind: unknown kind "couchbaseserver" (did you mean CouchbaseServer?)
+    action: kind is case-sensitive; use one of: CouchbaseServer, CouchbaseCapella
+  bad-version-kind.yaml:13:1 (document 3, CouchbaseServer/Not_Kebab): spec is required
+    action: add a spec: section for the CouchbaseServer

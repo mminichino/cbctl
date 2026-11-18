@@ -1,0 +1,13 @@
+{
+  "source": "no-kind.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "pointer": "/kind",
+      "line": 1,
+      "column": 1,
+      "message": "kind is missing; this looks like a capella.yaml, not a manifest",
+      "fix": "use 'cbctl capella apply -c FILE' for capella.yaml, or add kind: CouchbaseServer or CouchbaseCapella"
+    }
+  ]
+}

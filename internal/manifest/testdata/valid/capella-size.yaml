@@ -1,0 +1,12 @@
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: dev-cluster
+spec:
+  project: airline-demo
+  provider: gcp
+  region: us-east1
+  size: dev
+  buckets:
+    - name: flights
+      replicas: 0

@@ -1,0 +1,11 @@
+{
+  "source": "data-conversion.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "line": 14,
+      "column": 21,
+      "message": "!!binary values cannot be converted to JSON"
+    }
+  ]
+}

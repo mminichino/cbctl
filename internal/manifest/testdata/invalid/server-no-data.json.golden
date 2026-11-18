@@ -1,0 +1,22 @@
+{
+  "source": "server-no-data.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes",
+      "line": 8,
+      "column": 3,
+      "message": "at least one node must run the data service"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/0",
+      "line": 9,
+      "column": 7,
+      "message": "no node is marked primary, so the first node would be the primary, but it is an arbiter",
+      "fix": "set primary: true on a node that runs services"
+    }
+  ]
+}

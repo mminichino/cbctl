@@ -81,7 +81,8 @@ func (e *ValidationError) Error() string {
 	return strings.Join(lines, "\n")
 }
 
-// sorted orders issues by document, line, column, pointer and message.
+// sortIssues orders issues by document, line, column and pointer; issues that tie keep the
+// order in which they were found (a stable sort).
 func sortIssues(issues []Issue) {
 	sort.SliceStable(issues, func(a, b int) bool {
 		x, y := issues[a], issues[b]
@@ -92,10 +93,8 @@ func sortIssues(issues []Issue) {
 			return x.Line < y.Line
 		case x.Col != y.Col:
 			return x.Col < y.Col
-		case x.Pointer != y.Pointer:
-			return x.Pointer < y.Pointer
 		}
-		return x.Msg < y.Msg
+		return x.Pointer < y.Pointer
 	})
 }
 

@@ -1,0 +1,53 @@
+apiVersion: cbctl/v1
+kind: CouchbaseCapella
+metadata:
+  name: data
+spec:
+  project: p
+  size: small
+  buckets:
+    - name: big
+      memoryMb: 50000
+      type: ephemeral
+      storageBackend: magma
+      durability: persistToMajority
+      replicas: 0
+      scopes:
+        - name: ops
+          collections:
+            - name: a
+              maxTtl: -1
+            - name: a
+      import:
+        - scope: ops
+          collection: a
+          data: [{id: 1}]
+        - scope: ops
+          collection: a2
+          credential: missing
+          data: [{id: 1}]
+        - scope: ops
+          collection: b
+          credential: reader
+          data: [{id: 1}]
+        - scope: ops
+          collection: c
+          credential: generated
+          data: [{id: 1}]
+        - scope: ops
+          collection: d
+          credential: narrow
+          data: [{id: 1}]
+  credentials:
+    - name: reader
+      password: ${R}
+      access: { privileges: read, bucket: big }
+    - name: generated
+      access: { privileges: write, bucket: big }
+    - name: narrow
+      password: literal
+      access: { privileges: write, bucket: big, scope: ops, collections: [a] }
+    - name: bad
+      access: { privileges: admin, bucket: big, allBuckets: true, collections: [x] }
+    - name: bad
+      access: {}

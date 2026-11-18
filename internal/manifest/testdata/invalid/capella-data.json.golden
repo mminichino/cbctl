@@ -1,0 +1,154 @@
+{
+  "source": "capella-data.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets",
+      "line": 8,
+      "column": 3,
+      "message": "the buckets need 50000 MB but the data nodes have 49152 MB of RAM in total"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/storageBackend",
+      "line": 12,
+      "column": 7,
+      "message": "not allowed for ephemeral buckets (they keep data in memory only)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/durability",
+      "line": 13,
+      "column": 7,
+      "message": "persistToMajority needs disk persistence; ephemeral buckets allow none or majority"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/replicas",
+      "line": 14,
+      "column": 7,
+      "message": "replicas: 0 is only for single-node clusters; use 1, 2 or 3"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/scopes/0/collections/0/maxTtl",
+      "line": 19,
+      "column": 15,
+      "message": "maxTtl must not be negative"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/scopes/0/collections/1/name",
+      "line": 20,
+      "column": 15,
+      "message": "collection \"a\" is already defined by collections[0]"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/import/0/credential",
+      "line": 22,
+      "column": 11,
+      "message": "credential is required for an import",
+      "fix": "name an entry of spec.credentials"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/import/1/credential",
+      "line": 27,
+      "column": 11,
+      "message": "credential \"missing\" is not defined in spec.credentials"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/import/2/credential",
+      "line": 31,
+      "column": 11,
+      "message": "credential \"reader\" does not grant write access to big.ops.b",
+      "fix": "use privileges write or read+write on that bucket, scope and collection"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/import/3/credential",
+      "line": 35,
+      "column": 11,
+      "message": "credential \"generated\" has no password reference; an import needs a password apply can read"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/buckets/0/import/4/credential",
+      "line": 39,
+      "column": 11,
+      "message": "credential \"narrow\" does not grant write access to big.ops.d",
+      "fix": "use privileges write or read+write on that bucket, scope and collection"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/2/password",
+      "line": 48,
+      "column": 7,
+      "message": "password must be ${VAR}, ${file:PATH} or ${base64:VALUE}, not a literal",
+      "fix": "keep the password out of the file: use ${VAR}, ${file:PATH} or ${base64:VALUE}"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/3/access/privileges",
+      "line": 51,
+      "column": 17,
+      "message": "privileges \"admin\" is not valid; use one of: read, write, read+write"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/3/access/allBuckets",
+      "line": 51,
+      "column": 49,
+      "message": "allBuckets and bucket are mutually exclusive"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/3/access/collections",
+      "line": 51,
+      "column": 67,
+      "message": "collections needs scope"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/4/name",
+      "line": 52,
+      "column": 7,
+      "message": "credential \"bad\" is already defined by credentials[3]"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/4/access",
+      "line": 53,
+      "column": 7,
+      "message": "set bucket, or allBuckets: true"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseCapella/data",
+      "pointer": "/spec/credentials/4/access/privileges",
+      "line": 53,
+      "column": 7,
+      "message": "privileges is required",
+      "fix": "use read, write or read+write"
+    }
+  ]
+}

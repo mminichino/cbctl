@@ -1,0 +1,3 @@
+no-kind.yaml has 1 problem:
+  no-kind.yaml:1:1 (document 1): kind: kind is missing; this looks like a capella.yaml, not a manifest
+    action: use 'cbctl capella apply -c FILE' for capella.yaml, or add kind: CouchbaseServer or CouchbaseCapella

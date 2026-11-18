@@ -1,0 +1,153 @@
+{
+  "source": "server-rules.yaml",
+  "issues": [
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodeDefaults/ramGiB",
+      "line": 9,
+      "column": 5,
+      "message": "ramGiB must be greater than 0"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes",
+      "line": 10,
+      "column": 3,
+      "message": "at least one node must run the data service"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/1/ipAddress",
+      "line": 14,
+      "column": 7,
+      "message": "10.0.0.1 is already used by nodes[0]; ipAddress values must be unique"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/1/primary",
+      "line": 15,
+      "column": 7,
+      "message": "the primary node cannot be an arbiter",
+      "fix": "set primary: true on a node that runs services"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/1/primary",
+      "line": 15,
+      "column": 7,
+      "message": "only one node can be primary (nodes[0] is also primary)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/1/services",
+      "line": 17,
+      "column": 7,
+      "message": "arbiter cannot be combined with services",
+      "fix": "remove services, or set arbiter: false"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/2/ipAddress",
+      "line": 18,
+      "column": 7,
+      "message": "\"not a host\" is not an IP address or host name"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/2/services/0",
+      "line": 19,
+      "column": 18,
+      "message": "unknown service \"dta\" (did you mean data?)",
+      "fix": "use one of: data, index, query, search, analytics, eventing, backup"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/2/ramGiB",
+      "line": 20,
+      "column": 7,
+      "message": "ramGiB must be greater than 0"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/3/ipAddress",
+      "line": 21,
+      "column": 7,
+      "message": "\"10.0.0.9:99999\" has an invalid port"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/nodes/3/services",
+      "line": 22,
+      "column": 7,
+      "message": "services must not be empty",
+      "fix": "omit it to use nodeDefaults.services"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/quotaMiB",
+      "line": 25,
+      "column": 7,
+      "message": "quotaMiB must be at least 100 (got 50)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/replicas",
+      "line": 26,
+      "column": 7,
+      "message": "replicas must be 0–3 (got 4)"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/scopes/0/name",
+      "line": 28,
+      "column": 11,
+      "message": "scope name \"_bad\" is not valid: use 1–251 characters of A-Z a-z 0-9 _ - %, not starting with _ or %"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/scopes/0/collections/1",
+      "line": 29,
+      "column": 29,
+      "message": "collection \"ok\" is already listed at collections[0]"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/scopes/0/collections/2",
+      "line": 29,
+      "column": 33,
+      "message": "collection name \"bad name\" is not valid: use 1–251 characters of A-Z a-z 0-9 _ - %, not starting with _ or %"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/0/scopes/2/name",
+      "line": 31,
+      "column": 11,
+      "message": "scope \"ops\" is already defined by scopes[1]"
+    },
+    {
+      "document": 1,
+      "ref": "CouchbaseServer/airline-ops",
+      "pointer": "/spec/buckets/1/name",
+      "line": 32,
+      "column": 7,
+      "message": "bucket \"flights\" is already defined by buckets[0]"
+    }
+  ]
+}
