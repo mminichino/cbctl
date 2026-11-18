@@ -221,13 +221,14 @@ Ensure a full keyspace exists.
 - Success: `Keyspace "<bucket.scope.collection>" created`. Failure: stderr + exit 1.
 
 ### `apply -f FILE|-|DIR`
-Apply `cbctl/v1` manifest documents. `kind: CouchbaseServer` runs primary init (a primary that already belongs to a differently named cluster exits 1 and changes nothing), sequential joins, a membership report, rebalance, buckets/scopes/collections, then imports. `kind: CouchbaseCapella` is not applied yet (exit 3, use `cbctl capella apply -c`).
+Apply `cbctl/v1` manifest documents. `kind: CouchbaseServer` runs primary init (a primary that already belongs to a differently named cluster exits 1 and changes nothing), sequential joins, a membership report, rebalance, buckets/scopes/collections, then imports. `kind: CouchbaseCapella` translates the manifest in memory to a capella.yaml-style config and runs the Capella plan/apply engine in ephemeral mode (needs an API key like other Capella commands; per-document `spec.organizationId`).
 
 - `-f` is required (exit 3), repeatable; `-` is stdin (max 10 MiB, not a terminal); a directory reads its `*.yaml`/`*.yml` in name order. Relative `file:` paths resolve from the manifest's directory (cwd for stdin).
 - Everything is validated and `${VAR}` / `${file:PATH}` / `${base64:VALUE}` secrets are resolved before any network call; a problem exits 3 and nothing is applied. Passwords are never literals.
 - Idempotent: a second apply prints `[info]` lines and exits 0. Existing buckets are kept (a quota difference is a `[warning]`); a non-empty collection skips its import (`[warning]`); cluster nodes not in the manifest are warned about and left in place; rebalance runs only with `rebalance` not false and a node waiting to be rebalanced in.
 - `--dry-run` lists the steps and contacts nothing (exit 0). `-o json` prints one report on stdout (schema `internal/manifest/testdata/apply.manifest.schema.json`).
 - The first failing document stops the run (exit 1; later ones are `not-run`); Ctrl-C exits 130 between steps. Rerun to finish.
+- Capella manifests: no file side effects (capella.yaml untouched, no `.bak`, no id pinning, no deletes). Immutable differences (`provider`, `region`, `cidr`, `availability`, `serverVersion` release line, bucket `storageBackend`) exit 3 with the manifest pointer; removing a service group exits 4. Omitted `deletionProtection`/`description`/`autoExpansion` keep the Capella value; omitted `cidr` is allocated. Existing credential passwords are never rotated (`[info] credential X exists; password not changed`); a generated one is printed once on stdout (JSON `credentialPasswords`). TTY asks to confirm; without a terminal only scale-in and `deletionProtection` true->false need `-y` (exit 4). `spec.wait.timeout|enabled` drive waiting (exit 5). Import uses the SDK over TLS with a database credential; a connect failure hints at `spec.allowedCidrs`. `--dry-run` plans against Capella without writes.
 - A file with no `kind` (capella.yaml style) exits 3 with a hint to use `cbctl capella apply -c`; `capella` commands reject a file with `kind` with a hint to use `cbctl apply -f`.
 
 ### `import <file> <bucket.scope.collection>`

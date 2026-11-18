@@ -186,7 +186,24 @@ cat couchbase.yaml | cbctl apply -f -
 A manifest is one or more YAML documents with `apiVersion: cbctl/v1`, a `kind` and a `metadata.name`.
 `kind: CouchbaseServer` builds a Server cluster: it initializes the primary node, joins the other
 nodes one by one, rebalances, creates buckets, scopes and collections, and imports documents.
-`kind: CouchbaseCapella` documents are not applied yet; use `cbctl capella apply -c capella.yaml`.
+`kind: CouchbaseCapella` creates or updates a Capella project, cluster, buckets, scopes, collections,
+allowed CIDRs and database credentials, then imports documents (it needs a Capella API key, see
+`cbctl configure`). It runs on the same plan/apply engine as `cbctl capella apply`, but in memory:
+`capella.yaml` is never read or changed, no `.bak` files are written, ids are not pinned and nothing
+is deleted. Details:
+
+- Immutable fields (`provider`, `region`, `cidr`, `availability`, `serverVersion` release line, bucket
+  `storageBackend`) that differ from the existing cluster exit 3. Removing a service group exits 4.
+- Fields left out of the manifest (`deletionProtection`, `description`, disk auto-expansion) keep the value
+  Capella has. `cidr` omitted allocates a free `10.x.y.0/24`.
+- `apply` never changes the password of an existing database credential; a generated password for a new
+  one is printed once (saved to `credentialsOutput` with mode 0600).
+- On a terminal `apply` asks before changing anything. Without one, creating, updating and scaling out run
+  without `-y`; scaling in or turning `deletionProtection` off needs `-y` (exit 4).
+- `spec.wait.timeout` / `spec.wait.enabled` set how long to wait (exit 5 on timeout).
+- `import` connects with the SDK over TLS using a database credential; if the host cannot connect, check
+  `spec.allowedCidrs`. A non-empty collection skips its import.
+- `--dry-run` validates and plans against Capella without changing it.
 
 ```yaml
 apiVersion: cbctl/v1
