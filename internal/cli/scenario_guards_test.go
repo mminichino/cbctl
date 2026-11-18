@@ -44,7 +44,7 @@ func TestScaleIn_CAP016_Guards(t *testing.T) {
 		writeCapellaYAML(t, s, scaledDoc("3", "data, index, query"))
 		r := s.Run("capella", "apply", "--yes")
 		wantExit(t, r, cli.ExitBlocked)
-		wantContains(t, r.Stdout, "scale-in blocked: buckets allocate", "after scale-in (4 → 3 nodes)")
+		wantContains(t, r.Stdout, "scale-in blocked: buckets allocate", "after scale-in (4 -> 3 nodes)")
 		clitest.AssertNoWrites(t, s.Fake)
 	})
 	t.Run("memory fits", func(t *testing.T) {

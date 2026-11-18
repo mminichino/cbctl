@@ -36,7 +36,7 @@ func TestRedaction_CAP008_AC5_UncaughtExceptionRedacted(t *testing.T) {
 			r := s.Run(args...)
 			wantExit(t, r, cli.ExitError)
 			wantContains(t, r.Stderr, "[error] - internal error: boom: auth=",
-				"  → Run the command again with --log-level debug to see more")
+				"  -> Run the command again with --log-level debug to see more")
 			secrets := []string{s.Fake.APIKey, canaryPassword}
 			if args[1] == "project" {
 				secrets = secrets[:1] // project list never reads capella.yaml, so APP_PW is not a known secret

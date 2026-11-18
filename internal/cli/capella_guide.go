@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"fmt"
+	"io"
 	"strings"
 
 	"github.com/mminichino/cbctl/internal/guide"
@@ -35,13 +35,13 @@ func newCapellaGuideCmd() *cobra.Command {
 func runGuide(cmd *cobra.Command, args []string) error {
 	w := cmd.OutOrStdout()
 	if len(args) == 0 {
-		fmt.Fprint(w, guideOverview)
-		fmt.Fprintf(w, "\nTopics (cbctl capella guide TOPIC):\n%s\n", guide.TopicList())
+		_, _ = io.WriteString(w, guideOverview) // fixed documentation, not user data
+		writeDocument(w, "\nTopics (cbctl capella guide TOPIC):\n"+guide.TopicList())
 		return nil
 	}
 	name := args[0]
 	if name == "topics" && len(args) == 1 {
-		fmt.Fprintln(w, guide.TopicList())
+		writeDocument(w, guide.TopicList())
 		return nil
 	}
 	if !guide.Exists(name) {
@@ -57,16 +57,16 @@ func runGuide(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return Errorf(ExitConfigInvalid, "Run 'cbctl capella guide config' to see the fields.", "%v", err)
 		}
-		fmt.Fprintln(w, strings.TrimRight(text, "\n"))
+		writeDocument(w, text)
 		return nil
 	}
 	text, err := guide.Render(name)
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(w, strings.TrimRight(text, "\n")+"\n")
+	writeDocument(w, text)
 	if name == "config" {
-		fmt.Fprintf(w, "\nFields (cbctl capella guide config FIELD):\n%s\n", guide.Fields())
+		writeDocument(w, "\nFields (cbctl capella guide config FIELD):\n"+guide.Fields())
 	}
 	return nil
 }

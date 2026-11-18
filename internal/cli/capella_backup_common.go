@@ -10,6 +10,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/plan"
 )
 
@@ -118,32 +119,32 @@ func nestedStr(o capellaapi.Object, outer, inner string) string {
 // statusProgress renders a wait on pw like a cluster wait in apply: "  LABEL: STATE (time) " with a
 // dot every 30 s of waiting on the same line, and a final state (final reports which) on a line of
 // its own.
-func statusProgress(pw *progressWriter, label string, final func(state string) bool) engine.WaitHooks {
+func statusProgress(pw *output.Progress, label string, final func(state string) bool) engine.WaitHooks {
 	return engine.WaitHooks{
 		OnState: func(state string, elapsed time.Duration) {
 			line := fmt.Sprintf("  %s: %s (%s)", label, state, plan.FormatDuration(elapsed))
 			if final(state) {
-				pw.line(line)
+				pw.Line(line)
 				return
 			}
-			pw.inline(line+" ", true)
+			pw.Inline(line+" ", true)
 		},
-		OnTick: func() { pw.inline(".", false) },
+		OnTick: func() { pw.Inline(".", false) },
 	}
 }
 
 // waitBackupStatus waits for a backup, export or restore with the global --timeout, showing its
 // status on stderr with a dot every 30 seconds.
 func (rt *runtime) waitBackupStatus(label string, done, failed map[string]bool, read func() (string, error)) (string, error) {
-	pw := &progressWriter{w: rt.errOut(), quiet: rt.Quiet, tty: ttyCheck(rt.errOut())}
+	pw := output.NewProgress(rt.errOut(), rt.Quiet, ttyCheck(rt.errOut()))
 	hooks := statusProgress(pw, label, func(s string) bool {
 		s = strings.ToLower(s)
 		return done[s] || failed[s]
 	})
 	state, err := engine.WaitForStatus(rt.Ctx, func(context.Context) (string, error) { return read() }, done, failed, rt.Timeout, rt.Clock, label, hooks)
-	pw.close()
+	pw.Close()
 	if err != nil && rt.Ctx.Err() != nil {
-		fmt.Fprintln(rt.errOut(), "the operation continues in Capella")
+		writeLabeled(rt.errOut(), output.KindInfo, "the operation continues in Capella")
 	}
 	return state, err
 }

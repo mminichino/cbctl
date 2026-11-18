@@ -393,7 +393,7 @@ func TestScopeDelete_CAP026_AC2_ListsCollections(t *testing.T) {
 	s.TTY(true)
 	s.Answers("billing")
 	r := mustScenario(t, s.Run("capella", "scope", "delete", "nova-dev-01", "orders", "billing"), "scope delete")
-	wantContains(t, dataOut(r), "billing · 2 collections: invoices, refunds", "These collections and all their documents are deleted.")
+	wantContains(t, dataOut(r), "billing - 2 collections: invoices, refunds", "These collections and all their documents are deleted.")
 	if got := deletes(s, pid, cid); !reflect.DeepEqual(got, []string{"/scopes/billing"}) {
 		t.Fatalf("deletes %v: want one DELETE for the scope and its collections", got)
 	}
@@ -429,7 +429,7 @@ func TestScopeDelete_CAP026_AC4_PruneScope(t *testing.T) {
 	clitest.AssertNoWrites(t, s.Fake)
 	s.Answers("billing", "y")
 	r = mustScenario(t, s.Run("capella", "apply", "--prune"), "apply --prune")
-	wantContains(t, dataOut(r), "billing · 2 collections: invoices, refunds")
+	wantContains(t, dataOut(r), "billing - 2 collections: invoices, refunds")
 	if got := deletes(s, pid, cid); !reflect.DeepEqual(got, []string{"/scopes/billing"}) {
 		t.Fatalf("deletes %v", got)
 	}
@@ -525,7 +525,7 @@ func TestBucket_CAP023_AC4_ImmutableBlocked(t *testing.T) {
 			writeCapellaYAML(t, s, dataDoc+dataBucketOrders+tc.extra)
 			r := s.Run("capella", "apply", "-y")
 			wantExit(t, r, cli.ExitBlocked)
-			wantContains(t, r.Stdout, "  ! bucket nova-dev-01/orders  "+tc.field+": "+tc.before+" → "+tc.after+
+			wantContains(t, r.Stdout, "  ! bucket nova-dev-01/orders  "+tc.field+": "+tc.before+" -> "+tc.after+
 				"  BLOCKED (immutable; create a new bucket and migrate data)")
 			clitest.AssertNoWrites(t, s.Fake)
 		})
@@ -538,7 +538,7 @@ func TestBucket_CAP023_AC7_ReplicaChangeNote(t *testing.T) {
 	writeCapellaYAML(t, s, dataDoc+dataBucketOrders+"        replicas: 2\n")
 	r := mustScenario(t, s.Run("capella", "plan"), "plan")
 	wantContains(t, r.Stdout, "  ~ bucket nova-dev-01/orders  note: the new replica count takes full effect after a rebalance",
-		"      replicas:  1 → 2")
+		"      replicas:  1 -> 2")
 }
 
 func TestBucket_ListAndGet(t *testing.T) {
@@ -609,7 +609,7 @@ func freePath(s *clitest.Scenario, pid, cid, bid string) string {
 func TestBucketFree_CAP023_AC1_CreateUsesFreeTierEndpoint(t *testing.T) {
 	s, pid, cid := freeScenario(t)
 	r := mustScenario(t, s.Run("capella", "bucket", "add", "nova-dev", "orders", "--memory", "100", "-y"), "bucket add")
-	wantContains(t, r.Stdout, "  + bucket nova-dev/orders  free tier · 100 MB")
+	wantContains(t, r.Stdout, "  + bucket nova-dev/orders  free tier - 100 MB")
 	w := s.Fake.Writes()
 	if len(w) != 1 || w[0].Method != "POST" || w[0].Path != freePath(s, pid, cid, "") ||
 		!reflect.DeepEqual(normJSON(w[0].Body), normJSON(map[string]any{"name": "orders", "memoryAllocationInMb": 100})) {
@@ -651,7 +651,7 @@ func TestBucketFree_CAP024_AC1_DeleteAndList(t *testing.T) {
 		t.Fatal("list did not use the free-tier endpoint")
 	}
 	r = mustScenario(t, s.Run("capella", "bucket", "delete", "nova-dev", "orders", "-y"), "bucket delete")
-	wantContains(t, r.Stderr, "orders · 7 items · 12 MB used")
+	wantContains(t, r.Stderr, "orders - 7 items - 12 MB used")
 	w := s.Fake.Writes()
 	if len(w) != 1 || w[0].Method != "DELETE" || w[0].Path != freePath(s, pid, cid, "b3JkZXJz") {
 		t.Fatalf("writes %v", w)
@@ -777,7 +777,7 @@ func TestCredential_CAP027_AC1_CreateSuppliedPassword(t *testing.T) {
 	s, pid, cid := credScenario(t)
 	writeCapellaYAML(t, s, dataDoc+dataOrdersApp)
 	p := mustScenario(t, s.Run("capella", "plan"), "plan")
-	wantContains(t, p.Stdout, "  + credential nova-dev-01/orders_app  read+write · orders/inventory/{items,suppliers}")
+	wantContains(t, p.Stdout, "  + credential nova-dev-01/orders_app  read+write - orders/inventory/{items,suppliers}")
 	a := dataApply(t, s)
 	w := userWrites(s, pid, cid)
 	if len(w) != 1 || w[0].Method != "POST" || w[0].Path != "/users" {
@@ -811,7 +811,7 @@ func TestCredential_CAP027_AC4_UpdateAccessWithoutPassword(t *testing.T) {
 	writeCapellaYAML(t, s, dataDoc+dataOrdersBucketScoped+strings.Replace(dataOrdersApp[strings.Index(dataOrdersApp, "    databaseCredentials"):],
 		"                      collections: [items, suppliers]\n", "", 1))
 	p := mustScenario(t, s.Run("capella", "plan"), "plan")
-	wantContains(t, p.Stdout, "  ~ credential nova-dev-01/orders_app", `      orders/inventory:  "read" → "read+write"`)
+	wantContains(t, p.Stdout, "  ~ credential nova-dev-01/orders_app", `      orders/inventory:  "read" -> "read+write"`)
 	dataApply(t, s)
 	w := userWrites(s, pid, cid)
 	want := map[string]any{"access": []any{map[string]any{"privileges": []any{"data_reader", "data_writer"},
@@ -1054,7 +1054,7 @@ func TestCredential_CAP027_AC4_AccessRemovedInCapellaIsRestored(t *testing.T) {
 	if strings.Contains(r.Stdout, "advanced credential") {
 		t.Fatalf("an access-less credential was taken for an advanced one:\n%s", r.Stdout)
 	}
-	wantContains(t, r.Stdout, "  ~ credential nova-dev-01/airline_app", `demo/inventory/airline:  (none) → "read+write"`)
+	wantContains(t, r.Stdout, "  ~ credential nova-dev-01/airline_app", `demo/inventory/airline:  (none) -> "read+write"`)
 	dataApply(t, s)
 	put := s.Fake.Calls("PUT", "/v4/organizations/*/projects/*/clusters/*/users/*")
 	if len(put) != 1 || len(put[0].Body.(map[string]any)["access"].([]any)) == 0 {
@@ -1068,7 +1068,7 @@ func TestSync_CAP038_AC9_KeepsAccessCapellaLost(t *testing.T) {
 	s, _, _ := airlineScenario(t)
 	r := mustScenario(t, s.Run("capella", "sync"), "sync")
 	wantContains(t, r.Stderr, "[warning] - credential nova-dev-01/airline_app has no access in Capella; capella.yaml keeps the access it had\n"+
-		"  → Run 'cbctl capella apply'")
+		"  -> Run 'cbctl capella apply'")
 	wantContains(t, s.ReadFile("capella.yaml"), "      - name: airline_app\n            password: ${AIRLINE_PW}\n",
 		"privileges: [data_reader, data_writer]", "- name: demo\n", "collections: [airline]")
 	mustScenario(t, s.Run("capella", "validate"), "validate")
@@ -1337,7 +1337,7 @@ func TestProjectUpdate_CAP009_AC2_ClusterNameGivenPointsToProject(t *testing.T) 
 	r := s.Run("capella", "project", "update", "nova-dev-01", "--description", "Live demo", "-y")
 	wantExit(t, r, cli.ExitConfigInvalid)
 	wantContains(t, r.Stderr, "nova-dev-01 is a cluster in project nova-dev, not a project\n"+
-		`  → Did you mean: cbctl capella project update nova-dev --description "Live demo"`)
+		`  -> Did you mean: cbctl capella project update nova-dev --description "Live demo"`)
 	if strings.Contains(r.Stderr, "sync --project nova-dev-01") {
 		t.Fatalf("suggested syncing the cluster as a project:\n%s", r.Stderr)
 	}
@@ -1347,7 +1347,7 @@ func TestProjectUpdate_CAP009_AC2_ClusterNameGivenPointsToProject(t *testing.T) 
 	clitest.AssertNoWrites(t, s.Fake)
 	r = s.Run("capella", "project", "get", "nova-dev-01")
 	wantExit(t, r, cli.ExitConfigInvalid)
-	wantContains(t, r.Stderr, "is a cluster in project nova-dev, not a project\n  → Did you mean: --project nova-dev")
+	wantContains(t, r.Stderr, "is a cluster in project nova-dev, not a project\n  -> Did you mean: --project nova-dev")
 	r = s.Run("capella", "project", "update", "nope", "--description", "x", "-y")
 	wantContains(t, r.Stderr, "run 'cbctl capella sync --project nope' to add it")
 }
@@ -1357,7 +1357,7 @@ func TestProjectOption_CAP009_AC2_ClusterNameGivenPointsToProject(t *testing.T) 
 	writeCapellaYAML(t, s, dataDoc)
 	r := s.Run("capella", "cluster", "create", "nova-dev-02", "--project", "nova-dev-01", "-y")
 	wantExit(t, r, cli.ExitConfigInvalid)
-	wantContains(t, r.Stderr, "nova-dev-01 is a cluster in project nova-dev, not a project\n  → Did you mean: --project nova-dev")
+	wantContains(t, r.Stderr, "nova-dev-01 is a cluster in project nova-dev, not a project\n  -> Did you mean: --project nova-dev")
 	clitest.AssertNoWrites(t, s.Fake)
 }
 
@@ -1382,7 +1382,7 @@ func TestBucket_CAP023_AC6_SingleNodeUsesZeroReplicas(t *testing.T) {
 		"numOfNodes: 3", "numOfNodes: 1").Replace(dataDoc)
 	writeCapellaYAML(t, s, single+dataOrdersBucket)
 	r := dataApply(t, s)
-	wantContains(t, r.Stdout, "+ bucket nova-dev-01/orders  couchbase · 100 MB · 0 replicas · durability none")
+	wantContains(t, r.Stdout, "+ bucket nova-dev-01/orders  couchbase - 100 MB - 0 replicas - durability none")
 	if strings.Contains(r.Stdout, "note:") {
 		t.Fatalf("unexpected note:\n%s", r.Stdout)
 	}

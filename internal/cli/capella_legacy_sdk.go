@@ -77,7 +77,7 @@ func newCapellaScopeCreateCmd() *cobra.Command {
 			if err != nil {
 				return failure("Failed to create scope", err)
 			}
-			logging.Info("Scope %q created in bucket %q", name, bucket)
+			logging.Success("Scope %q created in bucket %q", name, bucket)
 			return nil
 		},
 	}
@@ -166,7 +166,7 @@ func newCapellaCollectionCreateCmd() *cobra.Command {
 			if err != nil {
 				return failure("Failed to create collection", err)
 			}
-			logging.Info("Collection %q created in bucket %q scope %q", name, bucket, scope)
+			logging.Success("Collection %q created in bucket %q scope %q", name, bucket, scope)
 			return nil
 		},
 	}
@@ -266,7 +266,7 @@ func newCapellaImportCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				logging.Info("Imported %d documents", imported)
+				logging.Success("Imported %d documents", imported)
 				return nil
 			})
 			if err != nil {

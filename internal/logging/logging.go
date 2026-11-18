@@ -1,143 +1,88 @@
-// Package logging provides colored CLI log output for cbctl.
+// Package logging is the process-wide entry point to leveled, labeled CLI messages. It is a thin
+// shim over internal/output: the functions here write through the process Printer, so packages
+// that cannot receive a Printer (rest, capellaapi, capella, secrets) need no change. cli installs
+// the invocation's Printer with SetPrinter.
 package logging
 
 import (
-	"fmt"
 	"io"
-	"os"
-	"strings"
 	"sync"
 
-	"github.com/fatih/color"
-	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/output"
 )
 
 // Level is a log verbosity level.
-type Level int
+type Level = output.Level
 
+// Log levels, from quietest to most verbose.
 const (
-	LevelError Level = iota
-	LevelWarn
-	LevelInfo
-	LevelDebug
+	LevelError = output.LevelError
+	LevelWarn  = output.LevelWarn
+	LevelInfo  = output.LevelInfo
+	LevelDebug = output.LevelDebug
 )
 
 var (
-	infoColor  = color.New(color.FgBlue).SprintFunc()
-	warnColor  = color.New(color.FgYellow).SprintFunc()
-	errorColor = color.New(color.FgRed).SprintFunc()
-	debugColor = color.New(color.FgCyan).SprintFunc()
-
-	outputMu sync.Mutex
-	stdout   io.Writer = os.Stdout
-	stderr   io.Writer = os.Stderr
-	level              = LevelInfo
+	mu  sync.RWMutex
+	cur = output.New(nil, nil, output.SystemDecider())
 )
 
-// SetOutputs overrides the writers used for log messages (tests).
-func SetOutputs(out, err io.Writer) {
-	outputMu.Lock()
-	defer outputMu.Unlock()
-	if out != nil {
-		stdout = out
-	}
-	if err != nil {
-		stderr = err
-	}
+// Current returns the process Printer.
+func Current() *output.Printer {
+	mu.RLock()
+	defer mu.RUnlock()
+	return cur
 }
+
+// SetPrinter installs p as the process Printer and returns the previous one, so a caller can
+// restore it. A nil p is ignored.
+func SetPrinter(p *output.Printer) *output.Printer {
+	mu.Lock()
+	defer mu.Unlock()
+	prev := cur
+	if p != nil {
+		cur = p
+	}
+	return prev
+}
+
+// SetOutputs overrides the writers used for log messages (tests). A nil writer is kept.
+func SetOutputs(out, err io.Writer) { Current().SetOutputs(out, err) }
 
 // WithOutputs temporarily redirects log writers for fn and restores them afterwards.
 // Legacy-command tests that rely on the package-level logger must not use t.Parallel().
 func WithOutputs(out, err io.Writer, fn func()) {
-	outputMu.Lock()
-	prevOut, prevErr := stdout, stderr
-	if out != nil {
-		stdout = out
-	}
-	if err != nil {
-		stderr = err
-	}
-	outputMu.Unlock()
-	defer SetOutputs(prevOut, prevErr)
+	p := Current()
+	prevOut, prevErr := p.Outputs()
+	p.SetOutputs(out, err)
+	defer p.SetOutputs(prevOut, prevErr)
 	fn()
 }
 
 // Outputs returns the writers currently used for log messages, so a caller that redirects them
 // with SetOutputs can restore them afterwards.
-func Outputs() (out, err io.Writer) {
-	outputMu.Lock()
-	defer outputMu.Unlock()
-	return stdout, stderr
-}
+func Outputs() (out, err io.Writer) { return Current().Outputs() }
 
 // SetLevel sets the minimum log level.
-func SetLevel(l Level) { level = l }
+func SetLevel(l Level) { Current().SetLevel(l) }
 
 // ParseLevel parses error|warn|warning|info|debug.
-func ParseLevel(s string) (Level, error) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "error":
-		return LevelError, nil
-	case "warn", "warning":
-		return LevelWarn, nil
-	case "info":
-		return LevelInfo, nil
-	case "debug":
-		return LevelDebug, nil
-	default:
-		return 0, fmt.Errorf("invalid log level %q", s)
-	}
-}
+func ParseLevel(s string) (Level, error) { return output.ParseLevel(s) }
 
-func logMsg(w io.Writer, lvl, msg string, args ...interface{}) {
-	var coloredLevel string
-	switch lvl {
-	case "info":
-		coloredLevel = infoColor(lvl)
-	case "warning":
-		coloredLevel = warnColor(lvl)
-	case "error":
-		coloredLevel = errorColor(lvl)
-	case "debug":
-		coloredLevel = debugColor(lvl)
-	default:
-		coloredLevel = lvl
-	}
-	text := redact.String(fmt.Sprintf(msg, args...))
-	fmt.Fprintf(w, "[%s] - %s\n", coloredLevel, text)
-}
+// Success writes an [ok] message: a requested change was made or a check passed.
+func Success(msg string, args ...any) { Current().OK(msg, args...) }
 
 // Info writes an info-level message to stdout.
-func Info(msg string, args ...interface{}) {
-	if level < LevelInfo {
-		return
-	}
-	logMsg(stdout, "info", msg, args...)
-}
+func Info(msg string, args ...any) { Current().Info(msg, args...) }
 
 // Warning writes a warning-level message to stderr.
-func Warning(msg string, args ...interface{}) {
-	if level < LevelWarn {
-		return
-	}
-	logMsg(stderr, "warning", msg, args...)
-}
+func Warning(msg string, args ...any) { Current().Warn(msg, args...) }
 
 // Error writes an error-level message to stderr.
-func Error(msg string, args ...interface{}) {
-	logMsg(stderr, "error", msg, args...)
-}
+func Error(msg string, args ...any) { Current().Error(msg, args...) }
 
 // Debug writes a debug-level message to stderr.
-func Debug(msg string, args ...interface{}) {
-	if level < LevelDebug {
-		return
-	}
-	logMsg(stderr, "debug", msg, args...)
-}
+func Debug(msg string, args ...any) { Current().Debug(msg, args...) }
 
 // Println writes a plain line to stdout (machine-readable output). Never suppressed.
-func Println(msg string, args ...interface{}) {
-	// Redact the formatted text, not the format: a secret usually arrives as an argument.
-	fmt.Fprintln(stdout, redact.String(fmt.Sprintf(msg, args...)))
-}
+func Println(msg string, args ...any) { Current().Data(msg, args...) }

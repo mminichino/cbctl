@@ -29,7 +29,7 @@ func onePut(t *testing.T, s *clitest.Scenario) map[string]any {
 	return puts[0]
 }
 
-// TestScaleIn_CAP016_AC1_GuardsPassPutSent: 5 → 4 nodes passes both guards, prints the checks,
+// TestScaleIn_CAP016_AC1_GuardsPassPutSent: 5 -> 4 nodes passes both guards, prints the checks,
 // lists the cluster as destructive in the prompt and sends one PUT.
 func TestScaleIn_CAP016_AC1_GuardsPassPutSent(t *testing.T) {
 	s, cid := nodeScenario(t, scaledDoc("5", "data, index, query"))
@@ -41,8 +41,8 @@ func TestScaleIn_CAP016_AC1_GuardsPassPutSent(t *testing.T) {
 	wantContains(t, r.Stdout,
 		"~ cluster envclu",
 		"scale in",
-		"serviceGroups[data,index,query].numOfNodes:  5 → 4",
-		"checks: memory ok (12,288 / ~32,768 MB) · replicas ok (max 1, needs 2 data nodes)",
+		"serviceGroups[data,index,query].numOfNodes:  5 -> 4",
+		"checks: memory ok (12,288 / ~32,768 MB) - replicas ok (max 1, needs 2 data nodes)",
 	)
 	// cbctl writes the prompt on stderr so stdout stays the plan.
 	wantContains(t, r.Stderr, "Destructive changes:\n  cluster envclu")
@@ -53,7 +53,7 @@ func TestScaleIn_CAP016_AC1_GuardsPassPutSent(t *testing.T) {
 }
 
 // TestScaleIn_CAP016_AC3_ReplicaGuardBlocks: 3 replicas need 4 data nodes, so a declarative
-// 4 → 3 is blocked with exit 4 and nothing is written.
+// 4 -> 3 is blocked with exit 4 and nothing is written.
 func TestScaleIn_CAP016_AC3_ReplicaGuardBlocks(t *testing.T) {
 	s, cid := nodeScenario(t, scaledDoc("4", "data, index, query"))
 	s.Fake.SeedBucket(cid, "orders", capellafake.WithField("memoryAllocationInMb", 1024), capellafake.WithField("replicas", 3))
@@ -114,7 +114,7 @@ func TestVertical_CAP017_AC3_DiskShrinkBlocked(t *testing.T) {
 	writeCapellaYAML(t, s, scenarioDoc)
 	r := s.Run("capella", "apply", "--yes")
 	wantExit(t, r, cli.ExitBlocked)
-	wantContains(t, r.Stdout, "node.disk.storage: 100 → 50 GB  disk size cannot be reduced")
+	wantContains(t, r.Stdout, "node.disk.storage: 100 -> 50 GB  disk size cannot be reduced")
 	clitest.AssertNoWrites(t, s.Fake)
 }
 
@@ -128,17 +128,17 @@ func TestVertical_CAP017_AC5_CombinedSinglePut(t *testing.T) {
 	onePut(t, s)
 }
 
-// TestVertical_CAP017_AC6_RamDecreaseMemoryGuard: 32 → 16 GB per data node halves the data
+// TestVertical_CAP017_AC6_RamDecreaseMemoryGuard: 32 -> 16 GB per data node halves the data
 // service, so the bucket memory must fit half of today's total.
 func TestVertical_CAP017_AC6_RamDecreaseMemoryGuard(t *testing.T) {
-	big := computeDoc(scenarioDoc, "compute: {cpu: 8, ram: 32}") // total 49,152 MB → ~24,576 after
+	big := computeDoc(scenarioDoc, "compute: {cpu: 8, ram: 32}") // total 49,152 MB -> ~24,576 after
 	t.Run("blocked", func(t *testing.T) {
 		s, cid := nodeScenario(t, big)
 		s.Fake.SeedBucket(cid, "orders", capellafake.WithField("memoryAllocationInMb", 30000), capellafake.WithField("replicas", 1))
 		writeCapellaYAML(t, s, scenarioDoc)
 		r := s.Run("capella", "apply", "--yes")
 		wantExit(t, r, cli.ExitBlocked)
-		wantContains(t, r.Stdout, "buckets allocate 30,000 MB but data service would have ~24,576 MB after scale-in (32 → 16 GB per node)")
+		wantContains(t, r.Stdout, "buckets allocate 30,000 MB but data service would have ~24,576 MB after scale-in (32 -> 16 GB per node)")
 		clitest.AssertNoWrites(t, s.Fake)
 	})
 	t.Run("fits", func(t *testing.T) {
@@ -173,7 +173,7 @@ func TestClusterUpdate_CAP012_AC1_FullBodyOverlay(t *testing.T) {
 	doc := strings.Replace(describedDoc("Nova dev, now on enterprise"), "plan: developer pro", "plan: enterprise", 1)
 	writeCapellaYAML(t, s, doc)
 	r := mustScenario(t, s.Run("capella", "apply", "--yes"), "apply update")
-	wantContains(t, r.Stdout, `support.plan:  "developer pro" → "enterprise"`)
+	wantContains(t, r.Stdout, `support.plan:  "developer pro" -> "enterprise"`)
 	calls := s.Fake.Calls("PUT", "/v4/organizations/*/projects/*/clusters/"+cid)
 	if len(calls) != 1 {
 		t.Fatalf("cluster PUTs = %v", calls)
@@ -203,7 +203,7 @@ func TestClusterUpdate_CAP012_AC1_SettingsOnlyNote(t *testing.T) {
 	s, _ := nodeScenario(t, describedDoc("Nova development cluster"))
 	writeCapellaYAML(t, s, describedDoc("Nova demo cluster"))
 	r := mustScenario(t, s.Run("capella", "plan"), "plan")
-	wantContains(t, r.Stdout, "      description:  \"Nova development cluster\" → \"Nova demo cluster\"\n      "+resources.SettingsOnlyNote)
+	wantContains(t, r.Stdout, "      description:  \"Nova development cluster\" -> \"Nova demo cluster\"\n      "+resources.SettingsOnlyNote)
 
 	r = mustScenario(t, s.Run("capella", "-o", "json", "plan"), "plan json")
 	var js struct {
@@ -316,7 +316,7 @@ func TestClusterUpdate_CAP012_AC6_RenameWithPinnedID(t *testing.T) {
 	s, cid := nodeScenario(t, scenarioDoc)
 	writeCapellaYAML(t, s, strings.Replace(scenarioDoc, "  - name: envclu", "  - id: "+cid+"\n    name: envclu2", 1))
 	r := mustScenario(t, s.Run("capella", "apply", "--yes"), "apply rename")
-	wantContains(t, r.Stdout, `name:  "envclu" → "envclu2"`)
+	wantContains(t, r.Stdout, `name:  "envclu" -> "envclu2"`)
 	cl, err := s.Fake.Client().GetCluster(t.Context(), projectOf(t, s), cid)
 	if err != nil || cl.Name != "envclu2" {
 		t.Errorf("cluster = %+v, %v; want renamed envclu2", cl, err)

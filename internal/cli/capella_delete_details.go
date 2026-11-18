@@ -16,7 +16,7 @@ import (
 func (r *runtime) confirmNamedDelete(kind, key, name string, details []string) (bool, error) {
 	if !r.JSON {
 		for _, l := range details {
-			fmt.Fprintf(r.errOut(), "  %s\n", l)
+			writeProse(r.errOut(), "  %s", l)
 		}
 	}
 	ok, err := confirmTyped(r, fmt.Sprintf("Type the %s name to confirm deletion of %s", kind, key), name)

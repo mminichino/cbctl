@@ -17,6 +17,8 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/importer"
+	"github.com/mminichino/cbctl/internal/logging"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/presets"
 	"github.com/mminichino/cbctl/internal/settings"
 	"github.com/spf13/cobra"
@@ -408,10 +410,10 @@ type initIO struct {
 
 // readAnswer prints label and returns the raw answer ("" for an empty line).
 func (w *initIO) readAnswer(label, def string) (string, error) {
-	fmt.Fprintf(w.out, "%s: ", label)
+	writePrompt(w.out, "%s: ", label)
 	if w.p != nil {
 		v, err := w.p.Ask(label, def)
-		fmt.Fprintln(w.out, v)
+		writeProse(w.out, "%s", v)
 		if err != nil {
 			return "", fmt.Errorf("answering %q: %w", label, err)
 		}
@@ -444,7 +446,7 @@ func (w *initIO) ask(prompt, def string, choices []string) (string, error) {
 			v = def
 		}
 		if len(choices) > 0 && !slices.Contains(choices, v) {
-			fmt.Fprintf(w.out, "[error] - %s is not one of %s\n", v, strings.Join(choices, ", "))
+			writeLabeled(w.out, output.KindError, "%s is not one of %s", v, strings.Join(choices, ", "))
 			continue
 		}
 		return v, nil
@@ -467,7 +469,7 @@ func (w *initIO) yesNo(prompt string, def bool) (bool, error) {
 		case "n", "no":
 			return false, nil
 		}
-		fmt.Fprintln(w.out, "[error] - answer y or n")
+		writeLabeled(w.out, output.KindError, "answer y or n")
 	}
 }
 
@@ -611,7 +613,7 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 		return err
 	}
 	if f.dryRun {
-		fmt.Fprint(cmd.OutOrStdout(), strings.TrimRight(text, "\n")+"\n")
+		writeDocument(cmd.OutOrStdout(), text)
 		return nil
 	}
 	if exists {
@@ -624,7 +626,7 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 			return fmt.Errorf("writing %s: %w", backup, err)
 		}
 		if !g.Quiet {
-			fmt.Fprintf(errOut, "previous file saved as %s\n", filepath.Base(backup))
+			writeLabeled(errOut, output.KindInfo, "previous file saved as %s", filepath.Base(backup))
 		}
 	}
 	if err := writeFileAtomic(path, text); err != nil {
@@ -635,11 +637,11 @@ func runInit(cmd *cobra.Command, af *apiFlags, f *initFlags) error {
 		out.Object(map[string]any{"file": path, "written": true, "valid": true})
 		return nil
 	}
-	out.Line("✔ Wrote %s (validated)", displayPath(path))
+	logging.Success("Wrote %s (validated)", displayPath(path))
 	if a.credential != "" {
-		out.Line("Next: export %s=…   then   cbctl capella plan", a.passwordEnvName())
+		logging.Info("Next: export %s=...   then   cbctl capella plan", a.passwordEnvName())
 	} else {
-		out.Line("Next: cbctl capella plan")
+		logging.Info("Next: cbctl capella plan")
 	}
 	return nil
 }
@@ -731,9 +733,9 @@ func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *ini
 	case len(orgs) == 1:
 		chosen = &orgs[0]
 	case len(orgs) > 0 && interactive:
-		fmt.Fprintln(cmd.ErrOrStderr(), "Organizations:")
+		writeProse(cmd.ErrOrStderr(), "Organizations:")
 		for i, o := range orgs {
-			fmt.Fprintf(cmd.ErrOrStderr(), "  %d. %s (%s)\n", i+1, o.Name, o.ID)
+			writeProse(cmd.ErrOrStderr(), "  %d. %s (%s)", i+1, o.Name, o.ID)
 		}
 		idx, aerr := askIndex(w, "Organization", len(orgs), indexOfOrg(orgs, defaultOrg))
 		if aerr != nil {
@@ -748,9 +750,9 @@ func initOrganization(cmd *cobra.Command, af *apiFlags, interactive bool, w *ini
 	}
 	c.SetOrgID(chosen.ID)
 	if chosen.Name != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Organization: %s (%s)\n", chosen.Name, chosen.ID)
+		writeProse(cmd.ErrOrStderr(), "Organization: %s (%s)", chosen.Name, chosen.ID)
 	} else {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Organization: %s\n", chosen.ID)
+		writeProse(cmd.ErrOrStderr(), "Organization: %s", chosen.ID)
 	}
 	return c, chosen.ID, chosen.Name, nil, nil
 }
@@ -782,7 +784,7 @@ func askIndex(w *initIO, prompt string, n, def int) (int, error) {
 		if convErr == nil && i >= 1 && i <= n {
 			return i, nil
 		}
-		fmt.Fprintf(w.out, "[error] - enter a number from 1 to %d\n", n)
+		writeLabeled(w.out, output.KindError, "enter a number from 1 to %d", n)
 	}
 }
 
@@ -816,9 +818,9 @@ func initProject(ctx context.Context, client *capellaapi.Client, wanted, wantedI
 	}
 	if interactive && wanted == "" {
 		if len(projects) > 0 {
-			fmt.Fprintln(w.out, "Existing projects:")
+			writeProse(w.out, "Existing projects:")
 			for i, p := range projects {
-				fmt.Fprintf(w.out, "  %d. %s\n", i+1, p.Name)
+				writeProse(w.out, "  %d. %s", i+1, p.Name)
 			}
 		}
 		answer, err := w.ask("Project (number of an existing project, or a new name)", "", nil)
@@ -863,9 +865,9 @@ func initProject(ctx context.Context, client *capellaapi.Client, wanted, wantedI
 		return "", "", nil, Errorf(ExitConfigInvalid, "Add --project-id with the ID of the one to use.",
 			"%d projects are named %s (ids: %s)", len(same), wanted, strings.Join(ids, ", "))
 	case len(same) > 1:
-		fmt.Fprintf(w.out, "%d projects are named %s:\n", len(same), wanted)
+		writeProse(w.out, "%d projects are named %s:", len(same), wanted)
 		for i, p := range same {
-			fmt.Fprintf(w.out, "  %d. %s (%s)\n", i+1, p.Name, p.ID)
+			writeProse(w.out, "  %d. %s (%s)", i+1, p.Name, p.ID)
 		}
 		idx, err := askIndex(w, "Which one", len(same), 1)
 		if err != nil {
@@ -882,7 +884,7 @@ func initProject(ctx context.Context, client *capellaapi.Client, wanted, wantedI
 		return wanted, pin, cl, err
 	}
 	if client != nil {
-		fmt.Fprintf(w.out, "Project %s does not exist yet; apply will create it.\n", wanted)
+		writeProse(w.out, "Project %s does not exist yet; apply will create it.", wanted)
 	}
 	return wanted, "", nil, nil
 }
@@ -912,7 +914,8 @@ func initInterview(w *initIO, a *initAnswers, freeName func(string) []string, re
 			if len(problems) == 0 {
 				return nil
 			}
-			fmt.Fprintf(w.out, "[error] - %s\n  → Please answer again.\n", strings.Join(problems, "\n"))
+			writeLabeled(w.out, output.KindError, "%s", strings.Join(problems, "\n"))
+			writeAction(w.out, "Please answer again.")
 			def = v
 		}
 	}
@@ -950,7 +953,7 @@ func initInterview(w *initIO, a *initAnswers, freeName func(string) []string, re
 	for _, n := range names {
 		described = append(described, fmt.Sprintf("%s (%s)", n, presets.Presets()[n].Description))
 	}
-	fmt.Fprintf(w.out, "Size presets: %s\n", strings.Join(described, "; "))
+	writeProse(w.out, "Size presets: %s", strings.Join(described, "; "))
 	if err := ask("Size preset", a.preset, append(append([]string(nil), names...), "custom"),
 		[]string{"clusters[0].cloudProvider.type", "clusters[0].configurationType", "clusters[0].availability", "clusters[0].serviceGroups"},
 		str(&a.preset), nil); err != nil {
@@ -1074,9 +1077,9 @@ func initImport(cmd *cobra.Command, af *apiFlags, f *initFlags, path string, w *
 	if len(projects) == 0 {
 		return Errorf(ExitError, "Choose 'new' to describe a new environment instead.", "this organization has no projects to import")
 	}
-	fmt.Fprintln(w.out, "Projects:")
+	writeProse(w.out, "Projects:")
 	for i, p := range projects {
-		fmt.Fprintf(w.out, "  %d. %s (%s)\n", i+1, p.Name, p.ID)
+		writeProse(w.out, "  %d. %s (%s)", i+1, p.Name, p.ID)
 	}
 	idx, err := askIndex(w, "Project to import", len(projects), 1)
 	if err != nil {

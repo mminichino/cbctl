@@ -151,7 +151,7 @@ func TestGroupCmd_CAP052_AC3_AddRefused(t *testing.T) {
 		msg  string
 	}{
 		{"existing group", []string{"--services", "data,index,query", "--nodes", "5"},
-			"group data,index,query already exists with 3 nodes\n  → change its node count with 'cbctl capella cluster scale envclu --group data,index,query"},
+			"group data,index,query already exists with 3 nodes\n  -> change its node count with 'cbctl capella cluster scale envclu --group data,index,query"},
 		{"node limit", []string{"--services", "search", "--nodes", "25"}, "outside the limits of an extra group (2-24)"},
 		{"unknown service", []string{"--services", "cache"}, "unknown service 'cache'"},
 	}

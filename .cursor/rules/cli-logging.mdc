@@ -1,68 +1,68 @@
 ---
-description: Conventions for colored CLI log/message output in Go
+description: Conventions for CLI output, labels, color and glyphs in Go
 globs: "**/*.go"
 alwaysApply: false
 ---
+# CLI Output and Color Conventions
 
-# CLI Colored Logging Conventions
+All terminal output goes through `internal/output`. `internal/logging` is a thin shim over it (`logging.Info`, `Success`, `Warning`, `Error`, `Debug`, `Println`) so callers need no printer plumbing. There is no color library: `fatih/color` is gone and must not come back.
 
-When writing or modifying CLI output/logging code in this Go project, follow these conventions.
+## Which call to use
+
+| You are writing | Call | Stream (text mode) |
+|---|---|---|
+| A change was made or a check passed | `logging.Success` (`[ok]`) | stdout |
+| Status, progress, no-op ("already configured") | `logging.Info` (`[info]`) | stdout |
+| Something to look at, command went on | `logging.Warning` (`[warning]`) | stderr |
+| A failure | return a `*CLIError`; `HandleError` prints `[error]` + action | stderr |
+| Diagnostics for `--log-level debug` | `logging.Debug` (`[debug]`) | stderr |
+| A labeled line to a writer that is not the process stream (tests, cobra `cmd.ErrOrStderr()`) | `writeLabeled(w, output.KindX, ...)` | w |
+| A hint line / a notice | `writeAction` / `writeNotice` | w |
+| Command data: tables, `key: value`, JSON, `true`/`false` | the `Renderer` (`rt.Out`) | stdout |
+| Prompt context, menus, confirmation details | `writeProse` / `writePrompt` | w |
+| A generated document (capella.yaml, guide text) | `writeDocument` | w |
+
+Never call `fmt.Print*`, `fmt.Fprint*(os.Stdout|os.Stderr, ...)` or write raw `\x1b` codes in `internal/cli`. Writes to a `w` go through the helpers above so redaction and glyph rules apply. The only places allowed to touch the process streams are `internal/output` and the `Deps` defaults in `internal/cli/deps.go`. `cmd/cbdev` is a developer tool and keeps plain `fmt`.
+
+Pick `[ok]` versus `[info]` by meaning: a message that says something was created, saved, removed, applied, imported or passed is `[ok]`; "already configured", "waiting for", "accepted", "Next:" are `[info]`. The stdout texts automation depends on do not change: `Cluster already configured`, `Node already configured`, `Collection not empty`, `Cluster created on ...`, `Imported N documents`, `Keyspace "..." created`.
 
 ## Format
 
-All log-style messages use this format:
-
 ```
 [level] - message text
+  -> action line (hint for the line above)
 ```
 
-- The brackets `[` `]` and the message text are **never colored**.
-- Only the level word itself (`info`, `warning`, `error`) is colored.
+- Only the label word is styled. The brackets, the ` - ` and the message are **never** colored. The reset follows the closing bracket.
+- Levels: `[ok]` (bold green `1;32`), `[info]` (plain), `[warning]` (bold yellow `1;33`), `[error]` (bold red `1;31`), `[debug]` (dim `2`).
+- Escape codes are written by hand in `internal/output/label.go` (16-color SGR). Do not add a color library.
+- Keep level names lowercase. A new level needs an entry in `internal/output/label.go`, a golden pair in `internal/output/testdata/golden`, and a row in the README label table.
 
-## Colors
+## Streams
 
-| Level     | Color  |
-|-----------|--------|
-| `info`    | Blue   |
-| `warning` | Yellow |
-| `error`   | Red    |
+- `[ok]` and `[info]` go to stdout in text mode and to stderr with `-o json`, so stdout holds only the JSON document (decision D1).
+- `[warning]`, `[error]`, `[debug]`, hint lines and progress go to stderr.
+- Stdout data (`true`/`false`, `-o json`, `cluster map`, tables, one-time passwords) is never colored. A one-time password is printed unredacted exactly once, after a `[warning]`.
+- Quiet (`-q`, `CBCTL_QUIET`) hides `[ok]`, `[info]`, `[debug]` and progress. Warnings, errors and data stay.
 
-## Implementation
+## Color decision (per stream, `output.Decider.Color`)
 
-Use `github.com/fatih/color` for colorization. Define `SprintFunc()` helpers per level and only wrap the level string, not the whole line:
+1. `--color never` off, `--color always` on.
+2. `NO_COLOR` non-empty: off.
+3. `TERM=dumb`: off.
+4. `CLICOLOR_FORCE` or `FORCE_COLOR` non-empty and not `0`: on (`FORCE_COLOR=0`: off).
+5. `CLICOLOR=0`: off.
+6. Otherwise on only if that stream is a terminal.
 
-```go
-var (
-	infoColor  = color.New(color.FgBlue).SprintFunc()
-	warnColor  = color.New(color.FgYellow).SprintFunc()
-	errorColor = color.New(color.FgRed).SprintFunc()
-)
+Stdout and stderr are decided independently. Never reimplement terminal checks; use `output.Decider` (tests inject `Deps.IsTerminal`).
 
-func logMsg(level, msg string, args ...interface{}) {
-	var coloredLevel string
-	switch level {
-	case "info":
-		coloredLevel = infoColor(level)
-	case "warning":
-		coloredLevel = warnColor(level)
-	case "error":
-		coloredLevel = errorColor(level)
-	default:
-		coloredLevel = level
-	}
-	fmt.Printf("[%s] - %s\n", coloredLevel, fmt.Sprintf(msg, args...))
-}
+## Glyphs
 
-func Info(msg string, args ...interface{})    { logMsg("info", msg, args...) }
-func Warning(msg string, args ...interface{}) { logMsg("warning", msg, args...) }
-func Error(msg string, args ...interface{})   { logMsg("error", msg, args...) }
-```
+`glyphPolicy` in `internal/cli/output.go` is `output.GlyphsByColor`: a stream that gets color shows `→ · ± … ••••`; every other stream shows ASCII `-> - +/- ... ****`. Write the Unicode spelling in source; `Glyphs.Localize` rewrites it per stream in `writeLabeled`, `writeProse`, `writePrompt`, the `Renderer` and the plan renderer. Code that builds text for a known stream (`plan.RenderPlanText`, `ActionLines`) takes an `output.Glyphs` argument from `outGlyphs(w)` / `stdoutGlyphs()`. `redact.MaskTail(s, mask)` gets its mask from the caller; it reads no global terminal state. `--version` licence text is the one fixed Unicode string.
 
 ## Rules to enforce
 
-- Do not introduce a second colored-logging library (e.g. `lipgloss`, `termenv`, `aec`) — stick to `fatih/color` for consistency.
-- Do not color the message body, punctuation, or brackets — only the level word.
-- Centralize level-to-color mapping in one place (e.g. a `logging` or `ui` package) rather than inlining `color.New(...)` calls at call sites.
-- Respect `NO_COLOR` and non-TTY output. Rely on `fatih/color`'s built-in `color.NoColor` detection rather than reimplementing TTY checks, unless the project already has its own detection logic.
-- Keep level names lowercase (`info`, `warning`, `error`) to match the existing format exactly.
-- If a new level is added (e.g. `debug`, `fatal`), follow the same pattern: pick a semantic color, add it to the switch statement, and only colorize the level word.
+- Redact first (`redact.String`), then add escape codes, so a secret is never split by SGR codes.
+- Tests assert exact bytes for color on and off; regenerate `internal/output` goldens with `go test ./internal/output -update` and review the diff. Command-level goldens live in `internal/cli/testdata/output`; regenerate with `go test ./internal/cli -run TestCommandOutputGolden -update-output`.
+- Tests that match output text use the ASCII spelling (`->`, `-`), because tests run without a color terminal. Fake a terminal with `Deps.IsTerminal` to test the Unicode spelling.
+- README color section and `.cursor/rules/cbctl.mdc` change in the same commit as any user-visible output change.

@@ -13,7 +13,6 @@ edit by hand. "Needed" names the platforms that compile a module in when not all
 | github.com/couchbase/goprotostellar | v1.0.6-0.20260407143512-d7af25156dcc | Apache-2.0 |  | https://pkg.go.dev/github.com/couchbase/goprotostellar |
 | github.com/couchbaselabs/gocbconnstr/v2 | v2.0.0 | Apache-2.0 |  | https://pkg.go.dev/github.com/couchbaselabs/gocbconnstr/v2 |
 | github.com/danieljoos/wincred | v1.2.3 | MIT | windows | https://pkg.go.dev/github.com/danieljoos/wincred |
-| github.com/fatih/color | v1.19.0 | MIT |  | https://pkg.go.dev/github.com/fatih/color |
 | github.com/go-logr/logr | v1.4.3 | Apache-2.0 |  | https://pkg.go.dev/github.com/go-logr/logr |
 | github.com/go-logr/stdr | v1.2.2 | Apache-2.0 |  | https://pkg.go.dev/github.com/go-logr/stdr |
 | github.com/godbus/dbus/v5 | v5.2.2 | BSD-2-Clause | linux | https://pkg.go.dev/github.com/godbus/dbus/v5 |
@@ -22,8 +21,6 @@ edit by hand. "Needed" names the platforms that compile a module in when not all
 | github.com/gorilla/websocket | v1.5.3 | BSD-2-Clause |  | https://pkg.go.dev/github.com/gorilla/websocket |
 | github.com/inconshreveable/mousetrap | v1.1.0 | Apache-2.0 | windows | https://pkg.go.dev/github.com/inconshreveable/mousetrap |
 | github.com/joho/godotenv | v1.5.1 | MIT |  | https://pkg.go.dev/github.com/joho/godotenv |
-| github.com/mattn/go-colorable | v0.1.14 | MIT |  | https://pkg.go.dev/github.com/mattn/go-colorable |
-| github.com/mattn/go-isatty | v0.0.20 | MIT |  | https://pkg.go.dev/github.com/mattn/go-isatty |
 | github.com/santhosh-tekuri/jsonschema/v6 | v6.0.3 | Apache-2.0 |  | https://pkg.go.dev/github.com/santhosh-tekuri/jsonschema/v6 |
 | github.com/spf13/cobra | v1.10.2 | Apache-2.0 |  | https://pkg.go.dev/github.com/spf13/cobra |
 | github.com/spf13/pflag | v1.0.9 | BSD-3-Clause |  | https://pkg.go.dev/github.com/spf13/pflag |

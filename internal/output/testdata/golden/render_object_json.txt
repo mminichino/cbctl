@@ -1,0 +1,11 @@
+{
+  "memoryMB": 1024,
+  "name": "orders",
+  "nested": {
+    "k": "v"
+  },
+  "tags": [
+    "a",
+    "b"
+  ]
+}

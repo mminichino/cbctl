@@ -5,6 +5,7 @@ import (
 
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/engine"
+	"github.com/mminichino/cbctl/internal/output"
 )
 
 // Prompter asks the user to confirm destructive steps during apply --prune. A nil Prompter
@@ -24,6 +25,9 @@ type RunContext struct {
 	Clock   engine.Clock
 	Timeout time.Duration
 	NoWait  bool
+
+	// Glyphs spells the symbols of progress lines. The zero value means Unicode.
+	Glyphs output.Glyphs
 
 	// Progress receives one line of progress text. Nil discards it.
 	Progress func(string)
@@ -48,6 +52,14 @@ const DefaultTimeout = 60 * time.Minute
 // NewRunContext returns a context with the real clock and the default timeout.
 func NewRunContext(client *capellaapi.Client, cfg any) *RunContext {
 	return &RunContext{Client: client, Config: cfg, Clock: engine.RealClock{}, Timeout: DefaultTimeout}
+}
+
+// glyphs is rc.Glyphs, or the Unicode set when none was given.
+func (rc *RunContext) glyphs() output.Glyphs {
+	if rc.Glyphs.Arrow == "" {
+		return output.UnicodeGlyphs
+	}
+	return rc.Glyphs
 }
 
 // Say sends one progress line.

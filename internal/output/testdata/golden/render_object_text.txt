@@ -1,0 +1,5 @@
+name: orders
+memoryMB: 1024
+tags[0]: a
+tags[1]: b
+nested.k: v

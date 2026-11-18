@@ -41,7 +41,7 @@ var writeKinds = []struct {
 	{"DELETE", regexp.MustCompile(`/projects/[^/]+$`), "project"},
 }
 
-// kindRuns names the kind of each write and folds repeats: [project cluster cluster] → [project cluster].
+// kindRuns names the kind of each write and folds repeats: [project cluster cluster] -> [project cluster].
 func kindRuns(calls []capellafake.Call) []string {
 	var out []string
 	for _, c := range calls {

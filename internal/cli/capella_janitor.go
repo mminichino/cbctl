@@ -157,7 +157,7 @@ func (rt *runtime) runJanitor(o janitorOptions) error {
 		if err != nil {
 			failed++
 			logging.Error("%s", err.Error())
-			fmt.Fprintf(rt.errOut(), "  FAILED: %v\n", err)
+			writeProse(rt.errOut(), "  FAILED: %v", err)
 			if rt.Ctx.Err() != nil {
 				break
 			}

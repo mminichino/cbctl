@@ -106,7 +106,7 @@ func TestApply_CAP006_AC4_BlockedPreventsAnyWrite(t *testing.T) {
 	r := s.Run("capella", "apply", "--yes")
 	wantExit(t, r, cli.ExitBlocked)
 	wantContains(t, r.Stdout, "! cluster envclu  immutable: cloudProvider.region (requires a new cluster)")
-	wantContains(t, r.Stderr, "[error] - Apply refused: 1 blocked change(s); nothing was changed\n  → Resolve each change marked !")
+	wantContains(t, r.Stderr, "[error] - Apply refused: 1 blocked change(s); nothing was changed\n  -> Resolve each change marked !")
 	clitest.AssertNoWrites(t, s.Fake)
 }
 
@@ -222,8 +222,8 @@ func TestPlan_CAP005_AC1_SymbolsAndSummary(t *testing.T) {
 	s := uxPartial(t)
 	r := mustScenario(t, s.Run("capella", "plan"))
 	wantContains(t, r.Stdout,
-		"  ~ cluster envclu   scale out\n      serviceGroups[data,index,query].numOfNodes:  3 → 5\n",
-		"  + bucket envclu/orders  couchbase · 1024 MB · 1 replica · durability none\n",
+		"  ~ cluster envclu   scale out\n      serviceGroups[data,index,query].numOfNodes:  3 -> 5\n",
+		"  + bucket envclu/orders  couchbase - 1024 MB - 1 replica - durability none\n",
 		"  = scope envclu/events/inventory\n",
 		"Plan: 1 to add, 1 to change, 0 to delete, 0 blocked.")
 	clitest.AssertNoWrites(t, s.Fake)
@@ -239,7 +239,7 @@ func TestPlanner_CAP005_AC7_TargetFilter(t *testing.T) {
 			body = append(body, l)
 		}
 	}
-	if len(body) != 1 || body[0] != "  + bucket envclu/orders  couchbase · 1024 MB · 1 replica · durability none" {
+	if len(body) != 1 || body[0] != "  + bucket envclu/orders  couchbase - 1024 MB - 1 replica - durability none" {
 		t.Fatalf("plan lines = %q", body)
 	}
 }
@@ -265,7 +265,7 @@ func TestPlan_CAP005_AC8_DetailedExitcodeBlocked(t *testing.T) {
 }
 
 // TestPlanner_CAP005_AC6_ChildrenOfNewCluster: children of a cluster still to be created are
-// planned with "(after … is …)" notes and no cluster-scoped API call is made.
+// planned with "(after ... is ...)" notes and no cluster-scoped API call is made.
 func TestPlanner_CAP005_AC6_ChildrenOfNewCluster(t *testing.T) {
 	s := newScenario(t)
 	s.Fake.SeedProject("envproj")
@@ -273,7 +273,7 @@ func TestPlanner_CAP005_AC6_ChildrenOfNewCluster(t *testing.T) {
 	writeCapellaYAML(t, s, uxFullDoc)
 	r := mustScenario(t, s.Run("capella", "plan"))
 	wantContains(t, r.Stdout,
-		"  + bucket envclu/orders  couchbase · magma · 1024 MB · 1 replica · durability none  (after cluster is healthy)",
+		"  + bucket envclu/orders  couchbase - magma - 1024 MB - 1 replica - durability none  (after cluster is healthy)",
 		"  + credential envclu/app",
 		"  + scope envclu/orders/billing  (after bucket is created)")
 	for _, c := range s.Fake.RequestLog() {
@@ -294,7 +294,7 @@ func TestPlanner_CAP005_AC6_UnsupportedKindsDeferred(t *testing.T) {
 		"            collections:\n              - name: suppliers\n                maxTTL: -1\n")
 	r := mustScenario(t, s.Run("capella", "plan"))
 	wantContains(t, r.Stdout,
-		"  + bucket envclu/orders  couchbase · magma · 1024 MB · 1 replica · durability majority",
+		"  + bucket envclu/orders  couchbase - magma - 1024 MB - 1 replica - durability majority",
 		"  + scope envclu/orders/inventory  (after bucket is created)",
 		"  + collection envclu/orders/inventory/suppliers",
 		"  + schedule envclu")

@@ -9,7 +9,7 @@ import (
 	"github.com/mminichino/cbctl/internal/capellaapi"
 	"github.com/mminichino/cbctl/internal/config/capellafile"
 	"github.com/mminichino/cbctl/internal/engine"
-	"github.com/mminichino/cbctl/internal/redact"
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/secrets"
 )
 
@@ -141,7 +141,7 @@ func HandleError(err error) ExitCode {
 			printAction(cliErr.Action)
 			return ExitInterrupted
 		}
-		fmt.Fprintln(errorOut())
+		_, _ = io.WriteString(errorOut(), "\n") // end the line the terminal echoed ^C on
 		return ExitInterrupted
 	}
 
@@ -232,12 +232,9 @@ const settingsAction = "Fix the setting named above (its flag, environment varia
 const errStoppedWaiting = "stopped waiting: %v; the operation continues in Capella"
 
 func printError(msg string) {
-	fmt.Fprintf(errorOut(), "[error] - %s\n", redact.String(msg))
+	writeLabeled(errorOut(), output.KindError, "%s", msg)
 }
 
 func printAction(action string) {
-	if action == "" {
-		return
-	}
-	fmt.Fprintf(errorOut(), "  → %s\n", redact.String(action))
+	writeAction(errorOut(), action)
 }

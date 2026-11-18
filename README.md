@@ -247,6 +247,22 @@ cbctl capella doctor            # offline: list what is left from capellactl (--
 
 **Saved passwords and git.** Generated passwords are written under the credentials directory (mode 0600). When that directory is inside a git work tree and not ignored, generating a password exits 4 before anything is created; add `.cbctl/` to `.gitignore` or pass `--force-overwrite-secret`. `init` and `sync` add `.cbctl/` to the `.gitignore` next to `capella.yaml` when it is in a git work tree.
 
+### Color
+
+`--color auto|always|never` (all commands; default `auto`) controls ANSI color on the `[ok]`, `[warning]`, `[error]` and `[debug]` labels. Only the label word is styled, never the message. Each stream is decided on its own, in this order: `--color`, then `NO_COLOR` (non-empty: off), `TERM=dumb` (off), `CLICOLOR_FORCE` or `FORCE_COLOR` (set and not `0`: on; `FORCE_COLOR=0`: off), `CLICOLOR=0` (off), and otherwise on only when the stream is a terminal. Tables, `-o json` documents, `true`/`false`, `cluster map` and one-time passwords on stdout never carry color. `[ok]` and `[info]` lines go to stdout in text mode (stderr with `-o json`); warnings and errors go to stderr.
+
+| Label | Meaning | Color (SGR) | Stream |
+|---|---|---|---|
+| `[ok]` | A change was made or a check passed (`Cluster created on ...`, `Imported N documents`, `Apply complete in ...`) | bold green | stdout |
+| `[info]` | Status, progress and no-ops (`Cluster already configured`, `... accepted for cluster ...`) | none | stdout |
+| `[warning]` | Something to look at; the command went on | bold yellow | stderr |
+| `[error]` | The command failed; an action line follows (`  -> what to do`) | bold red | stderr |
+| `[debug]` | Shown with `--log-level debug` | dim | stderr |
+
+Off a color terminal (pipes, logs, `NO_COLOR`) output is plain ASCII: hint lines read `  -> action`, plan headers use `-`, changes that re-create read `+/-`, deferred ones `...`, and masked values `****`. On a color terminal they read `→`, `·`, `±`, `…` and `••••`.
+
+**Upgrading to 0.7.0.** Success lines that read `[info] - Cluster created on ...` now read `[ok] - Cluster created on ...` (same for `Bucket`, `Scope`, `Collection`, `Keyspace`, `Imported N documents`, `Node ... added`, `Cluster rebalanced`, `Cluster test passed`, `Apply complete`, `Wrote capella.yaml` and `Saved profile`). A script that greps for `[info] - Cluster created` should match on the exit code or `-o json` instead; `true`/`false` from `exists`, `Cluster already configured`, `Node already configured`, `Collection not empty` and generated passwords are unchanged.
+
 ### Exit codes
 
 | Code | Meaning |

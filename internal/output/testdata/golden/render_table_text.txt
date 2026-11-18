@@ -1,0 +1,3 @@
+NAME         NODES
+nova-dev-01  3
+a b c        12

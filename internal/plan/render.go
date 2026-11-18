@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/mminichino/cbctl/internal/output"
 	"github.com/mminichino/cbctl/internal/redact"
 )
 
@@ -160,8 +161,17 @@ func writePyString(sb *strings.Builder, s string) {
 }
 
 // ActionLines renders one action: the head line, one line per change, remarks, and the guide hint
-// for a blocked action.
-func ActionLines(a *Action) []string {
+// for a blocked action. The glyphs of g (the symbols ±, …, → and ·) are spelled as g says, so a
+// pipe gets plain ASCII; the zero Glyphs keeps the Unicode spelling.
+func ActionLines(a *Action, g output.Glyphs) []string {
+	lines := actionLines(a)
+	for i, l := range lines {
+		lines[i] = g.Localize(l)
+	}
+	return lines
+}
+
+func actionLines(a *Action) []string {
 	head := fmt.Sprintf("  %s %s %s", Symbol[a.Type], a.Kind, a.Key)
 	if a.Type == Create && a.Summary != "" {
 		head += "  " + a.Summary
@@ -206,8 +216,8 @@ func ActionLines(a *Action) []string {
 }
 
 // RenderPlanText is the plan shown before a change. quiet prints only the summary line unless
-// something is blocked.
-func RenderPlanText(p *Plan, header string, quiet bool) string {
+// something is blocked. g spells the glyphs (see ActionLines); header is used as given.
+func RenderPlanText(p *Plan, header string, quiet bool, g output.Glyphs) string {
 	if quiet && len(p.Blocked()) == 0 {
 		return redact.String(p.SummaryLine())
 	}
@@ -216,7 +226,7 @@ func RenderPlanText(p *Plan, header string, quiet bool) string {
 		out = append(out, header, "")
 	}
 	for _, a := range p.Visible() {
-		out = append(out, ActionLines(a)...)
+		out = append(out, ActionLines(a, g)...)
 	}
 	if len(p.Unmanaged) > 0 {
 		out = append(out, "", "Unmanaged (not in capella.yaml; use --prune to delete):")
